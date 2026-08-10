@@ -7,7 +7,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 
 ## Status
 
-**Beta.** The current build has been exercised in Hermes Desktop and visually accepted on its target setup. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.0.0 has been exercised in Hermes Desktop, visually accepted on its target setup and covered by automated regression tests. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
 ## What it changes
 

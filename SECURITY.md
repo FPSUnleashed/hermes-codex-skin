@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Security fixes are applied to the latest published beta or stable release.
+Security fixes are applied to the latest stable release.
 
 ## Reporting a vulnerability
 

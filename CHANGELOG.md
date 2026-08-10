@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.0] - 2026-08-10
+
+### Added
+
+- Stable Codex-inspired light and dark visual layer for Hermes Desktop.
+- Automated CI for syntax, regression tests and checksum verification.
+
+### Fixed
+
+- Preserved exact native message text across disable and hot reload.
+- Kept every label created by Codex Skin in English.
+
+### Preserved
+
+- Native Hermes model and Thinking Level menus.
+- Full visibility of commentary, tools, loaders, tasks, approvals and media.
+- Existing `codex-chat-look` installation path and internal IDs for in-place updates.
+
 ## [1.0.0-beta.3] - 2026-08-10
 
 ### Fixed
