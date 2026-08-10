@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible Codex Chat Look defect
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Please remove private conversation content, credentials and personal data from screenshots and logs.
+  - type: input
+    id: hermes-version
+    attributes:
+      label: Hermes Desktop version
+      placeholder: e.g. exact version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: Describe the shortest exact path that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Add screenshots or logs only after removing private content.
