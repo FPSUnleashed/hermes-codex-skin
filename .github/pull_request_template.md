@@ -5,6 +5,7 @@ Describe the observable change.
 ## Verification
 
 - [ ] `node --check codex-chat-look/plugin.js`
+- [ ] `node --test test/*.test.mjs`
 - [ ] Tested the exact candidate in Hermes Desktop
 - [ ] Verified enable, disable and hot reload
 - [ ] Verified native model and Thinking Level menus

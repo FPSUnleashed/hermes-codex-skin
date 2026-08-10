@@ -15,12 +15,13 @@ Contributions are welcome, especially compatibility fixes for newer Hermes Deskt
 ## Before opening a pull request
 
 1. Run `node --check codex-chat-look/plugin.js`.
-2. Install the exact candidate through Hermes' disk plugin directory.
-3. Verify enable, disable and hot-reload behavior.
-4. Check both light and dark themes.
-5. Verify the native model and Thinking Level menus.
-6. Verify Queue, Tasks, Background activity, Clarify, Approval, loaders and media remain visible.
-7. Verify long user messages clamp at 8 lines / 198 px and expand manually.
-8. Describe the Hermes version and operating system used for validation.
+2. Run `node --test test/*.test.mjs`.
+3. Install the exact candidate through Hermes' disk plugin directory.
+4. Verify enable, disable and hot-reload behavior.
+5. Check both light and dark themes.
+6. Verify the native model and Thinking Level menus.
+7. Verify Queue, Tasks, Background activity, Clarify, Approval, loaders and media remain visible.
+8. Verify long user messages clamp at 8 lines / 198 px and expand manually.
+9. Describe the Hermes version and operating system used for validation.
 
 Keep commits focused. Do not include fixtures, probes, credentials, private paths or captured conversation data.

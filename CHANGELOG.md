@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.0-beta.2] - 2026-08-10
+
+### Fixed
+
+- Preserved the exact native user-message text when image attachment markers are hidden, including after disable and hot reload.
+- Removed obsolete Queue decoration state and cleanup paths.
+
+### Changed
+
+- Renamed the public plugin and visible theme label to **Codex Skin**.
+- Kept the internal plugin ID, theme ID and installation folder stable for in-place updates.
+- Removed unused lifecycle and model metadata code.
+- Added regression tests for marker ownership, cleanup, hot reload and the Maintainer findings.
+
 ## [1.0.0-beta.1] - 2026-08-10
 
 ### Added

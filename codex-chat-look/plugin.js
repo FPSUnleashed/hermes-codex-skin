@@ -1,10 +1,10 @@
 import { host, THEMES_AREA, TITLEBAR_AREAS } from '@hermes/plugin-sdk'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'native-model-menu-v4'
+const BUILD_ID = 'v1.0.0-beta.2'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -15,8 +15,8 @@ const HERMES_FONT = SYSTEM_FONT
 
 const CODEX_THEME = {
   name: 'codex-chat',
-  label: 'Codex Chat',
-  description: 'Codex desktop light and dark palettes with system typography',
+  label: 'Codex Skin',
+  description: 'Codex-inspired light and dark palettes with system typography',
   colors: {
     background: '#FFFFFF',
     foreground: '#0D0D0D',
@@ -170,8 +170,13 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] .composer-
   text-align: left !important;
 }
 
-/* Codex keeps a useful amount of long prompts visible: 18 text lines, then a
-   dedicated ellipsis row and an explicit expand control. Neutralize Hermes'
+html[data-codex-chat-look='true'] [data-codex-image-marker='true'] {
+  display: none !important;
+}
+
+/* Codex keeps a useful amount of long prompts visible: 8 text lines, then a
+   dedicated ellipsis row and an explicit expand control. The 198px clamp covers
+   eight 22px content lines plus the 22px ellipsis row. Neutralize Hermes'
    four-line gradient first; runtime only reapplies the hard clamp to messages
    whose measured full height actually exceeds the Codex limit. */
 html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] .sticky-human-clamp {
@@ -1110,8 +1115,7 @@ function userMessageId(pair) {
   return pair.querySelector(':scope > [data-role="user"]')?.getAttribute('data-message-id') || ''
 }
 
-const IMAGE_ATTACHMENT_MARKER_LINE_RE = /(?:^|\n)[ \t]*\[Image attached at:\s*[^\]\r\n]+\][ \t]*(?=\n|$)/gi
-const IMAGE_ATTACHMENT_MARKER_RE = /\[Image attached at:\s*[^\]\r\n]+\]/gi
+const IMAGE_ATTACHMENT_MARKER_RE = /(?:^|\n)[ \t]*\[Image attached at:\s*[^\]\r\n]+\][ \t]*(?=\n|$)|\[Image attached at:\s*[^\]\r\n]+\]/gi
 
 function hasRenderedImageAttachment(user) {
   const attachmentRow = user?.nextElementSibling
@@ -1133,21 +1137,23 @@ function stripImageAttachmentMarker(pair) {
   while (walker.nextNode()) textNodes.push(walker.currentNode)
 
   for (const node of textNodes) {
-    if (node.parentElement?.closest('code, pre')) continue
+    if (node.parentElement?.closest('code, pre, [data-codex-image-marker]')) continue
     const current = node.nodeValue || ''
-    if (!IMAGE_ATTACHMENT_MARKER_RE.test(current)) {
-      IMAGE_ATTACHMENT_MARKER_RE.lastIndex = 0
-      continue
+    const matches = [...current.matchAll(new RegExp(IMAGE_ATTACHMENT_MARKER_RE.source, IMAGE_ATTACHMENT_MARKER_RE.flags))]
+    for (const match of matches.reverse()) {
+      const marker = node.splitText(match.index)
+      marker.splitText(match[0].length)
+      const wrapper = document.createElement('span')
+      wrapper.setAttribute('data-codex-image-marker', 'true')
+      marker.replaceWith(wrapper)
+      wrapper.appendChild(marker)
     }
-    IMAGE_ATTACHMENT_MARKER_RE.lastIndex = 0
-    const cleaned = current
-      .replace(IMAGE_ATTACHMENT_MARKER_LINE_RE, '')
-      .replace(IMAGE_ATTACHMENT_MARKER_RE, '')
-      .replace(/\n{3,}/g, '\n\n')
-      .trimEnd()
-    IMAGE_ATTACHMENT_MARKER_LINE_RE.lastIndex = 0
-    IMAGE_ATTACHMENT_MARKER_RE.lastIndex = 0
-    if (cleaned !== current) node.nodeValue = cleaned
+  }
+}
+
+function clearImageAttachmentMarkers() {
+  for (const wrapper of document.querySelectorAll('[data-codex-image-marker]')) {
+    wrapper.replaceWith(...wrapper.childNodes)
   }
 }
 
@@ -1297,7 +1303,6 @@ function currentModelDisplay() {
   if (trigger && liveText.includes('·')) trigger.dataset.codexNativeModelLabel = liveText
   const text = trigger?.dataset.codexNativeModelLabel || liveText
   const [rawModel = '', rawMeta = ''] = text.split('·').map(part => part.trim())
-  const fast = /\bFast\b/i.test(rawMeta)
   const effortRaw = rawMeta.replace(/\bFast\b/gi, '').trim() || 'Medium'
   const effortMap = {
     Minimal: 'Minimal',
@@ -1311,8 +1316,7 @@ function currentModelDisplay() {
   }
   return {
     model: prettyModelName(rawModel),
-    effort: effortMap[effortRaw] || effortRaw,
-    speed: fast ? 'Rapide' : 'Standard'
+    effort: effortMap[effortRaw] || effortRaw
   }
 }
 
@@ -1348,11 +1352,10 @@ function decorateComposerChrome() {
         })
       : null
   const statusStack = nativeStatusStack || [...dock.querySelectorAll('div')].find(element => {
-      const className = typeof element.className === 'string' ? element.className : ''
-      return className.includes('bottom-full') && className.includes('absolute') && element.getBoundingClientRect().width > 300
-    })
+    const className = typeof element.className === 'string' ? element.className : ''
+    return className.includes('bottom-full') && className.includes('absolute') && element.getBoundingClientRect().width > 300
+  })
   if (statusStack) {
-    statusStack.setAttribute('data-codex-status-stack', 'true')
     const statusCard = statusStack.firstElementChild
     statusCard?.setAttribute('data-codex-status-card', 'true')
   }
@@ -1386,28 +1389,13 @@ function decorateComposerChrome() {
 }
 
 function clearComposerChromeDecorations() {
-  for (const leading of document.querySelectorAll('[data-codex-queue-leading]')) leading.remove()
-  for (const element of document.querySelectorAll('[data-codex-queue-section], [data-codex-queue-header], [data-codex-queue-body], [data-codex-queue-row], [data-codex-queue-actions], [data-codex-queue-more], [data-codex-queue-send], [data-codex-queue-delete], [data-codex-has-queue], [data-codex-queue-shell]')) {
-    element.removeAttribute('data-codex-queue-section')
-    element.removeAttribute('data-codex-queue-header')
-    element.removeAttribute('data-codex-queue-body')
-    element.removeAttribute('data-codex-queue-row')
-    element.removeAttribute('data-codex-queue-actions')
-    element.removeAttribute('data-codex-queue-more')
-    element.removeAttribute('data-codex-queue-send')
-    element.removeAttribute('data-codex-queue-delete')
-    element.removeAttribute('data-codex-has-queue')
-    element.removeAttribute('data-codex-queue-shell')
-    element.removeAttribute('data-codex-queue-state')
-  }
   for (const shell of document.querySelectorAll('[data-codex-context-menu-shell]')) {
     restoreInlineStyle(shell)
     shell.removeAttribute('data-codex-context-menu-shell')
   }
 
-  for (const element of document.querySelectorAll('[data-codex-context-menu], [data-codex-status-stack], [data-codex-status-card]')) {
+  for (const element of document.querySelectorAll('[data-codex-context-menu], [data-codex-status-card]')) {
     element.removeAttribute('data-codex-context-menu')
-    element.removeAttribute('data-codex-status-stack')
     element.removeAttribute('data-codex-status-card')
   }
 
@@ -1636,7 +1624,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
-      if (target?.closest?.('[data-codex-queue-leading], [data-codex-user-expand]')) continue
+      if (target?.closest?.('[data-codex-user-expand]')) continue
 
       const region = target?.closest?.('[data-slot="aui_turn-pair"], [data-slot="composer-rich-input"], [data-slot="composer-dock"], [data-slot="composer-root"], [data-slot="sidebar"]')
       const changedNodes = [...record.addedNodes, ...record.removedNodes]
@@ -1728,6 +1716,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     handoff.timer = window.setTimeout(() => {
       if (window[RUNTIME_HANDOFF_KEY] !== handoff) return
       for (const user of document.querySelectorAll('[data-slot="aui_user-message-root"]')) clearLongUserDecoration(user)
+      clearImageAttachmentMarkers()
       clearComposerChromeDecorations()
       afterFinalCleanup?.()
       delete window[RUNTIME_HANDOFF_KEY]
@@ -1739,8 +1728,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 }
 
 function CodexChatStyleRuntime() {
-  const behaviorRef = useRef(null)
-
   useEffect(() => {
     const root = document.documentElement
     let style = document.getElementById(STYLE_ID)
@@ -1758,10 +1745,7 @@ function CodexChatStyleRuntime() {
       delete root.dataset.codexChatLook
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
     })
-    behaviorRef.current = uninstallBehavior
-
     return () => {
-      if (behaviorRef.current === uninstallBehavior) behaviorRef.current = null
       uninstallBehavior()
     }
   }, [])
@@ -1771,7 +1755,7 @@ function CodexChatStyleRuntime() {
 
 export default {
   id: ID,
-  name: 'Codex Chat Look',
+  name: 'Codex Skin',
   register(ctx) {
     ctx.register({ id: 'theme', area: THEMES_AREA, data: CODEX_THEME })
     ctx.register({

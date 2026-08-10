@@ -1,6 +1,6 @@
-# Codex Chat Look for Hermes Desktop
+# Codex Skin for Hermes Desktop
 
-A self-contained Hermes Desktop plugin that gives the chat interface a Codex-inspired visual treatment while preserving Hermes' native behavior.
+Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving Hermes' native behavior.
 
 > [!IMPORTANT]
 > This project is an independent community plugin. It is not affiliated with or endorsed by Nous Research or OpenAI.
@@ -41,7 +41,7 @@ Hermes desktop plugins currently use local disk distribution. There is no remote
 PLUGIN_DIR="${HERMES_HOME:-$HOME/.hermes}/desktop-plugins/codex-chat-look"
 mkdir -p "$PLUGIN_DIR"
 curl -fsSL \
-  https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-chat-look/main/codex-chat-look/plugin.js \
+  https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/main/codex-chat-look/plugin.js \
   -o "$PLUGIN_DIR/plugin.js"
 ```
 
@@ -57,13 +57,13 @@ For a named profile, use:
 $pluginDir = Join-Path $HOME ".hermes\desktop-plugins\codex-chat-look"
 New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
 Invoke-WebRequest `
-  -Uri "https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-chat-look/main/codex-chat-look/plugin.js" `
+  -Uri "https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/main/codex-chat-look/plugin.js" `
   -OutFile (Join-Path $pluginDir "plugin.js")
 ```
 
 Hermes watches the plugin folder and should load the file automatically. If it does not, open the command palette and run **Reload desktop plugins**. You can enable or disable it live under **Settings → Plugins**.
 
-Select the **Codex Chat** theme in Hermes if it is not selected automatically.
+Select the **Codex Skin** theme in Hermes if it is not selected automatically.
 
 ## Update
 
@@ -71,7 +71,7 @@ Run the relevant install command again. Hermes hot-reloads the replaced file. Co
 
 ## Uninstall
 
-Disable **Codex Chat Look** under **Settings → Plugins**, then remove its folder:
+Disable **Codex Skin** under **Settings → Plugins**, then remove its folder:
 
 ### macOS / Linux
 
@@ -96,6 +96,8 @@ This plugin performs no network requests and stores no message text, prompt hash
 ## Compatibility
 
 The plugin is scoped behind `html[data-codex-chat-look='true']` and cleans up its runtime markers when disabled. It is self-contained, but it styles internal Hermes surfaces. A future Hermes UI update can require selector maintenance even when the official plugin loader remains compatible.
+
+The internal plugin ID, theme ID and installation folder remain `codex-chat-look` / `codex-chat` so existing installations update in place.
 
 ## Contributing
 
