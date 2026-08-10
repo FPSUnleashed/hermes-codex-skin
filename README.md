@@ -15,7 +15,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 - Chat typography, spacing, sidebar, composer, Queue, bubbles, menus and loaders
 - Codex-style model name in the composer
 - Hermes' native model and Thinking Level menus after clicking the model name
-- User-message clamp at 8 lines / 198 px, with an **Afficher plus** control for longer messages
+- User-message clamp at 8 lines / 198 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
 
 ## What it deliberately does not do

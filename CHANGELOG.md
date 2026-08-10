@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [1.0.0-beta.3] - 2026-08-10
+
+### Fixed
+
+- Kept every label created by Codex Skin in English, regardless of the Hermes or system locale.
+- Replaced the French long-message controls and model effort labels with English copy.
+- Added regression tests for English-only plugin UI copy.
+
 ## [1.0.0-beta.2] - 2026-08-10
 
 ### Fixed

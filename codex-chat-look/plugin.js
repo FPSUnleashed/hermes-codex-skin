@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.0.0-beta.2'
+const BUILD_ID = 'v1.0.0-beta.3'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -1209,10 +1209,7 @@ function clearLongUserDecoration(user) {
 }
 
 function longUserLabels() {
-  const french = (document.documentElement.lang || navigator.language || '').toLowerCase().startsWith('fr')
-  return french
-    ? { more: 'Afficher plus', less: 'Afficher moins' }
-    : { more: 'Show more', less: 'Show less' }
+  return { more: 'Show more', less: 'Show less' }
 }
 
 function decorateLongUserMessage(pair) {
@@ -1306,11 +1303,15 @@ function currentModelDisplay() {
   const effortRaw = rawMeta.replace(/\bFast\b/gi, '').trim() || 'Medium'
   const effortMap = {
     Minimal: 'Minimal',
-    Low: 'Faible',
-    Med: 'Moyen',
-    Medium: 'Moyen',
-    High: 'Élevé',
-    'Extra High': 'Très élevé',
+    Low: 'Low',
+    Med: 'Medium',
+    Medium: 'Medium',
+    High: 'High',
+    'Extra High': 'Extra High',
+    Faible: 'Low',
+    Moyen: 'Medium',
+    'Élevé': 'High',
+    'Très élevé': 'Extra High',
     Max: 'Max',
     Ultra: 'Ultra'
   }
