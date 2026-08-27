@@ -1,6 +1,6 @@
 # Codex Skin for Hermes Desktop
 
-Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving Hermes' native behavior.
+Codex Skin gives Hermes Desktop a Codex-inspired theme and chat layout while preserving Hermes' native behavior. It adds selectable light/dark palettes, an optional 736 px composer, cleaner voice and status surfaces, denser Tasks and Queue presentation, and four-line message folding.
 
 > [!IMPORTANT]
 > This project is an independent community plugin. It is not affiliated with or endorsed by Nous Research or OpenAI.
@@ -16,8 +16,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 - Codex-style model name in the composer
 - Hermes' native model and Thinking Level menus after clicking the model name
 - Hermes' native auto-speak and wake-word controls inside the composer
-- Compact Codex styling for Hermes' native **Reading aloud** status and Stop action
-- Matching compact Codex styling for Hermes' native **Voice dictation** status
+- Cleaner styling for Hermes' native **Voice dictation** and **Reading aloud** surfaces
 - Pixel-matched 736 CSS px Codex composer, with an optional native-width Hermes mode
 - User-message clamp at 4 lines / 110 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
@@ -30,7 +29,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 | Theme | Codex Skin / another Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
 
-Turning **Codex Skin** off restores Hermes' normal appearance. Hermes' own **Read replies aloud** and wake-word controls remain available and can still be turned on or off independently.
+Turning **Codex Skin** off restores Hermes' normal appearance.
 
 ### Composer width
 
@@ -40,6 +39,28 @@ Open the command palette and run **Codex Skin: Composer width**. The row shows t
 - **Hermes** restores Hermes' native full-width composer and conversation column.
 
 The `+` menu above the composer follows the rendered composer width in both modes.
+
+## Screenshots
+
+### Codex Skin theme
+
+![Codex Skin theme in Hermes Appearance settings](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-theme-appearance.png)
+
+### Composer width setting
+
+![Codex Skin Composer width setting in the command palette](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-composer-width-setting.png)
+
+### Voice dictation and Reading aloud
+
+![Voice dictation in Codex Skin](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-voice-dictation.png)
+
+![Reading aloud in Codex Skin](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-reading-aloud.png)
+
+### Tasks
+
+*Demo weather steps used only to show the Tasks layout.*
+
+![Tasks in Codex Skin with demo weather steps](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-tasks-demo.png)
 
 ## What it deliberately does not do
 
