@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
 const PLAYBACK = "[data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button)"
+const DICTATION = "[data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button))"
 
 function rule(selector) {
   const start = source.indexOf(selector)
@@ -23,6 +24,17 @@ test('Reading aloud becomes a compact neutral Codex row', () => {
   assert.match(playback, /background: transparent !important/)
   assert.match(playback, /box-shadow: none !important/)
   assert.match(playback, /backdrop-filter: none !important/)
+})
+
+test('Voice dictation uses the same compact neutral row language', () => {
+  const dictation = rule(DICTATION)
+  assert.match(dictation, /height: 28px;/)
+  assert.match(dictation, /margin-bottom: var\(--codex-playback-edge-gap\);/)
+  assert.match(dictation, /padding: 0 4px !important/)
+  assert.match(dictation, /border: 0 !important/)
+  assert.match(dictation, /background: transparent !important/)
+  assert.match(rule(`${DICTATION} > div:first-child`), /width: 18px !important/)
+  assert.match(rule(`${DICTATION} > div:nth-child\(2\) > span`), /font-weight: 400 !important/)
 })
 
 test('Reading aloud uses a quiet icon and shorter waveform', () => {
@@ -57,18 +69,23 @@ test('Reading aloud uses the same exact 12px gap above and below', () => {
   assert.match(rule(PLAYBACK), /margin-bottom: var\(--codex-playback-edge-gap\);/)
 })
 
-test('Reading aloud opens and closes with one continuous layout motion', () => {
+test('Reading aloud uses compositor-only motion instead of stepped layout animation', () => {
   assert.match(source, /@keyframes codex-playback-enter/)
   assert.match(source, /@keyframes codex-playback-exit/)
   assert.match(source, /\[data-codex-playback-enter='true'\]/)
   assert.match(source, /\[data-codex-playback-exit='true'\]/)
-  assert.match(source, /animation: codex-playback-enter 100ms linear both !important/)
-  assert.match(source, /animation: codex-playback-exit 100ms linear both !important/)
-  assert.match(source, /height: 0;[\s\S]{0,120}margin-bottom: 0/)
-  assert.match(source, /height: 28px;[\s\S]{0,120}margin-bottom: var\(--codex-playback-edge-gap\)/)
+  assert.match(source, /animation: codex-playback-enter 240ms cubic-bezier\(0\.22, 1, 0\.36, 1\) both !important/)
+  assert.match(source, /animation: codex-playback-exit 240ms cubic-bezier\(0\.22, 1, 0\.36, 1\) both !important/)
+  assert.match(source, /transform: translateY\(6px\)/)
   assert.match(source, /contain: paint !important/)
-  assert.match(source, /will-change: opacity/)
-  assert.doesNotMatch(source, /data-codex-playback-(?:enter|exit)[^}]{0,360}(?:max-height|translateY|will-change:[^;]*(?:height|margin-bottom|transform))/)
+  assert.match(source, /will-change: transform, opacity/)
+  const enterFrames = source.slice(source.indexOf('@keyframes codex-playback-enter'), source.indexOf('@keyframes codex-playback-exit'))
+  const exitFrames = source.slice(source.indexOf('@keyframes codex-playback-exit'), source.indexOf("[data-codex-playback-enter='true']"))
+  assert.doesNotMatch(enterFrames + exitFrames, /\bheight:|margin-bottom:/)
+  assert.match(source, /function floatPlaybackStatus\(/)
+  assert.match(source, /data-codex-playback-floating='true'/)
+  assert.match(source, /position: absolute !important/)
+  assert.doesNotMatch(source, /function (?:animatePlaybackShift|holdPlaybackShift)\(/)
 })
 
 test('the exit copy is visual-only, bounded, and removed', () => {
@@ -77,9 +94,10 @@ test('the exit copy is visual-only, bounded, and removed', () => {
   assert.match(source, /setAttribute\('aria-hidden', 'true'\)/)
   assert.match(source, /ghost\.inert = true/)
   assert.match(source, /pointer-events: none !important/)
+  assert.match(source, /data-codex-playback-floating/)
   assert.match(source, /drawImage\(sourceCanvas, 0, 0\)/)
   assert.match(source, /addEventListener\('animationend', removeGhost, \{ once: true \}\)/)
-  assert.match(source, /window\.setTimeout\(removeGhost, 160\)/)
+  assert.match(source, /window\.setTimeout\(removeGhost, PLAYBACK_MOTION_MS \+ 80\)/)
 })
 
 test('playback motion respects reduced motion and cleans up on hot reload', () => {
@@ -97,4 +115,13 @@ test('consecutive audio bridges a short idle gap instead of closing and reopenin
   assert.match(source, /if \(pendingGhost\) return/)
   assert.match(source, /window\.setTimeout\(beginExit, PLAYBACK_CLOSE_GRACE_MS\)/)
   assert.match(source, /exitStartTimer = window\.setTimeout\(\(\) => \{/)
+  assert.match(source, /pendingGhost\?\.__codexCancelPlaybackExit\?\.\(\)/)
+})
+
+test('voice rows are removed from layout so the composer stays vertically anchored', () => {
+  const floating = rule("[data-slot='composer-fade'] > [data-codex-playback-floating='true']")
+  assert.match(floating, /position: absolute !important/)
+  assert.match(floating, /top: calc\(-28px - var\(--codex-playback-edge-gap\)\) !important/)
+  assert.match(floating, /margin: 0 !important/)
+  assert.match(source, /\[data-slot='composer-surface'\]:has\(\[data-codex-playback-floating='true'\]\)/)
 })

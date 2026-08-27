@@ -6,7 +6,7 @@ Contributions are welcome, especially compatibility fixes for newer Hermes Deskt
 
 - Preserve Hermes' native model and Thinking Level menus.
 - Preserve Hermes' native auto-speak and wake-word controls in the composer.
-- Keep live commentary, final answers and generated media visible. Completed technical/interim work may collapse only through the fail-open execution summary.
+- Preserve Hermes' native assistant-turn rendering, commentary, tool calls, final answers and generated media.
 - Do not add network access, a backend or external assets without explicit discussion.
 - Keep all visual effects scoped to `html[data-codex-chat-look='true']`.
 - Keep cleanup reversible when the plugin is disabled or hot-reloaded.
@@ -23,7 +23,7 @@ Contributions are welcome, especially compatibility fixes for newer Hermes Deskt
 6. Verify the native model and Thinking Level menus.
 7. Verify Queue, Tasks, Background activity, Clarify, Approval, loaders and media remain visible.
 8. Verify long user messages clamp at 4 lines / 110 px and expand manually.
-9. Verify completed technical execution collapses only after one final answer is certain, and expands without hiding assistant prose or media.
+9. Verify assistant replies, commentary, tool calls, final answers and media keep Hermes' native rendering.
 10. Verify the native auto-speak and wake-word controls remain visible and clickable in the composer.
 11. Describe the Hermes version and operating system used for validation.
 

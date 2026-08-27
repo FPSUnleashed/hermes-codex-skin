@@ -7,7 +7,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 
 ## Status
 
-**Stable.** Version 1.1.0 has been exercised in Hermes Desktop, visually accepted on its target setup and covered by 60 automated regression tests. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.1.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
 ## What it changes
 
@@ -17,25 +17,20 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 - Hermes' native model and Thinking Level menus after clicking the model name
 - Hermes' native auto-speak and wake-word controls inside the composer
 - Compact Codex styling for Hermes' native **Reading aloud** status and Stop action
+- Matching compact Codex styling for Hermes' native **Voice dictation** status
 - Pixel-matched 736 CSS px Codex composer, with an optional native-width Hermes mode
 - User-message clamp at 4 lines / 110 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
-- Automatic post-turn execution summaries that keep live work visible, then leave only the final answer outside **Show work**
-- Optional **Clean conversation** setting, off by default, that hides technical execution chrome while preserving assistant progress messages, final answers, Clarify questions, approvals and global Hermes alerts
-
-## Post-turn execution summary
-
-Tool calls, Thinking blocks and interim assistant messages remain visible while Hermes is working. After the turn settles, Codex Skin puts all of that work behind one expandable summary only when it can identify exactly one terminal final answer. If the final answer is missing, duplicated, non-terminal or still live, the plugin fails open and leaves the whole turn visible.
-
-The terminal final answer is never hidden. Expanding **Show work** restores the native intermediate messages, tools and Thinking content in place.
 
 ## Adjustable settings
 
 | Setting | Values | Default | Where |
 | --- | --- | --- | --- |
+| Codex Skin | On / Off | On after installation | **Settings → Plugins** |
 | Theme | Codex Skin / another Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
-| Clean conversation | on / off | off | Command palette |
+
+Turning **Codex Skin** off restores Hermes' normal appearance. Hermes' own **Read replies aloud** and wake-word controls remain available and can still be turned on or off independently.
 
 ### Composer width
 
@@ -46,16 +41,10 @@ Open the command palette and run **Codex Skin: Composer width**. The row shows t
 
 The `+` menu above the composer follows the rendered composer width in both modes.
 
-### Clean conversation
-
-Open the command palette and run **Codex Skin: Clean conversation**. The row shows its live `on` / `off` state and the choice persists locally.
-
-This setting is **off by default**. When enabled, it hides ordinary tool calls and results, their failure or recovery states and Thinking blocks while a turn runs. Hermes' native working and loading status remains visible. Live assistant progress messages, final answers and generated images remain visible. Clarify questions, approval controls and global Hermes alerts also remain visible. The shared Queue, Tasks and Background panel stays visible because it can contain queued prompts, Stop controls and critical alerts.
-
 ## What it deliberately does not do
 
 - It does not replace Hermes' model or Thinking Level selection logic.
-- It never collapses a live turn or hides a final answer.
+- It preserves Hermes' native assistant-turn rendering.
 - It does not own, persist, replay, remove or migrate queued prompts; Queue behavior remains Hermes-native.
 - It does not modify Hermes source files.
 - It does not use a backend, network requests or external assets.
@@ -135,7 +124,7 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 Desktop plugins execute inside the Hermes renderer and therefore carry the same local authority as the app. Review local plugins before installing them.
 
-This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Clean conversation** and **Composer width** preferences.
+This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width** preference.
 
 ## Compatibility
 

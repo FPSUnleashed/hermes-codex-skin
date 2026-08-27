@@ -26,3 +26,9 @@ test('Codex Skin does not replace the native TTS or ear controls', () => {
   assert.doesNotMatch(source, /data-codex-(?:tts|auto-speak|wake-word|ear)/i)
   assert.doesNotMatch(source, /createElement\(['"]button['"]\)[\s\S]{0,300}(?:Read replies|Wake word)/i)
 })
+
+test('active dictation states keep the compact neutral Codex control', () => {
+  assert.match(source, /button:is\(\[aria-label='Stop dictation'\],\[aria-label='Transcribing dictation'\]\)/)
+  assert.match(source, /background: transparent !important;/)
+  assert.match(source, /box-shadow: none !important;/)
+})

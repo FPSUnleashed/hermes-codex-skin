@@ -4,14 +4,14 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.1.0'
+const BUILD_ID = 'v1.1.0-voice-polish-2'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
 const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
-const CLEAN_CONVERSATION_STORAGE_KEY = 'clean-conversation'
 const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
 const PLAYBACK_CLOSE_GRACE_MS = 250
+const PLAYBACK_MOTION_MS = 240
 
 let pluginStorage = null
 
@@ -97,52 +97,6 @@ html[data-codex-chat-look='true'] {
 
 html[data-codex-chat-look='true'][data-codex-composer-width='codex'] {
   --composer-width: 736px;
-}
-
-/* Clean conversation is deliberately opt-in. CSS owns concealment so opening
-   a long thread never requires annotating every historical turn in JavaScript. */
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-slot='tool-block']:not(:has(
-  [data-slot='clarify-inline']:not([data-clarify-settled]),
-  [data-slot='tool-approval-inline'],
-  [data-slot='tool-approval-fallback'],
-  [data-slot='aui_generated-image']
-)),
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] :is(
-  [data-slot='aui_changed-files']
-):not(:is(
-  [role='alert'],
-  [aria-label='Tool failed'],
-  [aria-label='Tool recovered'],
-  [aria-label='Error'],
-  [aria-label='Recovered'],
-  [aria-label='Warning'],
-  [aria-label^='Warning '],
-  [aria-label*='warning' i],
-  [data-variant='warning'],
-  [class*='text-destructive'],
-  [class*='text-amber-'],
-  [class*='bg-destructive']
-)):not(:has(:is(
-  [role='alert'],
-  [aria-label='Tool failed'],
-  [aria-label='Tool recovered'],
-  [aria-label='Error'],
-  [aria-label='Recovered'],
-  [aria-label='Warning'],
-  [aria-label^='Warning '],
-  [aria-label*='warning' i],
-  [data-variant='warning'],
-  [class*='text-destructive'],
-  [class*='text-amber-'],
-  [class*='bg-destructive']
-))) {
-  display: none !important;
-}
-
-/* Clean conversation hides expanded reasoning but preserves Hermes' native
-   working and loading status. */
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-slot='aui_thinking-disclosure'] {
-  display: none !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='light'] {
@@ -565,88 +519,6 @@ html[data-codex-chat-look='true'] [data-tool-group] .tool-group-scroll {
   mask-image: none !important;
 }
 
-/* Live work stays native. Once one final answer is certain, only the nodes
-   explicitly owned by that execution summary collapse. The final answer is
-   never marked and an ambiguous turn remains fully visible. */
-html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'][data-codex-execution-collapsed='true']:not([data-codex-execution-expanded='true']) [data-codex-execution-hidden='true'] {
-  display: none !important;
-}
-
-html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'][data-codex-execution-collapsed='true']:not([data-codex-execution-expanded='true']) [data-slot='aui_turn-duration'] {
-  display: none !important;
-}
-
-html[data-codex-chat-look='true'] [data-codex-execution-summary='true'] {
-  display: flex;
-  width: 100%;
-  min-height: 42px;
-  align-items: center;
-  gap: 7px;
-  margin: 0 0 12px;
-  padding: 8px 0 10px;
-  border: 0;
-  border-bottom: 1px solid #e5e5e5;
-  border-radius: 0;
-  background: transparent;
-  color: rgba(13, 13, 13, 0.56);
-  cursor: pointer;
-  font-family: ${SYSTEM_FONT};
-  font-size: 13px;
-  line-height: 22px;
-  font-weight: 445;
-  text-align: left;
-}
-
-html[data-codex-chat-look='true'] [data-codex-execution-summary='true']:hover {
-  color: rgba(13, 13, 13, 0.78);
-}
-
-html[data-codex-chat-look='true'] [data-codex-execution-chevron='true'] {
-  font-size: 20px;
-  line-height: 1;
-  color: rgba(13, 13, 13, 0.40);
-  transform: translateY(-0.5px);
-  transition: transform 140ms ease;
-}
-
-html[data-codex-chat-look='true'] [data-codex-execution-summary='true'][aria-expanded='true'] [data-codex-execution-chevron='true'] {
-  transform: rotate(90deg);
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-summary='true'] {
-  border-bottom-color: #424242;
-  color: rgba(236, 236, 236, 0.60);
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-summary='true']:hover {
-  color: rgba(236, 236, 236, 0.82);
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-chevron='true'] {
-  color: rgba(236, 236, 236, 0.48);
-}
-
-/* Expanding a completed summary is an explicit request to inspect the native
-   work, even when Clean conversation is globally enabled. */
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-role='assistant'] {
-  display: flex !important;
-}
-
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-slot='tool-block'] {
-  display: grid !important;
-}
-
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true']:is(
-  [data-slot='aui_thinking-disclosure'],
-  [data-slot='aui_changed-files']
-) {
-  display: block !important;
-}
-
-html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-slot='aui_response-loading'] {
-  display: flex !important;
-}
-
 /* Hide the branch / dirty-files strip only. Git state and review remain intact. */
 html[data-codex-chat-look='true'] .coding-status-bar {
   display: none !important;
@@ -687,6 +559,11 @@ html[data-codex-chat-look='true'] [data-slot='composer-fade'] {
   --codex-playback-edge-gap: 12px;
   padding: 12px 15px 10px !important;
   gap: 0 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface']:has([data-codex-playback-floating='true']),
+html[data-codex-chat-look='true'] [data-slot='composer-fade']:has(> [data-codex-playback-floating='true']) {
+  overflow: visible !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child {
@@ -851,14 +728,30 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria
   color: #0d0d0d !important;
 }
 
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label='Stop dictation'],[aria-label='Transcribing dictation']) {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  color: #0d0d0d !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label='Stop dictation'],[aria-label='Transcribing dictation']) svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label='Send'],[aria-label='Envoyer'])::before {
   mask-image: ${SEND_MASK};
 }
 
-/* Keep Hermes' native playback lifecycle, but fold its banner into the Codex
-   composer as a quiet status row. VoiceActivity has no button, so :has(> button)
-   selects VoicePlaybackActivity without relying on translated text. */
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+/* Keep Hermes' native dictation and playback lifecycles, but fold both banners
+   into the same quiet Codex status-row language. */
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
   height: 28px;
   margin-bottom: var(--codex-playback-edge-gap);
   gap: 6px !important;
@@ -873,7 +766,18 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status']
   line-height: 18px !important;
 }
 
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child {
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [data-codex-playback-floating='true'] {
+  position: absolute !important;
+  top: calc(-28px - var(--codex-playback-edge-gap)) !important;
+  right: 15px !important;
+  left: 15px !important;
+  width: auto !important;
+  margin: 0 !important;
+  z-index: 6;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child,
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) > div:first-child {
   width: 18px !important;
   height: 18px !important;
   flex: 0 0 18px !important;
@@ -881,16 +785,19 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status']
   background: transparent !important;
 }
 
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child svg {
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child svg,
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) > div:first-child svg {
   width: 14px !important;
   height: 14px !important;
 }
 
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2) {
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2),
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) > div:nth-child(2) {
   gap: 6px !important;
 }
 
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2) > span {
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2) > span,
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) > div:nth-child(2) > span {
   color: inherit !important;
   font-size: 12px !important;
   line-height: 18px !important;
@@ -921,7 +828,8 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status']
   height: 12px !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
+html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
   color: rgba(13, 13, 13, 0.62) !important;
 }
 
@@ -934,7 +842,8 @@ html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer
   color: rgba(13, 13, 13, 0.88) !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
   color: rgba(236, 236, 236, 0.64) !important;
 }
 
@@ -949,27 +858,23 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-
 
 @keyframes codex-playback-enter {
   from {
-    height: 0;
-    margin-bottom: 0;
     opacity: 0;
+    transform: translateY(6px);
   }
   to {
-    height: 28px;
-    margin-bottom: var(--codex-playback-edge-gap);
     opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes codex-playback-exit {
   from {
-    height: 28px;
-    margin-bottom: var(--codex-playback-edge-gap);
     opacity: 1;
+    transform: translateY(0);
   }
   to {
-    height: 0;
-    margin-bottom: 0;
     opacity: 0;
+    transform: translateY(6px);
   }
 }
 
@@ -977,8 +882,8 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-pla
   min-height: 0 !important;
   overflow: hidden !important;
   contain: paint !important;
-  will-change: opacity;
-  animation: codex-playback-enter 100ms linear both !important;
+  will-change: transform, opacity;
+  animation: codex-playback-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-exit='true'] {
@@ -987,8 +892,8 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-pla
   pointer-events: none !important;
   user-select: none !important;
   contain: paint !important;
-  will-change: opacity;
-  animation: codex-playback-exit 100ms linear both !important;
+  will-change: transform, opacity;
+  animation: codex-playback-exit 240ms cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-hold='true'] {
@@ -1777,139 +1682,6 @@ function decorateLongUserMessage(pair) {
   control.title = expanded ? labels.less : labels.more
 }
 
-const EXECUTION_TECHNICAL_SELECTOR = [
-  '[data-slot="tool-block"]:not(:has([data-slot="clarify-inline"], [data-slot="tool-approval-inline"], [data-slot="tool-approval-fallback"], img, video, audio))',
-  '[data-slot="aui_thinking-disclosure"]',
-  '[data-slot="aui_response-loading"]',
-  '[data-slot="aui_changed-files"]',
-].join(', ')
-
-const EXECUTION_LIVE_SELECTOR = [
-  '[data-slot="tool-block"] [role="status"]',
-  '[data-slot="aui_response-loading"]',
-  '[data-slot="aui_turn-activity"]',
-  '[data-slot="aui_stream-stall"]',
-  '[data-slot="aui_background-resume"]',
-  '[data-slot="clarify-inline"]:not([data-clarify-settled])',
-  '[data-slot="tool-approval-inline"]',
-  '[data-slot="tool-approval-fallback"]'
-].join(', ')
-
-function clearExecutionDecoration(pair) {
-  pair?.removeAttribute('data-codex-execution-collapsed')
-  pair?.removeAttribute('data-codex-execution-expanded')
-  for (const element of pair?.querySelectorAll?.('[data-codex-execution-hidden]') || []) {
-    element.removeAttribute('data-codex-execution-hidden')
-  }
-  pair?.querySelector?.(':scope > [data-codex-execution-summary]')?.remove()
-}
-
-function executionDuration(pair) {
-  const raw = pair?.querySelector?.('[data-slot="aui_turn-duration"]')?.textContent || ''
-  return raw.replace(/^\s*⏱\s*/, '').trim()
-}
-
-function classifyExecutionRoots(assistantRoots) {
-  if (assistantRoots.some(root => (
-    root.getAttribute('data-streaming') === 'true'
-    || root.querySelector(EXECUTION_LIVE_SELECTOR)
-  ))) return null
-  const finalRoots = assistantRoots.filter(root => root.querySelector('[data-slot="aui_msg-actions"]'))
-  const finalRoot = finalRoots.length === 1 ? finalRoots[0] : null
-  if (!finalRoot || finalRoot !== assistantRoots.at(-1)) return null
-  return { finalRoot }
-}
-
-function executionHiddenNodes(assistantRoots, finalRoot) {
-  const interimRoots = assistantRoots.filter(root => root !== finalRoot)
-  const finalTechnicalNodes = [...finalRoot.querySelectorAll(EXECUTION_TECHNICAL_SELECTOR)]
-  return [...interimRoots, ...finalTechnicalNodes]
-}
-
-function positionExecutionSummary(pair, summary, assistantRoots, finalRoot, expanded) {
-  const anchor = expanded ? assistantRoots[0] : finalRoot
-  if (anchor && summary.nextElementSibling !== anchor) pair.insertBefore(summary, anchor)
-}
-
-function syncExecutionSummaryLook(summary) {
-  const chevron = summary?.querySelector(':scope > [data-codex-execution-chevron]')
-  const label = [...(summary?.children || [])].find(element => element !== chevron)
-  if (!chevron || !label) return
-  if (chevron.textContent !== '›') chevron.textContent = '›'
-  if (summary.firstElementChild !== label || summary.lastElementChild !== chevron) {
-    summary.append(label, chevron)
-  }
-}
-
-function decorateExecutionSummary(pair) {
-  if (!pair?.matches?.('[data-slot="aui_turn-pair"]')) return
-  const assistantRoots = [...pair.querySelectorAll(
-    ':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]'
-  )]
-  const classification = classifyExecutionRoots(assistantRoots)
-  if (!classification) {
-    clearExecutionDecoration(pair)
-    return
-  }
-
-  const { finalRoot } = classification
-  const hiddenNodes = executionHiddenNodes(assistantRoots, finalRoot)
-  if (hiddenNodes.length === 0) {
-    clearExecutionDecoration(pair)
-    return
-  }
-
-  const existing = pair.querySelector(':scope > [data-codex-execution-summary]')
-  if (existing?.__codexFinalRoot === finalRoot) {
-    syncExecutionSummaryLook(existing)
-    const hiddenSet = new Set(hiddenNodes)
-    for (const element of pair.querySelectorAll('[data-codex-execution-hidden]')) {
-      if (!hiddenSet.has(element)) element.removeAttribute('data-codex-execution-hidden')
-    }
-    for (const element of hiddenNodes) element.setAttribute('data-codex-execution-hidden', 'true')
-    positionExecutionSummary(
-      pair,
-      existing,
-      assistantRoots,
-      finalRoot,
-      pair.getAttribute('data-codex-execution-expanded') === 'true'
-    )
-    return
-  }
-
-  clearExecutionDecoration(pair)
-  for (const element of hiddenNodes) element.setAttribute('data-codex-execution-hidden', 'true')
-  pair.setAttribute('data-codex-execution-collapsed', 'true')
-
-  const summary = document.createElement('button')
-  summary.type = 'button'
-  summary.setAttribute('data-codex-execution-summary', 'true')
-  summary.setAttribute('aria-expanded', 'false')
-  summary.__codexFinalRoot = finalRoot
-  const chevron = document.createElement('span')
-  chevron.setAttribute('data-codex-execution-chevron', 'true')
-  chevron.setAttribute('aria-hidden', 'true')
-  chevron.textContent = '›'
-  const label = document.createElement('span')
-  const duration = executionDuration(pair)
-  const collapsedLabel = duration ? `Took ${duration}` : 'Show work'
-  label.textContent = collapsedLabel
-  summary.append(label, chevron)
-  summary.addEventListener('click', () => {
-    const expanded = pair.getAttribute('data-codex-execution-expanded') !== 'true'
-    if (expanded) pair.setAttribute('data-codex-execution-expanded', 'true')
-    else pair.removeAttribute('data-codex-execution-expanded')
-    summary.setAttribute('aria-expanded', String(expanded))
-    label.textContent = expanded ? 'Hide work' : collapsedLabel
-    positionExecutionSummary(pair, summary, assistantRoots, finalRoot, expanded)
-  })
-  pair.insertBefore(summary, finalRoot)
-}
-
-function clearExecutionSummaries() {
-  for (const pair of document.querySelectorAll('[data-slot="aui_turn-pair"]')) clearExecutionDecoration(pair)
-}
-
 function rememberInlineStyle(element) {
   if (element.hasAttribute('data-codex-original-style')) return
   element.setAttribute('data-codex-original-style', element.getAttribute('style') ?? '__none__')
@@ -2069,27 +1841,6 @@ function clearComposerChromeDecorations() {
 
 }
 
-function readCleanConversationEnabled() {
-  try {
-    return pluginStorage?.get(CLEAN_CONVERSATION_STORAGE_KEY, false) === true
-  } catch {
-    return false
-  }
-}
-
-function syncCleanConversationRoot() {
-  const enabled = readCleanConversationEnabled()
-  const root = document.documentElement
-  if (enabled) root.setAttribute('data-codex-clean-conversation', 'true')
-  else root.removeAttribute('data-codex-clean-conversation')
-  return enabled
-}
-
-function setCleanConversationEnabled(enabled) {
-  pluginStorage?.set(CLEAN_CONVERSATION_STORAGE_KEY, enabled === true)
-  syncCleanConversationRoot()
-}
-
 function readComposerWidthMode() {
   try {
     const mode = pluginStorage?.get(COMPOSER_WIDTH_STORAGE_KEY, 'codex')
@@ -2131,26 +1882,30 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   const playbackAnimationTimers = new Set()
   const playbackReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   const PAIR_WORK_BATCH_SIZE = 8
-  const FIRST_PAINT_EXECUTION_PAIR_LIMIT = 8
-  const FIRST_PAINT_EXECUTION_WINDOW_MS = 1_200
-  let firstPaintExecutionUntil = 0
   let threadViewport = null
   let liveTailWrapper = null
   let threadScrollTimer = 0
   let threadScrollbarTimer = 0
   let liveTailAtBottom = true
-
   function playbackStatusesIn(node) {
     if (!(node instanceof Element)) return []
     const statuses = []
     if (
       node.matches('[role="status"][aria-live="polite"]')
-      && node.querySelector(':scope > button')
+      && (node.parentElement?.matches('[data-slot="composer-fade"]') || node.hasAttribute('data-codex-playback-floating'))
     ) statuses.push(node)
     for (const status of node.querySelectorAll('[role="status"][aria-live="polite"]')) {
-      if (status.querySelector(':scope > button')) statuses.push(status)
+      if (status.parentElement?.matches('[data-slot="composer-fade"]')) statuses.push(status)
     }
     return statuses
+  }
+
+  function floatPlaybackStatus(status) {
+    status.setAttribute('data-codex-playback-floating', 'true')
+  }
+
+  function clearPlaybackStatusFloat(status) {
+    status.removeAttribute('data-codex-playback-floating')
   }
 
   function animatePlaybackEntry(status) {
@@ -2161,6 +1916,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       || animatedPlaybackNodes.has(status)
     ) return
     animatedPlaybackNodes.add(status)
+    floatPlaybackStatus(status)
     const pendingGhost = status.parentElement?.querySelector?.(
       ':scope > [data-codex-playback-hold], :scope > [data-codex-playback-exit]'
     ) || null
@@ -2179,7 +1935,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       status.removeAttribute('data-codex-playback-enter')
     }
     status.addEventListener('animationend', finish, { once: true })
-    timer = window.setTimeout(finish, 160)
+    timer = window.setTimeout(finish, PLAYBACK_MOTION_MS + 80)
     playbackAnimationTimers.add(timer)
   }
 
@@ -2254,7 +2010,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
         exitStartTimer = 0
         if (!ghost.isConnected) return
         ghost.setAttribute('data-codex-playback-exit', 'true')
-        exitTimer = window.setTimeout(removeGhost, 160)
+        exitTimer = window.setTimeout(removeGhost, PLAYBACK_MOTION_MS + 80)
         playbackAnimationTimers.add(exitTimer)
       }, 0)
       playbackAnimationTimers.add(exitStartTimer)
@@ -2272,6 +2028,9 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     for (const ghost of document.querySelectorAll('[data-codex-playback-hold], [data-codex-playback-exit]')) {
       ghost.__codexCancelPlaybackExit?.()
       ghost.remove()
+    }
+    for (const status of document.querySelectorAll('[data-codex-playback-floating]')) {
+      clearPlaybackStatusFloat(status)
     }
   }
 
@@ -2342,35 +2101,8 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     dirtyPairs.add(pair)
   }
 
-  // A session switch paints the newest transcript tail immediately, while the
-  // ordinary historical decorator deliberately waits for idle time. Collapse
-  // only a small newest-first tail before paint so completed tools never flash
-  // open, without bringing long-message/image decoration back into the RAF.
-  // Keep the window open briefly because React can mount the destination DOM a
-  // frame after the host's session signal; mutation handling reuses this same
-  // bounded path for those late-mounted pairs.
-  const runFirstPaintExecutionTail = root => {
-    if (performance.now() > firstPaintExecutionUntil) return
-    const pairs = root instanceof Element && root.matches('[data-slot="aui_turn-pair"]')
-      ? [root]
-      : [...(root?.querySelectorAll?.('[data-slot="aui_turn-pair"]') || [])]
-    let processed = 0
-    for (let index = pairs.length - 1; index >= 0 && processed < FIRST_PAINT_EXECUTION_PAIR_LIMIT; index -= 1) {
-      const pair = pairs[index]
-      if (!pair?.isConnected) continue
-      decorateExecutionSummary(pair)
-      dirtyPairs.delete(pair)
-      processed += 1
-    }
-  }
-
-  const armFirstPaintExecution = () => {
-    firstPaintExecutionUntil = performance.now() + FIRST_PAINT_EXECUTION_WINDOW_MS
-  }
-
   const markPairsIn = node => {
     if (!(node instanceof Element)) return
-    runFirstPaintExecutionTail(node)
     if (node.matches('[data-slot="aui_turn-pair"]')) markPair(node)
     else if (
       node.matches('[data-session-anchor], [data-slot="aui_thread-content"]')
@@ -2380,11 +2112,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     }
   }
 
-  const markClosestPair = node => {
-    const element = node instanceof Element ? node : node?.parentElement
-    const pair = element?.closest?.('[data-slot="aui_turn-pair"]')
-    if (pair) markPair(pair)
-  }
 
   const cancelPairWork = () => {
     if (!pairWorkHandle) return
@@ -2407,7 +2134,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       if (!pair?.isConnected) continue
       stripImageAttachmentMarker(pair)
       decorateLongUserMessage(pair)
-      decorateExecutionSummary(pair)
       processed += 1
     }
     if (dirtyPairs.size) schedulePairWork()
@@ -2430,9 +2156,8 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     animationFrame = window.requestAnimationFrame(process)
   }
 
-  const reconcileSession = (beforePaint = false) => {
+  const reconcileSession = () => {
     if (destroyed) return
-    if (beforePaint) armFirstPaintExecution()
     historicalPairScanPending = true
     composerDirty = true
     schedule()
@@ -2443,7 +2168,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const nextSessionId = String(value || '')
     if (nextSessionId === observedSessionId) return
     observedSessionId = nextSessionId
-    reconcileSession(true)
+    reconcileSession()
   })
 
   let observedProfile = currentProfileScope()
@@ -2451,7 +2176,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const nextProfile = profileScope(value)
     if (nextProfile === observedProfile) return
     observedProfile = nextProfile
-    reconcileSession(true)
+    reconcileSession()
   })
 
   let observedGatewayState = String(host.state.gateway?.get?.() || '')
@@ -2460,7 +2185,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const reconnected = observedGatewayState && observedGatewayState !== 'open' && nextState === 'open'
     observedGatewayState = nextState
     if (!reconnected) return
-    reconcileSession(true)
+    reconcileSession()
   })
 
   const offSessionInfo = host.onEvent?.('session.info', event => {
@@ -2469,7 +2194,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     if (runtimeId === currentRuntimeSessionId()) reconcileSession()
   })
 
-  const process = () => {
+  function process() {
     animationFrame = 0
     scheduled = false
     if (destroyed) return
@@ -2478,7 +2203,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       processAllPairs = false
       historicalPairScanPending = true
     }
-    runFirstPaintExecutionTail(document)
     schedulePairWork()
 
     refreshLiveTail()
@@ -2496,24 +2220,12 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   )
 
   const runtimeSignalSelector = [
-    '[data-slot="aui_msg-actions"]',
-    '[data-slot="aui_assistant-message-root"]',
     '[data-slot="aui_user-message-root"]',
     '[data-slot="aui_turn-pair"]',
-    '[data-slot="clarify-inline"]',
-    '[data-slot="tool-approval-inline"]',
-    '[data-slot="tool-approval-fallback"]',
-    '[data-slot="aui_changed-files"]',
-    '[data-slot="aui_generated-image"]',
-    '[data-slot="aui_response-loading"]',
-    '[data-slot="aui_turn-activity"]',
-    '[data-slot="aui_stream-stall"]',
-    '[data-slot="aui_background-resume"]',
     '[role="status"]',
     '[data-slot="dropdown-menu-content"][role="menu"]',
     '[data-slot="composer-dock"]',
     '[data-slot="composer-root"]',
-    '[data-codex-execution-summary]',
     '[data-session-anchor]'
   ].join(', ')
 
@@ -2529,15 +2241,12 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
-      if (target?.closest?.('[data-codex-user-expand], [data-codex-execution-summary]')) continue
+      if (target?.closest?.('[data-codex-user-expand]')) continue
       if (target?.closest?.('[data-slot="sidebar"]')) continue
 
       const pair = target?.closest?.('[data-slot="aui_turn-pair"]')
       if (record.type === 'attributes') {
-        if (record.attributeName === 'data-streaming') {
-          if (pair) markPair(pair)
-          relevant = true
-        } else if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
+        if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
           if (pair) markPair(pair)
           relevant = true
         } else if (record.attributeName === 'role' && target?.matches?.('[role="status"]')) {
@@ -2590,19 +2299,24 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   }
 
   const observer = new MutationObserver(handleMutations)
-  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-label', 'role', 'data-streaming', 'data-clamped', 'data-clarify-settled', 'data-variant'] })
-  for (const status of document.querySelectorAll('[data-slot="composer-surface"] [role="status"][aria-live="polite"]')) {
-    if (status.querySelector(':scope > button')) animatePlaybackEntry(status)
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['aria-label', 'role', 'data-clamped']
+  })
+  for (const status of document.querySelectorAll('[data-slot="composer-fade"] > [role="status"][aria-live="polite"]')) {
+    animatePlaybackEntry(status)
   }
   const onResize = () => {
     processAllPairs = true
     composerDirty = true
     schedule()
   }
-  const onHashChange = () => reconcileSession(true)
+  const onHashChange = () => reconcileSession()
   window.addEventListener('resize', onResize)
   window.addEventListener('hashchange', onHashChange)
-  reconcileSession(true)
+  reconcileSession()
 
   const cleanup = () => {
     destroyed = true
@@ -2631,7 +2345,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       if (window[RUNTIME_HANDOFF_KEY] !== handoff) return
       for (const user of document.querySelectorAll('[data-slot="aui_user-message-root"]')) clearLongUserDecoration(user)
       clearImageAttachmentMarkers()
-      clearExecutionSummaries()
       clearComposerChromeDecorations()
       afterFinalCleanup?.()
       delete window[RUNTIME_HANDOFF_KEY]
@@ -2655,15 +2368,15 @@ function CodexChatStyleRuntime() {
     style.dataset.codexChatLookBuild = BUILD_ID
     root.dataset.codexChatLook = 'true'
     root.dataset.codexChatLookBuild = BUILD_ID
-    syncCleanConversationRoot()
     syncComposerWidthRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
-      root.removeAttribute('data-codex-clean-conversation')
       root.removeAttribute('data-codex-composer-width')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
+      if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
+    root.dataset.codexChatLookRuntime = BUILD_ID
     return () => {
       uninstallBehavior()
     }
@@ -2678,19 +2391,6 @@ export default {
   register(ctx) {
     pluginStorage = ctx.storage
     ctx.register({ id: 'theme', area: THEMES_AREA, data: CODEX_THEME })
-    ctx.register({
-      id: 'toggle-clean-conversation',
-      area: PALETTE_AREA,
-      data: {
-        id: 'codex-chat-look.toggle-clean-conversation',
-        label: 'Codex Skin: Clean conversation',
-        detail: () => (readCleanConversationEnabled() ? 'on' : 'off'),
-        detailVariant: 'state',
-        keepOpen: true,
-        keywords: ['codex', 'skin', 'clean', 'conversation', 'tools', 'hide', 'show', 'on', 'off'],
-        run: () => setCleanConversationEnabled(!readCleanConversationEnabled())
-      }
-    })
     ctx.register({
       id: 'toggle-composer-width',
       area: PALETTE_AREA,

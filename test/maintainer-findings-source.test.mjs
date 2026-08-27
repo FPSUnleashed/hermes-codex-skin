@@ -9,7 +9,7 @@ test('MNT-001 owns a scoped marker wrapper and unwraps it during final cleanup',
   assert.match(source, /wrapper\.replaceWith\(\.\.\.wrapper\.childNodes\)/)
   assert.match(
     source,
-    /clearImageAttachmentMarkers\(\)\s*\n\s*clearExecutionSummaries\(\)\s*\n\s*clearComposerChromeDecorations\(\)/
+    /clearImageAttachmentMarkers\(\)\s*\n\s*clearComposerChromeDecorations\(\)/
   )
   assert.doesNotMatch(source, /node\.nodeValue\s*=/)
 })
