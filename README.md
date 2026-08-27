@@ -11,7 +11,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat interface while preserving
 
 ## What it changes
 
-- Codex-inspired light and dark themes
+- A selectable **Codex Skin** theme in **Settings → Appearance**, with light and dark palettes
 - Chat typography, spacing, sidebar, composer, Queue, bubbles, menus and loaders
 - Codex-style model name in the composer
 - Hermes' native model and Thinking Level menus after clicking the model name
@@ -96,7 +96,8 @@ Invoke-WebRequest `
 
 Hermes watches the plugin folder and should load the file automatically. If it does not, open the command palette and run **Reload desktop plugins**. You can enable or disable it live under **Settings → Plugins**.
 
-Select the **Codex Skin** theme in Hermes if it is not selected automatically.
+> [!IMPORTANT]
+> Installing or enabling the plugin and selecting its theme are separate steps. After installation, open **Settings → Appearance** and select **Codex Skin**. If another theme remains selected, the plugin is active but its complete Codex light/dark palette is not.
 
 ## Update
 
