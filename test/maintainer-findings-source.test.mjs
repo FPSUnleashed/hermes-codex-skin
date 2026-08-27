@@ -7,7 +7,10 @@ const source = await readFile(new URL('../codex-chat-look/plugin.js', import.met
 test('MNT-001 owns a scoped marker wrapper and unwraps it during final cleanup', () => {
   assert.match(source, /html\[data-codex-chat-look='true'\] \[data-codex-image-marker='true'\]/)
   assert.match(source, /wrapper\.replaceWith\(\.\.\.wrapper\.childNodes\)/)
-  assert.match(source, /clearImageAttachmentMarkers\(\)\s*\n\s*clearComposerChromeDecorations\(\)/)
+  assert.match(
+    source,
+    /clearImageAttachmentMarkers\(\)\s*\n\s*clearExecutionSummaries\(\)\s*\n\s*clearComposerChromeDecorations\(\)/
+  )
   assert.doesNotMatch(source, /node\.nodeValue\s*=/)
 })
 
@@ -19,11 +22,11 @@ test('MNT-002 leaves Queue native and keeps owned status-card/context-menu clean
   assert.match(source, /element\.removeAttribute\('data-codex-context-menu'\)/)
 })
 
-test('MNT-003 documents the unchanged eight-line 198px clamp', () => {
-  assert.match(source, /8 text lines, then a\s*\n\s*dedicated ellipsis row/)
-  assert.match(source, /The 198px clamp covers\s*\n\s*eight 22px content lines plus the 22px ellipsis row/)
-  assert.match(source, /max-height: 198px !important/)
-  assert.doesNotMatch(source, /18 text lines/)
+test('MNT-003 keeps the four-line 110px clamp aligned with its runtime threshold', () => {
+  assert.match(source, /4 text lines, then a dedicated ellipsis row/)
+  assert.match(source, /The 110px clamp covers four 22px content lines plus/)
+  assert.match(source, /max-height: 110px !important/)
+  assert.match(source, /fullHeight <= lineHeight \* 4 \+ 1/)
 })
 
 test('MNT-004 keeps lexical runtime cleanup without a behavior ref', () => {

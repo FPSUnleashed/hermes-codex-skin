@@ -2,6 +2,88 @@
 
 All notable changes to this project are documented here.
 
+## [1.1.0] - 2026-08-27
+
+### Added
+
+- Automatic post-turn execution summaries. Live work remains native while Hermes runs; after one terminal final answer is certain, tools, Thinking blocks and interim assistant messages move behind one expandable row.
+- Codex-style collapsed labels that reuse Hermes' native duration as **Took ...** when available and fall back to **Show work** when it is not.
+- **Hide work** while expanded, with the summary moving to the start of the work while open and back beside the final answer while closed.
+- Resilient summary migration and recreation when React remounts or rebuilds an existing turn.
+- First-paint tail classification so completed tools are already collapsed when a restored chat becomes visible instead of flashing open first.
+- Fail-open completion rules for live, missing-final, duplicate-final and non-tail-final turns.
+- Optional **Clean conversation** command-palette setting, disabled by default and persisted locally.
+- Optional **Composer width** command-palette setting with persisted `Codex` and native-width `Hermes` modes.
+- Direct installation through current Hermes Desktop using the exact repository subdirectory.
+- Native Queue-edit banner styling and inline sent-message editing that reuse the Codex bubble language without replacing Hermes handlers.
+- Semantic Tasks-section detection so only the expanded task list scrolls while Queue, Background and sibling status sections remain fixed.
+
+### Improved
+
+- Corrected the Codex composer from an incorrect 1180 CSS px interpretation to the measured 736 CSS px Retina conversion.
+- Matched the composer to a 21 px radius with responsive 16 px minimum side gutters.
+- Bound the portaled `+` menu and shared status panel to the rendered composer instead of the viewport.
+- Kept floating and popped-out composers on Hermes-owned width rather than forcing the main-column override onto them.
+- Reduced long user-message clamping from eight lines / 198 px to four lines / 110 px while preserving manual expansion.
+- Made task rows denser and limited scrolling to the Tasks body.
+- Removed status-section divider lines in light and dark themes while preserving real dark menu separators.
+- Kept the Tasks and Queue card 14 px inside the composer on both sides, without clipped gutters, square scrollbar artifacts, black shadows or overlap behind the composer.
+- Made selected and unselected sidebar rows use the same native height; selection now changes paint only.
+- Restyled Hermes' native **Reading aloud** surface as a compact neutral Codex row with a quieter icon, shorter waveform and native Stop behavior.
+- Added equal 12 px spacing above and below **Reading aloud**.
+- Added one continuous 100 ms enter/exit motion, a 250 ms bridge for consecutive audio, reduced-motion handling and complete hot-reload cleanup.
+- Restyled Queue editing with compact neutral actions, a pill-shaped Save action and a dark-mode treatment without the old blue border.
+- Restyled the native inline sent-message editor to match the Codex user bubble.
+- Narrowed the runtime observer away from ordinary streamed text and sidebar mutations.
+- Replaced repeated full-history rescans and four delayed reconciliation sweeps with bounded idle batches.
+- Added a bounded newest-first pre-paint fast lane for completed execution only; long-message and image work remains idle-batched.
+- Replaced the latest-turn full query/reverse pass with a backward tree walk.
+- Moved **Clean conversation** concealment to CSS instead of annotating every historical turn in JavaScript.
+- Kept model-effort labels in stable English copy: `Low`, `Medium`, `High` and `Extra High`, even when Hermes uses another locale.
+
+### Fixed
+
+- Restored Hermes' native auto-speak and wake-word controls inside the composer.
+- Prevented a completed turn from hiding its terminal final answer.
+- Prevented live work from collapsing and ambiguous history from being guessed closed.
+- Kept generated images and their containing tool block visible in **Clean conversation**, and out of the automatic post-turn technical hide set.
+- Preserved Clarify questions, approvals, global alerts and Hermes' native working/loading state in **Clean conversation**.
+- Kept the shared Queue, Tasks and Background panel visible in **Clean conversation** because it can contain queued prompts, Stop controls and critical alerts.
+- Preserved the dark context-menu separator after removing status-card separators.
+- Fixed **Took ...** row ordering, full-width line, chevron, existing-summary migration and React-remount recovery.
+- Removed the chat-load collapse flicker by classifying a bounded transcript tail before the first visible paint.
+- Documented the GitHub `/blob/.../plugin.js` mistake that returns HTML and causes `Unexpected token '<'`, then added the safe built-in and raw-file install paths.
+
+### Removed
+
+- The custom Composing orb, canvas renderer, animation frames, timers, observers, listeners and every orb-only cleanup path.
+- Custom sidebar scrollbar detection, layout-style reads and per-element scroll listeners.
+- Repeated session-settle rescan timers that reprocessed long histories after navigation.
+- The incorrect 1180 px main-column width and previous 25 px composer radius.
+- Synthetic README screenshots; no generated fixture is presented as a real Hermes capture.
+
+### Preserved and compatible
+
+- Hermes' native model and Thinking Level menus.
+- Hermes' native Queue storage, ordering, edit, send, Stop and retry handlers. Codex Skin styles these surfaces but never writes, removes or migrates queued data.
+- Live assistant progress messages, terminal final answers, generated media, Clarify questions, approvals and global Hermes alerts under the post-turn summary rules.
+- Full native technical visibility while a turn is live and whenever final-answer identity is uncertain.
+- Stable internal plugin ID, theme ID and installation folder for in-place updates.
+- No backend, network requests or external assets.
+- No persisted message text, prompt hashes or content-derived fingerprints. Only bounded expansion IDs and the two user preferences are stored.
+
+### Known Hermes Desktop issue
+
+- Queue persistence and transcript rehydration remain owned by Hermes Desktop. Some current Hermes builds can lose the visible queued rows after switching/reloading a compressed chat, or fail to show a background-sent message when returning. Codex Skin neither causes nor fixes that native session-routing bug.
+
+### Verification
+
+- 60 automated regression tests cover the v1.0.0 contracts and every v1.1.0 behavior above.
+- JavaScript syntax and Hermes' actual ESM runtime-loader parser pass.
+- Browser gates cover execution collapse, first paint, remount/migration, composer geometry, sidebar height, Tasks scrolling, editing and playback motion.
+- In the synthetic 150-turn / 200-mutation fixture, initial decoration is about 45% lighter and streamed-mutation processing about 10x faster than the previous installed runtime.
+- The exact candidate hot-reloaded on macOS without restarting Hermes; the process stayed alive and fresh plugin-load errors remained at zero.
+
 ## [1.0.0] - 2026-08-10
 
 ### Added

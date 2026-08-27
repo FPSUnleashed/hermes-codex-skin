@@ -1,14 +1,19 @@
-import { host, THEMES_AREA, TITLEBAR_AREAS } from '@hermes/plugin-sdk'
+import { host, PALETTE_AREA, THEMES_AREA, TITLEBAR_AREAS } from '@hermes/plugin-sdk'
 import { useEffect } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.0.0'
+const BUILD_ID = 'v1.1.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
 const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
+const CLEAN_CONVERSATION_STORAGE_KEY = 'clean-conversation'
+const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
+const PLAYBACK_CLOSE_GRACE_MS = 250
+
+let pluginStorage = null
 
 const SYSTEM_FONT = `-apple-system, system-ui, "Segoe UI", sans-serif`
 const HERMES_FONT = SYSTEM_FONT
@@ -88,6 +93,56 @@ html[data-codex-chat-look='true'] {
   --ui-chat-surface-background: #ffffff;
   --ui-sidebar-surface-background: #fcfcfc;
   --ui-row-active-background: #efefef;
+}
+
+html[data-codex-chat-look='true'][data-codex-composer-width='codex'] {
+  --composer-width: 736px;
+}
+
+/* Clean conversation is deliberately opt-in. CSS owns concealment so opening
+   a long thread never requires annotating every historical turn in JavaScript. */
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-slot='tool-block']:not(:has(
+  [data-slot='clarify-inline']:not([data-clarify-settled]),
+  [data-slot='tool-approval-inline'],
+  [data-slot='tool-approval-fallback'],
+  [data-slot='aui_generated-image']
+)),
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] :is(
+  [data-slot='aui_changed-files']
+):not(:is(
+  [role='alert'],
+  [aria-label='Tool failed'],
+  [aria-label='Tool recovered'],
+  [aria-label='Error'],
+  [aria-label='Recovered'],
+  [aria-label='Warning'],
+  [aria-label^='Warning '],
+  [aria-label*='warning' i],
+  [data-variant='warning'],
+  [class*='text-destructive'],
+  [class*='text-amber-'],
+  [class*='bg-destructive']
+)):not(:has(:is(
+  [role='alert'],
+  [aria-label='Tool failed'],
+  [aria-label='Tool recovered'],
+  [aria-label='Error'],
+  [aria-label='Recovered'],
+  [aria-label='Warning'],
+  [aria-label^='Warning '],
+  [aria-label*='warning' i],
+  [data-variant='warning'],
+  [class*='text-destructive'],
+  [class*='text-amber-'],
+  [class*='bg-destructive']
+))) {
+  display: none !important;
+}
+
+/* Clean conversation hides expanded reasoning but preserves Hermes' native
+   working and loading status. */
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-slot='aui_thinking-disclosure'] {
+  display: none !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='light'] {
@@ -174,9 +229,9 @@ html[data-codex-chat-look='true'] [data-codex-image-marker='true'] {
   display: none !important;
 }
 
-/* Codex keeps a useful amount of long prompts visible: 8 text lines, then a
-   dedicated ellipsis row and an explicit expand control. The 198px clamp covers
-   eight 22px content lines plus the 22px ellipsis row. Neutralize Hermes'
+/* Keep long prompts compact: 4 text lines, then a dedicated ellipsis row and an
+   explicit expand control. The 110px clamp covers four 22px content lines plus
+   the 22px ellipsis row. Neutralize Hermes'
    four-line gradient first; runtime only reapplies the hard clamp to messages
    whose measured full height actually exceeds the Codex limit. */
 html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] .sticky-human-clamp {
@@ -192,7 +247,7 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'][data-codex
 
 html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'][data-codex-long-user='true']:not([data-codex-user-expanded='true']) .sticky-human-clamp {
   position: relative;
-  max-height: 198px !important;
+  max-height: 110px !important;
   overflow: hidden !important;
 }
 
@@ -256,6 +311,48 @@ html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='aui_user
   color: #0d0d0d !important;
 }
 
+/* Both sent-message editing and Queue editing stay native. The skin only gives
+   their existing contenteditable/actions the same bubble language as Codex. */
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message-container {
+  border-radius: 17px !important;
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 8px 12px !important;
+  border: 1px solid rgba(13, 13, 13, 0.10) !important;
+  border-radius: 17px !important;
+  background: #f3f3f3 !important;
+  color: #0d0d0d !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-slot='composer-rich-input'] {
+  min-height: 44px !important;
+  padding: 0 30px 0 0 !important;
+  background: transparent !important;
+  color: #0d0d0d !important;
+  caret-color: #0d0d0d !important;
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 14px !important;
+  line-height: 22px !important;
+  font-weight: 400 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message > button:last-child {
+  right: 8px !important;
+  bottom: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  border: 0 !important;
+  border-radius: 9999px !important;
+  background: #0d0d0d !important;
+  color: #ffffff !important;
+}
+
 /* Keep Hermes' compact live-thinking typography. The Codex answer font must
    never leak into the streaming reasoning preview. */
 html[data-codex-chat-look='true'] [data-streaming='true'] [data-slot='aui_thinking-disclosure'] {
@@ -295,7 +392,6 @@ html[data-codex-chat-look='true'] [data-slot='sidebar-group-content'] {
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover[class*='ui-row-active-background'],
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-active='true'],
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
-  min-height: 30px !important;
   border: 0 !important;
   border-radius: 10px !important;
   outline: 0 !important;
@@ -469,17 +565,105 @@ html[data-codex-chat-look='true'] [data-tool-group] .tool-group-scroll {
   mask-image: none !important;
 }
 
+/* Live work stays native. Once one final answer is certain, only the nodes
+   explicitly owned by that execution summary collapse. The final answer is
+   never marked and an ambiguous turn remains fully visible. */
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'][data-codex-execution-collapsed='true']:not([data-codex-execution-expanded='true']) [data-codex-execution-hidden='true'] {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'][data-codex-execution-collapsed='true']:not([data-codex-execution-expanded='true']) [data-slot='aui_turn-duration'] {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-execution-summary='true'] {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 8px 0 10px;
+  border: 0;
+  border-bottom: 1px solid #e5e5e5;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(13, 13, 13, 0.56);
+  cursor: pointer;
+  font-family: ${SYSTEM_FONT};
+  font-size: 13px;
+  line-height: 22px;
+  font-weight: 445;
+  text-align: left;
+}
+
+html[data-codex-chat-look='true'] [data-codex-execution-summary='true']:hover {
+  color: rgba(13, 13, 13, 0.78);
+}
+
+html[data-codex-chat-look='true'] [data-codex-execution-chevron='true'] {
+  font-size: 20px;
+  line-height: 1;
+  color: rgba(13, 13, 13, 0.40);
+  transform: translateY(-0.5px);
+  transition: transform 140ms ease;
+}
+
+html[data-codex-chat-look='true'] [data-codex-execution-summary='true'][aria-expanded='true'] [data-codex-execution-chevron='true'] {
+  transform: rotate(90deg);
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-summary='true'] {
+  border-bottom-color: #424242;
+  color: rgba(236, 236, 236, 0.60);
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-summary='true']:hover {
+  color: rgba(236, 236, 236, 0.82);
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-execution-chevron='true'] {
+  color: rgba(236, 236, 236, 0.48);
+}
+
+/* Expanding a completed summary is an explicit request to inspect the native
+   work, even when Clean conversation is globally enabled. */
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-role='assistant'] {
+  display: flex !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-slot='tool-block'] {
+  display: grid !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true']:is(
+  [data-slot='aui_thinking-disclosure'],
+  [data-slot='aui_changed-files']
+) {
+  display: block !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-clean-conversation='true'] [data-codex-execution-expanded='true'] [data-codex-execution-hidden='true'][data-slot='aui_response-loading'] {
+  display: flex !important;
+}
+
 /* Hide the branch / dirty-files strip only. Git state and review remain intact. */
 html[data-codex-chat-look='true'] .coding-status-bar {
   display: none !important;
 }
 
-/* Codex composer geometry measured from the live app. */
+/* The Codex reference is 1472 Retina pixels wide at DPR 2: 736 CSS px.
+   Hermes keeps the 5px peel-out margin on each side, hence the +10px dock. */
+html[data-codex-chat-look='true'][data-codex-composer-width='codex'] [data-slot='composer-dock']:not([data-popped-out]) {
+  width: calc(min(736px, calc(100% - 2rem)) + 10px) !important;
+  max-width: calc(100% - 22px) !important;
+}
+
 html[data-codex-chat-look='true'] [data-slot='composer-root'],
 html[data-codex-chat-look='true'] [data-slot='composer-root'] > div,
 html[data-codex-chat-look='true'] [data-slot='composer-surface'],
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden] {
-  border-radius: 25px !important;
+  border-radius: 21px !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] {
@@ -500,6 +684,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden]
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-fade'] {
+  --codex-playback-edge-gap: 12px;
   padding: 12px 15px 10px !important;
   gap: 0 !important;
 }
@@ -510,6 +695,47 @@ html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child {
   align-items: center !important;
   row-gap: 4px !important;
   column-gap: 5px !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] {
+  min-height: 32px !important;
+  gap: 8px !important;
+  padding: 3px 4px 3px 10px !important;
+  border: 1px solid rgba(13, 13, 13, 0.08) !important;
+  border-radius: 10px !important;
+  background: rgba(13, 13, 13, 0.035) !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] > div:first-child {
+  color: rgba(13, 13, 13, 0.56) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  font-weight: 400 !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] > div:last-child {
+  gap: 4px !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] button {
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: rgba(13, 13, 13, 0.66) !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] button:last-child {
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  background: #0d0d0d !important;
+  color: #ffffff !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input'] {
@@ -629,19 +855,162 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria
   mask-image: ${SEND_MASK};
 }
 
-/* Remove Hermes-only auto-speak and wake-word ear controls. */
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label^='Read replies aloud'],
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label^='Stop reading replies'],
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label^='Lire les réponses'],
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label^='Wake word'],
-html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label*='mot de réveil'] {
-  display: none !important;
+/* Keep Hermes' native playback lifecycle, but fold its banner into the Codex
+   composer as a quiet status row. VoiceActivity has no button, so :has(> button)
+   selects VoicePlaybackActivity without relying on translated text. */
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+  height: 28px;
+  margin-bottom: var(--codex-playback-edge-gap);
+  gap: 6px !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
 }
 
-/* Codex full-width add menu. The runtime tags and positions the Radix portal
-   against the real composer bounds, so it remains aligned after resize. */
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child {
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2) {
+  gap: 6px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:nth-child(2) > span {
+  color: inherit !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  font-weight: 400 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
+  width: 56px !important;
+  height: 12px !important;
+  opacity: 0.72 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button {
+  height: 24px !important;
+  min-height: 24px !important;
+  gap: 4px !important;
+  padding: 0 7px !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  font-size: 11px !important;
+  line-height: 16px !important;
+  font-weight: 400 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+  color: rgba(13, 13, 13, 0.62) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
+  color: rgba(13, 13, 13, 0.48) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button:hover {
+  background: rgba(13, 13, 13, 0.055) !important;
+  color: rgba(13, 13, 13, 0.88) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) {
+  color: rgba(236, 236, 236, 0.64) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
+  color: rgba(236, 236, 236, 0.50) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button:hover {
+  background: rgba(236, 236, 236, 0.07) !important;
+  color: rgba(236, 236, 236, 0.90) !important;
+}
+
+@keyframes codex-playback-enter {
+  from {
+    height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+  }
+  to {
+    height: 28px;
+    margin-bottom: var(--codex-playback-edge-gap);
+    opacity: 1;
+  }
+}
+
+@keyframes codex-playback-exit {
+  from {
+    height: 28px;
+    margin-bottom: var(--codex-playback-edge-gap);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+  }
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-enter='true'] {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  contain: paint !important;
+  will-change: opacity;
+  animation: codex-playback-enter 100ms linear both !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-exit='true'] {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  contain: paint !important;
+  will-change: opacity;
+  animation: codex-playback-exit 100ms linear both !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-hold='true'] {
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-enter='true'] {
+    animation: none !important;
+  }
+
+  html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-playback-exit='true'] {
+    display: none !important;
+  }
+}
+
+/* The Radix content is fixed-positioned, so 100% means the viewport rather
+   than its shell. Runtime provides the composer's measured width explicitly. */
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] {
-  width: 100% !important;
+  width: var(--codex-context-menu-width) !important;
+  max-width: calc(100vw - 24px) !important;
   max-height: min(40vh, 360px) !important;
   padding: 4px !important;
   border: 1px solid rgba(13, 13, 13, 0.08) !important;
@@ -698,28 +1067,26 @@ html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='d
   background: rgba(13, 13, 13, 0.08) !important;
 }
 
-/* Preserve Hermes' native status/Queue structure. Only inset and skin the
-   shared Tasks/Queue card so it clears the composer's rounded shoulders. */
+/* The native dock is 10px wider than the visible composer. Reuse the accepted
+   pre-polish geometry: 19px from the dock equals 14px from the visible surface.
+   Keep the vertical seam flush so Queue is never hidden behind the composer. */
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full {
-  bottom: calc(100% - 16px) !important;
-  left: 19px !important;
   right: 19px !important;
-  width: auto !important;
+  bottom: 100% !important;
+  left: 19px !important;
   z-index: 3 !important;
-  transform: none !important;
+  width: auto !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
   filter: none !important;
+  transform: none !important;
   backdrop-filter: none !important;
   overflow: visible auto !important;
 }
 
-/* Live/legacy Hermes stack: the dock is 10px wider than its surface. Keep
-   positioning offsets at auto — left/right on this relative flex item would
-   translate the whole stack instead of defining an inset. */
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] {
   position: relative !important;
   right: auto !important;
@@ -728,23 +1095,110 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   z-index: 3 !important;
   width: auto !important;
   margin-right: 19px !important;
-  margin-bottom: -16px !important;
+  margin-bottom: 0 !important;
   margin-left: 19px !important;
-  transform: none !important;
-  translate: none !important;
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
   filter: none !important;
+  transform: none !important;
+  translate: none !important;
   backdrop-filter: none !important;
+}
+
+/* The scroll owner wraps the rounded card, so an opaque native gutter paints a
+   square outside the top-right radius on long task lists. Keep the native scroll
+   behavior, but make its track/buttons transparent and reveal only a quiet thumb. */
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack'] {
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-scrollbar-track,
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-scrollbar-button {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-scrollbar-thumb {
+  min-height: 28px !important;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  background-clip: padding-box !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']:hover {
+  scrollbar-color: rgba(13, 13, 13, 0.22) transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(13, 13, 13, 0.22) !important;
+}
+
+/* Keep sibling status groups visible. The shared stack stops scrolling when a
+   Tasks section exists; only the expanded Tasks body receives the overflow. */
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack'][data-codex-has-task-section='true'] {
+  overflow: hidden !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-status-card='true']:has([data-codex-task-section='true']) {
+  display: flex !important;
+  min-height: 0 !important;
+  max-height: 40vh !important;
+  flex-direction: column !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-status-card='true']:has([data-codex-task-section='true']) > div:not([data-codex-task-section='true']) {
+  flex: 0 0 auto !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-task-section='true'] {
+  display: flex !important;
+  min-height: 0 !important;
+  flex: 0 1 auto !important;
+  overflow: hidden !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div {
+  display: flex !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  flex-direction: column !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div > div:first-child {
+  flex: 0 0 auto !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div > div:nth-child(2) {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div > div:nth-child(2):hover {
+  scrollbar-color: rgba(13, 13, 13, 0.22) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'],
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child,
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child {
   margin: 0 !important;
-  padding: 6px 8px 24px !important;
+  padding: 4px 8px 2px !important;
   border: 1px solid rgba(13, 13, 13, 0.08) !important;
   border-bottom: 0 !important;
   border-radius: 20px 20px 0 0 !important;
@@ -768,7 +1222,7 @@ html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] > div + div,
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child > div + div,
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child > div + div {
-  border-top: 1px solid rgba(13, 13, 13, 0.08) !important;
+  border-top: 0 !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] button,
@@ -787,9 +1241,10 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] [class~='group/status-row'],
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child [class~='group/status-row'],
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child [class~='group/status-row'] {
-  min-height: 38px !important;
-  padding: 7px 10px !important;
-  border-radius: 12px !important;
+  min-height: 24px !important;
+  gap: 6px !important;
+  padding: 1px 8px !important;
+  border-radius: 8px !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='aui_intro'] [aria-label='HERMES AGENT'] {
@@ -861,6 +1316,22 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-
   color: #ececec !important;
 }
 
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] .composer-human-message {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  background: #2f2f2f !important;
+  color: #ececec !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] [data-slot='composer-rich-input'] {
+  color: #ececec !important;
+  caret-color: #ececec !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] .composer-human-message > button:last-child {
+  background: #ececec !important;
+  color: #212121 !important;
+}
+
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-message-root'][data-codex-long-user='true']:not([data-codex-user-expanded='true']) .sticky-human-clamp::after {
   background: #2f2f2f;
   color: #ececec;
@@ -923,6 +1394,18 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_threa
   background-color: rgba(255, 255, 255, 0.28) !important;
 }
 
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-status-stack']:hover {
+  scrollbar-color: rgba(236, 236, 236, 0.22) transparent !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-status-stack']:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(236, 236, 236, 0.22) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-task-section='true'] > div > div:nth-child(2):hover {
+  scrollbar-color: rgba(236, 236, 236, 0.22) transparent !important;
+}
+
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] [aria-label='Running'],
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] [aria-label='En cours'],
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] span[class*='tabular-nums'] {
@@ -947,6 +1430,24 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-
 
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input'] :where(textarea, [contenteditable='true'])::placeholder {
   color: #b4b4b4 !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] > div:first-child {
+  color: rgba(236, 236, 236, 0.58) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] button {
+  color: rgba(236, 236, 236, 0.68) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] button:last-child {
+  background: #ececec !important;
+  color: #212121 !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] button[aria-label^='Model ·'],
@@ -975,10 +1476,7 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-
   border-color: rgba(255, 255, 255, 0.10) !important;
   background: #2f2f2f !important;
   backdrop-filter: none !important;
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.08),
-    0 -2px 8px rgba(0, 0, 0, 0.20),
-    0 -8px 24px -8px rgba(0, 0, 0, 0.34) !important;
+  box-shadow: none !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-label'] {
@@ -998,12 +1496,17 @@ html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-m
   color: rgba(236, 236, 236, 0.70) !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'],
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'] {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'] > div + div,
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child > div + div,
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child > div + div {
-  background: rgba(255, 255, 255, 0.10) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  border-top: 0 !important;
 }
 
 html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'] button,
@@ -1078,8 +1581,12 @@ function currentRuntimeSessionId() {
 }
 
 function routedStoredSessionId() {
+  return storedSessionIdFromHash(window.location.hash)
+}
+
+function storedSessionIdFromHash(hash) {
   try {
-    const raw = window.location.hash.match(/^#\/([^/?#]+)/)?.[1] || ''
+    const raw = String(hash || '').match(/^#\/([^/?#]+)/)?.[1] || ''
     if (!raw) return ''
     const decoded = decodeURIComponent(raw)
     const reserved = new Set(['agents', 'command-center', 'cron', 'new', 'profiles', 'settings', 'starmap'])
@@ -1226,7 +1733,7 @@ function decorateLongUserMessage(pair) {
   const lineHeight = 22
   const measuredHeight = Number.parseFloat(clamp.style.getPropertyValue('--human-msg-full'))
   const fullHeight = Number.isFinite(measuredHeight) && measuredHeight > 0 ? measuredHeight : inner?.scrollHeight || 0
-  if (fullHeight <= lineHeight * 8 + 1) {
+  if (fullHeight <= lineHeight * 4 + 1) {
     clearLongUserDecoration(user)
     return
   }
@@ -1268,6 +1775,139 @@ function decorateLongUserMessage(pair) {
   control.querySelector('[data-codex-user-expand-label]').textContent = expanded ? labels.less : labels.more
   control.setAttribute('aria-expanded', String(expanded))
   control.title = expanded ? labels.less : labels.more
+}
+
+const EXECUTION_TECHNICAL_SELECTOR = [
+  '[data-slot="tool-block"]:not(:has([data-slot="clarify-inline"], [data-slot="tool-approval-inline"], [data-slot="tool-approval-fallback"], img, video, audio))',
+  '[data-slot="aui_thinking-disclosure"]',
+  '[data-slot="aui_response-loading"]',
+  '[data-slot="aui_changed-files"]',
+].join(', ')
+
+const EXECUTION_LIVE_SELECTOR = [
+  '[data-slot="tool-block"] [role="status"]',
+  '[data-slot="aui_response-loading"]',
+  '[data-slot="aui_turn-activity"]',
+  '[data-slot="aui_stream-stall"]',
+  '[data-slot="aui_background-resume"]',
+  '[data-slot="clarify-inline"]:not([data-clarify-settled])',
+  '[data-slot="tool-approval-inline"]',
+  '[data-slot="tool-approval-fallback"]'
+].join(', ')
+
+function clearExecutionDecoration(pair) {
+  pair?.removeAttribute('data-codex-execution-collapsed')
+  pair?.removeAttribute('data-codex-execution-expanded')
+  for (const element of pair?.querySelectorAll?.('[data-codex-execution-hidden]') || []) {
+    element.removeAttribute('data-codex-execution-hidden')
+  }
+  pair?.querySelector?.(':scope > [data-codex-execution-summary]')?.remove()
+}
+
+function executionDuration(pair) {
+  const raw = pair?.querySelector?.('[data-slot="aui_turn-duration"]')?.textContent || ''
+  return raw.replace(/^\s*⏱\s*/, '').trim()
+}
+
+function classifyExecutionRoots(assistantRoots) {
+  if (assistantRoots.some(root => (
+    root.getAttribute('data-streaming') === 'true'
+    || root.querySelector(EXECUTION_LIVE_SELECTOR)
+  ))) return null
+  const finalRoots = assistantRoots.filter(root => root.querySelector('[data-slot="aui_msg-actions"]'))
+  const finalRoot = finalRoots.length === 1 ? finalRoots[0] : null
+  if (!finalRoot || finalRoot !== assistantRoots.at(-1)) return null
+  return { finalRoot }
+}
+
+function executionHiddenNodes(assistantRoots, finalRoot) {
+  const interimRoots = assistantRoots.filter(root => root !== finalRoot)
+  const finalTechnicalNodes = [...finalRoot.querySelectorAll(EXECUTION_TECHNICAL_SELECTOR)]
+  return [...interimRoots, ...finalTechnicalNodes]
+}
+
+function positionExecutionSummary(pair, summary, assistantRoots, finalRoot, expanded) {
+  const anchor = expanded ? assistantRoots[0] : finalRoot
+  if (anchor && summary.nextElementSibling !== anchor) pair.insertBefore(summary, anchor)
+}
+
+function syncExecutionSummaryLook(summary) {
+  const chevron = summary?.querySelector(':scope > [data-codex-execution-chevron]')
+  const label = [...(summary?.children || [])].find(element => element !== chevron)
+  if (!chevron || !label) return
+  if (chevron.textContent !== '›') chevron.textContent = '›'
+  if (summary.firstElementChild !== label || summary.lastElementChild !== chevron) {
+    summary.append(label, chevron)
+  }
+}
+
+function decorateExecutionSummary(pair) {
+  if (!pair?.matches?.('[data-slot="aui_turn-pair"]')) return
+  const assistantRoots = [...pair.querySelectorAll(
+    ':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]'
+  )]
+  const classification = classifyExecutionRoots(assistantRoots)
+  if (!classification) {
+    clearExecutionDecoration(pair)
+    return
+  }
+
+  const { finalRoot } = classification
+  const hiddenNodes = executionHiddenNodes(assistantRoots, finalRoot)
+  if (hiddenNodes.length === 0) {
+    clearExecutionDecoration(pair)
+    return
+  }
+
+  const existing = pair.querySelector(':scope > [data-codex-execution-summary]')
+  if (existing?.__codexFinalRoot === finalRoot) {
+    syncExecutionSummaryLook(existing)
+    const hiddenSet = new Set(hiddenNodes)
+    for (const element of pair.querySelectorAll('[data-codex-execution-hidden]')) {
+      if (!hiddenSet.has(element)) element.removeAttribute('data-codex-execution-hidden')
+    }
+    for (const element of hiddenNodes) element.setAttribute('data-codex-execution-hidden', 'true')
+    positionExecutionSummary(
+      pair,
+      existing,
+      assistantRoots,
+      finalRoot,
+      pair.getAttribute('data-codex-execution-expanded') === 'true'
+    )
+    return
+  }
+
+  clearExecutionDecoration(pair)
+  for (const element of hiddenNodes) element.setAttribute('data-codex-execution-hidden', 'true')
+  pair.setAttribute('data-codex-execution-collapsed', 'true')
+
+  const summary = document.createElement('button')
+  summary.type = 'button'
+  summary.setAttribute('data-codex-execution-summary', 'true')
+  summary.setAttribute('aria-expanded', 'false')
+  summary.__codexFinalRoot = finalRoot
+  const chevron = document.createElement('span')
+  chevron.setAttribute('data-codex-execution-chevron', 'true')
+  chevron.setAttribute('aria-hidden', 'true')
+  chevron.textContent = '›'
+  const label = document.createElement('span')
+  const duration = executionDuration(pair)
+  const collapsedLabel = duration ? `Took ${duration}` : 'Show work'
+  label.textContent = collapsedLabel
+  summary.append(label, chevron)
+  summary.addEventListener('click', () => {
+    const expanded = pair.getAttribute('data-codex-execution-expanded') !== 'true'
+    if (expanded) pair.setAttribute('data-codex-execution-expanded', 'true')
+    else pair.removeAttribute('data-codex-execution-expanded')
+    summary.setAttribute('aria-expanded', String(expanded))
+    label.textContent = expanded ? 'Hide work' : collapsedLabel
+    positionExecutionSummary(pair, summary, assistantRoots, finalRoot, expanded)
+  })
+  pair.insertBefore(summary, finalRoot)
+}
+
+function clearExecutionSummaries() {
+  for (const pair of document.querySelectorAll('[data-slot="aui_turn-pair"]')) clearExecutionDecoration(pair)
 }
 
 function rememberInlineStyle(element) {
@@ -1359,7 +1999,22 @@ function decorateComposerChrome() {
   if (statusStack) {
     const statusCard = statusStack.firstElementChild
     statusCard?.setAttribute('data-codex-status-card', 'true')
+    const taskSection = statusCard
+      ? [...statusCard.querySelectorAll(':scope > div')].find(section => section.querySelector('.codicon-checklist'))
+      : null
+    for (const section of statusCard?.querySelectorAll(':scope > div') || []) {
+      if (section === taskSection) section.setAttribute('data-codex-task-section', 'true')
+      else section.removeAttribute('data-codex-task-section')
+    }
+    if (taskSection) statusStack.setAttribute('data-codex-has-task-section', 'true')
+    else statusStack.removeAttribute('data-codex-has-task-section')
+    taskSection?.setAttribute('data-codex-task-section', 'true')
   }
+  const editBanner = [...surface.querySelectorAll('[data-slot="composer-fade"] > div')].find(element =>
+    element.matches('.flex.items-center.justify-between.gap-2.rounded-lg.border')
+    && element.querySelectorAll(':scope > div:last-child > button').length === 2
+  )
+  editBanner?.setAttribute('data-codex-edit-banner', 'true')
   decorateModelTrigger()
 
   const contextMenu = [...document.querySelectorAll('[data-slot="dropdown-menu-content"][role="menu"]')].find(menu => {
@@ -1378,6 +2033,7 @@ function decorateComposerChrome() {
   const surfaceRect = surface.getBoundingClientRect()
   const menuHeight = Math.min(contextMenu.scrollHeight || contextMenu.getBoundingClientRect().height, 360, window.innerHeight * 0.4)
   const top = Math.max(12, surfaceRect.top - menuHeight - 8)
+  contextMenu.style.setProperty('--codex-context-menu-width', `${surfaceRect.width}px`)
   Object.assign(shell.style, {
     position: 'fixed',
     left: `${surfaceRect.left}px`,
@@ -1395,9 +2051,13 @@ function clearComposerChromeDecorations() {
     shell.removeAttribute('data-codex-context-menu-shell')
   }
 
-  for (const element of document.querySelectorAll('[data-codex-context-menu], [data-codex-status-card]')) {
+  for (const element of document.querySelectorAll('[data-codex-context-menu], [data-codex-status-card], [data-codex-edit-banner], [data-codex-task-section], [data-codex-has-task-section]')) {
+    element.style.removeProperty('--codex-context-menu-width')
     element.removeAttribute('data-codex-context-menu')
     element.removeAttribute('data-codex-status-card')
+    element.removeAttribute('data-codex-edit-banner')
+    element.removeAttribute('data-codex-task-section')
+    element.removeAttribute('data-codex-has-task-section')
   }
 
   for (const trigger of document.querySelectorAll('[data-codex-model-trigger]')) {
@@ -1409,6 +2069,50 @@ function clearComposerChromeDecorations() {
 
 }
 
+function readCleanConversationEnabled() {
+  try {
+    return pluginStorage?.get(CLEAN_CONVERSATION_STORAGE_KEY, false) === true
+  } catch {
+    return false
+  }
+}
+
+function syncCleanConversationRoot() {
+  const enabled = readCleanConversationEnabled()
+  const root = document.documentElement
+  if (enabled) root.setAttribute('data-codex-clean-conversation', 'true')
+  else root.removeAttribute('data-codex-clean-conversation')
+  return enabled
+}
+
+function setCleanConversationEnabled(enabled) {
+  pluginStorage?.set(CLEAN_CONVERSATION_STORAGE_KEY, enabled === true)
+  syncCleanConversationRoot()
+}
+
+function readComposerWidthMode() {
+  try {
+    const mode = pluginStorage?.get(COMPOSER_WIDTH_STORAGE_KEY, 'codex')
+    return mode === 'hermes' ? 'hermes' : 'codex'
+  } catch {
+    return 'codex'
+  }
+}
+
+function syncComposerWidthRoot() {
+  const mode = readComposerWidthMode()
+  const root = document.documentElement
+  root.setAttribute('data-codex-composer-width', mode)
+  return mode
+}
+
+function setComposerWidthMode(mode) {
+  const normalized = mode === 'hermes' ? 'hermes' : 'codex'
+  pluginStorage?.set(COMPOSER_WIDTH_STORAGE_KEY, normalized)
+  syncComposerWidthRoot()
+  window.requestAnimationFrame(() => decorateComposerChrome())
+}
+
 function installBehaviorRuntime(afterFinalCleanup = null) {
   const pendingHandoff = window[RUNTIME_HANDOFF_KEY]
   if (pendingHandoff?.timer) window.clearTimeout(pendingHandoff.timer)
@@ -1417,18 +2121,159 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let scheduled = false
   let animationFrame = 0
   let processAllPairs = true
+  let historicalPairScanPending = false
+  let pairWorkHandle = 0
+  let pairWorkUsesIdleCallback = false
   let composerDirty = true
-  let sidebarDirty = true
   let destroyed = false
   const dirtyPairs = new Set()
-  const sessionReconcileTimers = new Set()
-
-  const scrollbarBindings = new Map()
+  const animatedPlaybackNodes = new WeakSet()
+  const playbackAnimationTimers = new Set()
+  const playbackReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+  const PAIR_WORK_BATCH_SIZE = 8
+  const FIRST_PAINT_EXECUTION_PAIR_LIMIT = 8
+  const FIRST_PAINT_EXECUTION_WINDOW_MS = 1_200
+  let firstPaintExecutionUntil = 0
   let threadViewport = null
   let liveTailWrapper = null
   let threadScrollTimer = 0
   let threadScrollbarTimer = 0
   let liveTailAtBottom = true
+
+  function playbackStatusesIn(node) {
+    if (!(node instanceof Element)) return []
+    const statuses = []
+    if (
+      node.matches('[role="status"][aria-live="polite"]')
+      && node.querySelector(':scope > button')
+    ) statuses.push(node)
+    for (const status of node.querySelectorAll('[role="status"][aria-live="polite"]')) {
+      if (status.querySelector(':scope > button')) statuses.push(status)
+    }
+    return statuses
+  }
+
+  function animatePlaybackEntry(status) {
+    if (
+      destroyed
+      || status.hasAttribute('data-codex-playback-hold')
+      || status.hasAttribute('data-codex-playback-exit')
+      || animatedPlaybackNodes.has(status)
+    ) return
+    animatedPlaybackNodes.add(status)
+    const pendingGhost = status.parentElement?.querySelector?.(
+      ':scope > [data-codex-playback-hold], :scope > [data-codex-playback-exit]'
+    ) || null
+    pendingGhost?.__codexCancelPlaybackExit?.()
+    pendingGhost?.remove()
+    if (pendingGhost) return
+    if (playbackReducedMotion.matches) return
+    status.setAttribute('data-codex-playback-enter', 'true')
+    let timer = 0
+    const finish = () => {
+      if (timer) {
+        window.clearTimeout(timer)
+        playbackAnimationTimers.delete(timer)
+        timer = 0
+      }
+      status.removeAttribute('data-codex-playback-enter')
+    }
+    status.addEventListener('animationend', finish, { once: true })
+    timer = window.setTimeout(finish, 160)
+    playbackAnimationTimers.add(timer)
+  }
+
+  function animatePlaybackExit(status, parent, nextSibling) {
+    if (
+      destroyed
+      || status.hasAttribute('data-codex-playback-hold')
+      || status.hasAttribute('data-codex-playback-exit')
+      || !parent?.closest?.('[data-slot="composer-surface"]')
+    ) return
+    const ghost = status.cloneNode(true)
+    ghost.removeAttribute('data-codex-playback-enter')
+    ghost.setAttribute('data-codex-playback-hold', 'true')
+    ghost.setAttribute('aria-hidden', 'true')
+    ghost.inert = true
+    for (const button of ghost.querySelectorAll('button')) {
+      button.disabled = true
+      button.tabIndex = -1
+    }
+    const sourceCanvases = [...status.querySelectorAll('canvas')]
+    const ghostCanvases = [...ghost.querySelectorAll('canvas')]
+    for (let index = 0; index < sourceCanvases.length; index += 1) {
+      const sourceCanvas = sourceCanvases[index]
+      const ghostCanvas = ghostCanvases[index]
+      if (!ghostCanvas) continue
+      ghostCanvas.width = sourceCanvas.width
+      ghostCanvas.height = sourceCanvas.height
+      try {
+        const ghostContext = ghostCanvas.getContext('2d')
+        if (ghostContext) ghostContext.drawImage(sourceCanvas, 0, 0)
+      } catch {}
+    }
+    if (nextSibling?.parentNode === parent) parent.insertBefore(ghost, nextSibling)
+    else parent.appendChild(ghost)
+    let graceTimer = 0
+    let exitTimer = 0
+    let exitStartTimer = 0
+    const removeGhost = () => {
+      if (graceTimer) {
+        window.clearTimeout(graceTimer)
+        playbackAnimationTimers.delete(graceTimer)
+        graceTimer = 0
+      }
+      if (exitTimer) {
+        window.clearTimeout(exitTimer)
+        playbackAnimationTimers.delete(exitTimer)
+        exitTimer = 0
+      }
+      if (exitStartTimer) {
+        window.clearTimeout(exitStartTimer)
+        playbackAnimationTimers.delete(exitStartTimer)
+        exitStartTimer = 0
+      }
+      delete ghost.__codexCancelPlaybackExit
+      ghost.remove()
+    }
+    ghost.__codexCancelPlaybackExit = removeGhost
+    ghost.addEventListener('animationend', removeGhost, { once: true })
+    const beginExit = () => {
+      if (graceTimer) {
+        playbackAnimationTimers.delete(graceTimer)
+        graceTimer = 0
+      }
+      if (playbackReducedMotion.matches) {
+        removeGhost()
+        return
+      }
+      // Start from a separately committed held frame. A zero-delay task is
+      // reliable even when the renderer is background-throttled; RAF is not.
+      exitStartTimer = window.setTimeout(() => {
+        playbackAnimationTimers.delete(exitStartTimer)
+        exitStartTimer = 0
+        if (!ghost.isConnected) return
+        ghost.setAttribute('data-codex-playback-exit', 'true')
+        exitTimer = window.setTimeout(removeGhost, 160)
+        playbackAnimationTimers.add(exitTimer)
+      }, 0)
+      playbackAnimationTimers.add(exitStartTimer)
+    }
+    graceTimer = window.setTimeout(beginExit, PLAYBACK_CLOSE_GRACE_MS)
+    playbackAnimationTimers.add(graceTimer)
+  }
+
+  function clearPlaybackAnimations() {
+    for (const timer of playbackAnimationTimers) window.clearTimeout(timer)
+    playbackAnimationTimers.clear()
+    for (const status of document.querySelectorAll('[data-codex-playback-enter]')) {
+      status.removeAttribute('data-codex-playback-enter')
+    }
+    for (const ghost of document.querySelectorAll('[data-codex-playback-hold], [data-codex-playback-exit]')) {
+      ghost.__codexCancelPlaybackExit?.()
+      ghost.remove()
+    }
+  }
 
   const updateLiveTailVisibility = () => {
     threadScrollTimer = 0
@@ -1452,6 +2297,22 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     threadScrollTimer = window.setTimeout(updateLiveTailVisibility, 120)
   }
 
+  const latestTurnPairFromEnd = content => {
+    if (!content) return null
+    let node = content.lastElementChild
+    while (node) {
+      if (node.matches?.('[data-slot="aui_turn-pair"]') && userMessageId(node)) return node
+      if (node.lastElementChild) {
+        node = node.lastElementChild
+        continue
+      }
+      while (node && node !== content && !node.previousElementSibling) node = node.parentElement
+      if (!node || node === content) return null
+      node = node.previousElementSibling
+    }
+    return null
+  }
+
   const refreshLiveTail = () => {
     const content = document.querySelector('[data-slot="aui_thread-content"]')
     const viewport = document.querySelector('[data-slot="aui_thread-viewport"]')
@@ -1464,9 +2325,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       threadViewport?.setAttribute('data-codex-scrollbar', 'true')
       threadViewport?.addEventListener('scroll', onThreadScroll, { passive: true })
     }
-    const latest = content
-      ? [...content.querySelectorAll('[data-slot="aui_turn-pair"]')].reverse().find(pair => userMessageId(pair))
-      : null
+    const latest = latestTurnPairFromEnd(content)
     let wrapper = latest
     while (wrapper && wrapper.parentElement !== content) wrapper = wrapper.parentElement
     if (wrapper !== liveTailWrapper) {
@@ -1478,48 +2337,47 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     threadScrollTimer = window.setTimeout(updateLiveTailVisibility, 0)
   }
 
-  const removeScrollbarBinding = (element, binding) => {
-    element.removeEventListener('scroll', binding.onScroll)
-    window.clearTimeout(binding.timer)
-    element.removeAttribute('data-codex-scrollbar')
-    element.removeAttribute('data-codex-scrolling')
-    scrollbarBindings.delete(element)
-  }
-
-  const decorateSidebarScrollbars = () => {
-    const sidebar = document.querySelector('[data-slot="sidebar"]')
-    for (const [element, binding] of scrollbarBindings) {
-      if (!element.isConnected || !sidebar?.contains(element)) removeScrollbarBinding(element, binding)
-    }
-    if (!sidebar) return
-
-    for (const element of sidebar.querySelectorAll('*')) {
-      if (scrollbarBindings.has(element) || element.scrollHeight <= element.clientHeight + 1) continue
-      const overflowY = getComputedStyle(element).overflowY
-      if (overflowY !== 'auto' && overflowY !== 'scroll') continue
-      const binding = { timer: 0, onScroll: null }
-      binding.onScroll = () => {
-        if (destroyed) return
-        if (!element.hasAttribute('data-codex-scrolling')) element.setAttribute('data-codex-scrolling', 'true')
-        window.clearTimeout(binding.timer)
-        binding.timer = window.setTimeout(() => element.removeAttribute('data-codex-scrolling'), 700)
-      }
-      element.setAttribute('data-codex-scrollbar', 'true')
-      element.addEventListener('scroll', binding.onScroll, { passive: true })
-      scrollbarBindings.set(element, binding)
-    }
-  }
-
   const markPair = pair => {
     if (!pair?.matches?.('[data-slot="aui_turn-pair"]')) return
     dirtyPairs.add(pair)
   }
 
+  // A session switch paints the newest transcript tail immediately, while the
+  // ordinary historical decorator deliberately waits for idle time. Collapse
+  // only a small newest-first tail before paint so completed tools never flash
+  // open, without bringing long-message/image decoration back into the RAF.
+  // Keep the window open briefly because React can mount the destination DOM a
+  // frame after the host's session signal; mutation handling reuses this same
+  // bounded path for those late-mounted pairs.
+  const runFirstPaintExecutionTail = root => {
+    if (performance.now() > firstPaintExecutionUntil) return
+    const pairs = root instanceof Element && root.matches('[data-slot="aui_turn-pair"]')
+      ? [root]
+      : [...(root?.querySelectorAll?.('[data-slot="aui_turn-pair"]') || [])]
+    let processed = 0
+    for (let index = pairs.length - 1; index >= 0 && processed < FIRST_PAINT_EXECUTION_PAIR_LIMIT; index -= 1) {
+      const pair = pairs[index]
+      if (!pair?.isConnected) continue
+      decorateExecutionSummary(pair)
+      dirtyPairs.delete(pair)
+      processed += 1
+    }
+  }
+
+  const armFirstPaintExecution = () => {
+    firstPaintExecutionUntil = performance.now() + FIRST_PAINT_EXECUTION_WINDOW_MS
+  }
+
   const markPairsIn = node => {
     if (!(node instanceof Element)) return
+    runFirstPaintExecutionTail(node)
     if (node.matches('[data-slot="aui_turn-pair"]')) markPair(node)
-    if (!node.firstElementChild) return
-    for (const pair of node.querySelectorAll('[data-slot="aui_turn-pair"]')) markPair(pair)
+    else if (
+      node.matches('[data-session-anchor], [data-slot="aui_thread-content"]')
+      || node.closest?.('[data-slot="aui_thread-content"]')
+    ) {
+      historicalPairScanPending = true
+    }
   }
 
   const markClosestPair = node => {
@@ -1528,30 +2386,56 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     if (pair) markPair(pair)
   }
 
+  const cancelPairWork = () => {
+    if (!pairWorkHandle) return
+    if (pairWorkUsesIdleCallback) window.cancelIdleCallback?.(pairWorkHandle)
+    else window.clearTimeout(pairWorkHandle)
+    pairWorkHandle = 0
+  }
+
+  const runPairWork = deadline => {
+    pairWorkHandle = 0
+    if (destroyed) return
+    if (historicalPairScanPending) {
+      historicalPairScanPending = false
+      for (const pair of document.querySelectorAll('[data-slot="aui_turn-pair"]')) markPair(pair)
+    }
+    let processed = 0
+    while (dirtyPairs.size && processed < PAIR_WORK_BATCH_SIZE && (processed === 0 || deadline.timeRemaining() > 1)) {
+      const pair = dirtyPairs.values().next().value
+      dirtyPairs.delete(pair)
+      if (!pair?.isConnected) continue
+      stripImageAttachmentMarker(pair)
+      decorateLongUserMessage(pair)
+      decorateExecutionSummary(pair)
+      processed += 1
+    }
+    if (dirtyPairs.size) schedulePairWork()
+  }
+
+  const schedulePairWork = () => {
+    if (pairWorkHandle || destroyed) return
+    if (typeof window.requestIdleCallback === 'function') {
+      pairWorkUsesIdleCallback = true
+      pairWorkHandle = window.requestIdleCallback(runPairWork, { timeout: 800 })
+    } else {
+      pairWorkUsesIdleCallback = false
+      pairWorkHandle = window.setTimeout(() => runPairWork({ timeRemaining: () => 4 }), 16)
+    }
+  }
+
   const schedule = () => {
     if (scheduled || destroyed) return
     scheduled = true
     animationFrame = window.requestAnimationFrame(process)
   }
 
-  const reconcileSession = () => {
+  const reconcileSession = (beforePaint = false) => {
     if (destroyed) return
-    for (const timer of sessionReconcileTimers) window.clearTimeout(timer)
-    sessionReconcileTimers.clear()
-
-    processAllPairs = true
+    if (beforePaint) armFirstPaintExecution()
+    historicalPairScanPending = true
     composerDirty = true
-    sidebarDirty = true
     schedule()
-    for (const delay of [80, 250, 600, 1200]) {
-      const timer = window.setTimeout(() => {
-        sessionReconcileTimers.delete(timer)
-        if (destroyed) return
-        processAllPairs = true
-        schedule()
-      }, delay)
-      sessionReconcileTimers.add(timer)
-    }
   }
 
   let observedSessionId = currentRuntimeSessionId()
@@ -1559,7 +2443,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const nextSessionId = String(value || '')
     if (nextSessionId === observedSessionId) return
     observedSessionId = nextSessionId
-    reconcileSession()
+    reconcileSession(true)
   })
 
   let observedProfile = currentProfileScope()
@@ -1567,7 +2451,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const nextProfile = profileScope(value)
     if (nextProfile === observedProfile) return
     observedProfile = nextProfile
-    reconcileSession()
+    reconcileSession(true)
   })
 
   let observedGatewayState = String(host.state.gateway?.get?.() || '')
@@ -1576,7 +2460,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     const reconnected = observedGatewayState && observedGatewayState !== 'open' && nextState === 'open'
     observedGatewayState = nextState
     if (!reconnected) return
-    reconcileSession()
+    reconcileSession(true)
   })
 
   const offSessionInfo = host.onEvent?.('session.info', event => {
@@ -1592,26 +2476,16 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
     if (processAllPairs) {
       processAllPairs = false
-      for (const pair of document.querySelectorAll('[data-slot="aui_turn-pair"]')) markPair(pair)
+      historicalPairScanPending = true
     }
-
-    const pairs = [...dirtyPairs]
-    dirtyPairs.clear()
-    for (const pair of pairs) {
-      if (!pair.isConnected) continue
-      stripImageAttachmentMarker(pair)
-      decorateLongUserMessage(pair)
-    }
+    runFirstPaintExecutionTail(document)
+    schedulePairWork()
 
     refreshLiveTail()
 
     if (composerDirty) {
       composerDirty = false
       decorateComposerChrome()
-    }
-    if (sidebarDirty) {
-      sidebarDirty = false
-      decorateSidebarScrollbars()
     }
   }
 
@@ -1621,74 +2495,114 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     || (element?.firstElementChild && element.querySelector?.('[data-slot="dropdown-menu-content"][role="menu"], [data-slot="composer-dock"]'))
   )
 
+  const runtimeSignalSelector = [
+    '[data-slot="aui_msg-actions"]',
+    '[data-slot="aui_assistant-message-root"]',
+    '[data-slot="aui_user-message-root"]',
+    '[data-slot="aui_turn-pair"]',
+    '[data-slot="clarify-inline"]',
+    '[data-slot="tool-approval-inline"]',
+    '[data-slot="tool-approval-fallback"]',
+    '[data-slot="aui_changed-files"]',
+    '[data-slot="aui_generated-image"]',
+    '[data-slot="aui_response-loading"]',
+    '[data-slot="aui_turn-activity"]',
+    '[data-slot="aui_stream-stall"]',
+    '[data-slot="aui_background-resume"]',
+    '[role="status"]',
+    '[data-slot="dropdown-menu-content"][role="menu"]',
+    '[data-slot="composer-dock"]',
+    '[data-slot="composer-root"]',
+    '[data-codex-execution-summary]',
+    '[data-session-anchor]'
+  ].join(', ')
+
+  const carriesRuntimeSignal = node => Boolean(
+    node instanceof Element
+    && (
+      node.matches(runtimeSignalSelector)
+      || (node.firstElementChild && node.querySelector(runtimeSignalSelector))
+    )
+  )
+
   const handleMutations = records => {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
-      if (target?.closest?.('[data-codex-user-expand]')) continue
+      if (target?.closest?.('[data-codex-user-expand], [data-codex-execution-summary]')) continue
+      if (target?.closest?.('[data-slot="sidebar"]')) continue
 
-      const region = target?.closest?.('[data-slot="aui_turn-pair"], [data-slot="composer-rich-input"], [data-slot="composer-dock"], [data-slot="composer-root"], [data-slot="sidebar"]')
-      const changedNodes = [...record.addedNodes, ...record.removedNodes]
-      if (record.type === 'childList' && !region) {
-        const potentiallyRelevant = changedNodes.some(node => {
-          if (!(node instanceof Element)) return false
-          if (node.hasAttribute('data-slot') || node.getAttribute('role') === 'menu') return true
-          if (!node.firstElementChild) return false
-          return Boolean(node.querySelector('[data-slot="aui_turn-pair"], [data-slot="composer-dock"], [data-slot="composer-root"], [data-slot="sidebar"], [data-slot="dropdown-menu-content"][role="menu"]'))
-        })
-        if (!potentiallyRelevant) continue
-      }
-
+      const pair = target?.closest?.('[data-slot="aui_turn-pair"]')
       if (record.type === 'attributes') {
-        markClosestPair(target)
-        relevant = true
+        if (record.attributeName === 'data-streaming') {
+          if (pair) markPair(pair)
+          relevant = true
+        } else if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
+          if (pair) markPair(pair)
+          relevant = true
+        } else if (record.attributeName === 'role' && target?.matches?.('[role="status"]')) {
+          if (pair) markPair(pair)
+          relevant = true
+        } else if (target?.closest?.('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
+          composerDirty = true
+          relevant = true
+        }
         continue
       }
 
       if (target?.closest?.('[data-slot="composer-rich-input"]')) continue
-      if (target?.closest?.('[data-slot="aui_turn-pair"]')) {
-        markClosestPair(target)
+      const addedElements = [...record.addedNodes].filter(node => node instanceof Element)
+      const removedElements = [...record.removedNodes].filter(node => node instanceof Element)
+      const changedElements = [...addedElements, ...removedElements]
+      if (target?.closest?.('[data-slot="composer-surface"]')) {
+        for (const node of addedElements) {
+          for (const status of playbackStatusesIn(node)) animatePlaybackEntry(status)
+        }
+        for (const node of removedElements) {
+          for (const status of playbackStatusesIn(node)) animatePlaybackExit(status, target, record.nextSibling)
+        }
+      }
+      const signalChanged = changedElements.some(carriesRuntimeSignal)
+
+      if (pair && (target?.closest?.('[data-role="user"]') || signalChanged)) {
+        markPair(pair)
         relevant = true
       }
+      if (signalChanged) relevant = true
       if (target?.closest?.('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
         composerDirty = true
         relevant = true
       }
-      if (target?.closest?.('[data-slot="sidebar"]')) {
-        sidebarDirty = true
-        relevant = true
-      }
 
-      for (const node of changedNodes) {
-        if (!(node instanceof Element)) continue
-        markPairsIn(node)
-        if (node.matches('[data-slot="aui_turn-pair"]') || (node.firstElementChild && node.querySelector('[data-slot="aui_turn-pair"]'))) relevant = true
+      for (const node of changedElements) {
+        if (node.matches('[data-slot="sidebar"]') || node.closest?.('[data-slot="sidebar"]')) continue
+        if (node.matches('[data-session-anchor], [data-slot="aui_turn-pair"], [data-slot="aui_thread-content"]')) {
+          markPairsIn(node)
+          relevant = true
+        }
         if (touchesComposerChrome(node)) {
           composerDirty = true
           relevant = true
         }
-        if (node.matches('[data-slot="sidebar"]') || (node.firstElementChild && node.querySelector('[data-slot="sidebar"]'))) {
-          sidebarDirty = true
-          relevant = true
-        }
       }
     }
-    if (relevant) {
-      schedule()
-    }
+    if (relevant) schedule()
   }
 
   const observer = new MutationObserver(handleMutations)
-  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-streaming', 'data-clamped'] })
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-label', 'role', 'data-streaming', 'data-clamped', 'data-clarify-settled', 'data-variant'] })
+  for (const status of document.querySelectorAll('[data-slot="composer-surface"] [role="status"][aria-live="polite"]')) {
+    if (status.querySelector(':scope > button')) animatePlaybackEntry(status)
+  }
   const onResize = () => {
     processAllPairs = true
     composerDirty = true
     schedule()
   }
-  const onHashChange = () => reconcileSession()
+  const onHashChange = () => reconcileSession(true)
   window.addEventListener('resize', onResize)
   window.addEventListener('hashchange', onHashChange)
-  reconcileSession()
+  reconcileSession(true)
 
   const cleanup = () => {
     destroyed = true
@@ -1696,11 +2610,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     animationFrame = 0
     scheduled = false
     observer.disconnect()
+    cancelPairWork()
+    clearPlaybackAnimations()
 
     window.clearTimeout(threadScrollTimer)
     window.clearTimeout(threadScrollbarTimer)
-    for (const timer of sessionReconcileTimers) window.clearTimeout(timer)
-    sessionReconcileTimers.clear()
     threadViewport?.removeEventListener('scroll', onThreadScroll)
     threadViewport?.removeAttribute('data-codex-scrollbar')
     threadViewport?.removeAttribute('data-codex-scrolling')
@@ -1712,12 +2626,12 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     offActiveSession?.()
     offSessionInfo?.()
 
-    for (const [element, binding] of [...scrollbarBindings]) removeScrollbarBinding(element, binding)
     const handoff = { timer: 0 }
     handoff.timer = window.setTimeout(() => {
       if (window[RUNTIME_HANDOFF_KEY] !== handoff) return
       for (const user of document.querySelectorAll('[data-slot="aui_user-message-root"]')) clearLongUserDecoration(user)
       clearImageAttachmentMarkers()
+      clearExecutionSummaries()
       clearComposerChromeDecorations()
       afterFinalCleanup?.()
       delete window[RUNTIME_HANDOFF_KEY]
@@ -1741,9 +2655,13 @@ function CodexChatStyleRuntime() {
     style.dataset.codexChatLookBuild = BUILD_ID
     root.dataset.codexChatLook = 'true'
     root.dataset.codexChatLookBuild = BUILD_ID
+    syncCleanConversationRoot()
+    syncComposerWidthRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
+      root.removeAttribute('data-codex-clean-conversation')
+      root.removeAttribute('data-codex-composer-width')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
     })
     return () => {
@@ -1758,7 +2676,34 @@ export default {
   id: ID,
   name: 'Codex Skin',
   register(ctx) {
+    pluginStorage = ctx.storage
     ctx.register({ id: 'theme', area: THEMES_AREA, data: CODEX_THEME })
+    ctx.register({
+      id: 'toggle-clean-conversation',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-clean-conversation',
+        label: 'Codex Skin: Clean conversation',
+        detail: () => (readCleanConversationEnabled() ? 'on' : 'off'),
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'clean', 'conversation', 'tools', 'hide', 'show', 'on', 'off'],
+        run: () => setCleanConversationEnabled(!readCleanConversationEnabled())
+      }
+    })
+    ctx.register({
+      id: 'toggle-composer-width',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-composer-width',
+        label: 'Codex Skin: Composer width',
+        detail: () => (readComposerWidthMode() === 'codex' ? 'Codex' : 'Hermes'),
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'composer', 'width', 'narrow', 'full', 'hermes'],
+        run: () => setComposerWidthMode(readComposerWidthMode() === 'codex' ? 'hermes' : 'codex')
+      }
+    })
     ctx.register({
       id: 'style-runtime',
       area: TITLEBAR_AREAS.center,
