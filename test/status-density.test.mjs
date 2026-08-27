@@ -25,11 +25,11 @@ test('the scrollable status stack cannot paint a square gutter above the rounded
   assert.match(source, /\[data-slot='composer-status-stack'\]::\-webkit-scrollbar-button \{[\s\S]{0,100}display: none !important/)
 })
 
-test('status card keeps the accepted 14px inset without hiding Queue behind the composer', () => {
+test('status card clears the composer corner shoulders without hiding Queue', () => {
   const absoluteStart = source.indexOf("div.absolute.inset-x-0.bottom-full {")
   const absoluteBlock = source.slice(absoluteStart, source.indexOf('\n}', absoluteStart) + 2)
-  assert.match(absoluteBlock, /left: 19px !important/)
-  assert.match(absoluteBlock, /right: 19px !important/)
+  assert.match(absoluteBlock, /left: 26px !important/)
+  assert.match(absoluteBlock, /right: 26px !important/)
   assert.match(absoluteBlock, /bottom: 100% !important/)
 
   const legacyStart = source.indexOf("[data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] {")
@@ -37,38 +37,32 @@ test('status card keeps the accepted 14px inset without hiding Queue behind the 
   assert.match(legacyBlock, /left: auto !important/)
   assert.match(legacyBlock, /right: auto !important/)
   assert.match(legacyBlock, /bottom: auto !important/)
-  assert.match(legacyBlock, /margin-left: 19px !important/)
-  assert.match(legacyBlock, /margin-right: 19px !important/)
+  assert.match(legacyBlock, /margin-left: 26px !important/)
+  assert.match(legacyBlock, /margin-right: 26px !important/)
   assert.match(legacyBlock, /margin-bottom: 0 !important/)
   assert.doesNotMatch(legacyBlock, /margin-bottom: -16px/)
 })
 
-test('status sections have no separator in light or dark mode', () => {
-  const lightStart = source.indexOf("[data-codex-status-card='true'] > div + div")
-  const lightBlock = source.slice(lightStart, source.indexOf('\n}', lightStart) + 2)
-  assert.match(lightBlock, /border-top: 0 !important/)
-
-  const darkStart = source.indexOf(
-    "[data-hermes-mode='dark'] [data-codex-status-card='true'] > div + div"
-  )
-  const darkBlock = source.slice(darkStart, source.indexOf('\n}', darkStart) + 2)
-  assert.match(darkBlock, /background: transparent !important/)
-  assert.match(darkBlock, /border-color: transparent !important/)
-  assert.match(darkBlock, /border-top: 0 !important/)
-  assert.doesNotMatch(darkBlock, /rgba\(255, 255, 255, 0\.10\)/)
+test('status sections have no separator in every theme', () => {
+  const start = source.indexOf("[data-codex-status-card='true'] > div + div")
+  const block = source.slice(start, source.indexOf('\n}', start) + 2)
+  assert.match(block, /border-top: 0 !important/)
+  assert.doesNotMatch(source, /data-hermes-mode='dark'[^\n]*\[data-codex-status-card='true'\] > div \+ div/)
 })
 
-test('dark menu separators keep their own visible rule', () => {
-  const start = source.indexOf(
-    "[data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator']"
-  )
+test('menu separators inherit a visible rule from the active theme', () => {
+  const start = source.indexOf("[data-codex-context-menu='true'] [data-slot='dropdown-menu-separator']")
   const block = source.slice(start, source.indexOf('\n}', start) + 2)
-  assert.match(block, /background: rgba\(255, 255, 255, 0\.10\) !important/)
+  assert.match(block, /background: color-mix\(in srgb, var\(--codex-color-text\) 8%, transparent\) !important/)
 })
 
-test('the dark Tasks and Queue card has no clipped black shadow behind it', () => {
-  const start = source.indexOf("[data-hermes-mode='dark'] [data-codex-status-card='true'],")
+test('the Tasks and Queue card has no border and no shadow halo', () => {
+  const start = source.indexOf("[data-codex-status-card='true'],")
   const block = source.slice(start, source.indexOf('\n}', start) + 2)
+  assert.match(block, /border: 0 none transparent !important/)
   assert.match(block, /box-shadow: none !important/)
-  assert.doesNotMatch(block, /rgba\(0, 0, 0/)
+  assert.doesNotMatch(block, /var\(--codex-shadow-floating\)/)
+  assert.doesNotMatch(block, /var\(--shadow-md\)/)
+  assert.doesNotMatch(block, /var\(--shadow-nous\)/)
+  assert.doesNotMatch(source, /data-hermes-mode='dark'[^\n]*\[data-codex-status-card='true'/)
 })

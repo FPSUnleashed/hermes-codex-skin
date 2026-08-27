@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented here.
 
+## [1.2.0] - 2026-08-27
+
+### Added
+
+- Native Hermes theme support without changing the Codex layout, typography, dimensions or density.
+- Live theme repainting when the selected Hermes theme changes.
+
+### Improved
+
+- Replaced the simulated composer outline with a real, uniform 0.5 px border and a separate shadow.
+- Aligned the Tasks, Queue and Background panel with the composer's rounded edges, without a border or shadow.
+- Kept light and dark surfaces consistent with the selected Hermes theme.
+
+### Fixed
+
+- Restored native Glass/Clear window translucency when the **Codex Skin** theme is selected.
+- Reserved dynamic lanes for Voice dictation and Reading aloud above Tasks, Queue and Background instead of allowing overlap.
+- Fixed the composer border appearing thicker in its rounded corners.
+
+### Removed
+
+- Removed the opaque sticky rectangle above the transcript. Its masking effect could not stay perfectly aligned while scrolling without fragile DOM manipulation, which caused visible drift. Messages now pass naturally behind the pinned user message instead.
+
+### Preserved and compatible
+
+- The original Codex color palette remains available exclusively through the **Codex Skin** theme in **Settings → Appearance**.
+- Stable plugin, theme and installation IDs for in-place updates.
+- Hermes-native Tasks, Queue, Background, Voice dictation and Reading aloud behavior.
+
+### Verification
+
+- 62 automated checks pass.
+- Voice dictation, Reading aloud, Tasks, native themes and Glass were validated in the live Hermes Desktop app.
+
 ## [1.1.0] - 2026-08-27
 
 ### Added

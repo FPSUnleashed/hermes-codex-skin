@@ -16,5 +16,5 @@ test('selecting a chat changes paint only and never overrides native row height'
   const rule = selectedRule()
   assert.doesNotMatch(rule, /(?:min-)?height\s*:/)
   assert.match(rule, /border-radius: 10px !important/)
-  assert.match(rule, /background: #efefef !important/)
+  assert.match(rule, /background: var\(--codex-color-active\) !important/)
 })
