@@ -56,9 +56,10 @@ test('Reading aloud keeps the native Stop button but gives it Codex chrome', () 
   assert.match(stop, /background: transparent !important/)
 })
 
-test('Reading aloud has explicit light and dark neutral colors', () => {
-  assert.match(source, new RegExp(`data-hermes-mode='light'[^\\n]+${PLAYBACK.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
-  assert.match(source, new RegExp(`data-hermes-mode='dark'[^\\n]+${PLAYBACK.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+test('Reading aloud inherits neutral colors from the active theme', () => {
+  assert.match(source, /\[data-slot='composer-surface'\] \[role='status'\]\[aria-live='polite'\]:has\(> button\),[\s\S]{0,260}color: var\(--codex-color-text-secondary\) !important/)
+  assert.match(source, /\[role='status'\]\[aria-live='polite'\]:has\(> button\) canvas \{[\s\S]{0,120}color: var\(--codex-color-text-tertiary\) !important/)
+  assert.doesNotMatch(source, /data-hermes-mode='(?:light|dark)'[^\n]+\[role='status'\]\[aria-live='polite'\]/)
 })
 
 test('Reading aloud uses the same exact 12px gap above and below', () => {
@@ -118,10 +119,32 @@ test('consecutive audio bridges a short idle gap instead of closing and reopenin
   assert.match(source, /pendingGhost\?\.__codexCancelPlaybackExit\?\.\(\)/)
 })
 
-test('voice rows are removed from layout so the composer stays vertically anchored', () => {
+test('voice rows reserve a measured lane above the whole composer dock', () => {
+  assert.match(
+    source,
+    /\[data-slot='composer-dock'\]:has\(\[data-codex-playback-floating='true'\]\) \{[\s\S]{0,120}padding-top: 40px !important/
+  )
+  assert.match(
+    source,
+    /\[data-slot='composer-dock'\]:has\(\[data-codex-audio-dictation='true'\]\):has\(\[data-codex-audio-playback='true'\]\) \{[\s\S]{0,120}padding-top: 80px !important/
+  )
   const floating = rule("[data-slot='composer-fade'] > [data-codex-playback-floating='true']")
   assert.match(floating, /position: absolute !important/)
-  assert.match(floating, /top: calc\(-28px - var\(--codex-playback-edge-gap\)\) !important/)
+  assert.match(floating, /top: var\(--codex-audio-lane-top/)
   assert.match(floating, /margin: 0 !important/)
-  assert.match(source, /\[data-slot='composer-surface'\]:has\(\[data-codex-playback-floating='true'\]\)/)
+  assert.match(source, /function syncAudioLaneGeometry\(/)
+  assert.match(source, /dockRect\.top - fadeRect\.top/)
+  assert.match(source, /new window\.ResizeObserver/)
+})
+
+test('simultaneous dictation and playback occupy separate rows in native order', () => {
+  assert.match(
+    source,
+    /\[data-slot='composer-fade'\]:has\(> \[data-codex-audio-dictation='true'\]\):has\(> \[data-codex-audio-playback='true'\]\) > \[data-codex-audio-playback='true'\]/
+  )
+  assert.match(source, /top: calc\(var\(--codex-audio-lane-top\) \+ 40px\) !important/)
+  assert.match(source, /status\.querySelector\(':scope > button'\)/)
+  assert.match(source, /data-codex-audio-playback/)
+  assert.match(source, /data-codex-audio-dictation/)
+  assert.doesNotMatch(source, /appendChild\(status\)|insertBefore\(status/)
 })

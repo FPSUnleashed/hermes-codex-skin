@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.1.0-voice-polish-2'
+const BUILD_ID = 'v1.2.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -12,7 +12,6 @@ const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
 const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
-
 let pluginStorage = null
 
 const SYSTEM_FONT = `-apple-system, system-ui, "Segoe UI", sans-serif`
@@ -88,28 +87,62 @@ html[data-codex-chat-look='true'] {
   --conversation-text-font-size: 14px;
   --conversation-line-height: 22px;
   --sticky-human-top: 0px;
-  --dt-font-sans: ${SYSTEM_FONT};
-  --font-sans: ${SYSTEM_FONT};
-  --ui-chat-surface-background: #ffffff;
-  --ui-sidebar-surface-background: #fcfcfc;
-  --ui-row-active-background: #efefef;
+  --dt-font-sans: ${SYSTEM_FONT} !important;
+  --font-sans: ${SYSTEM_FONT} !important;
+  --codex-color-chat: var(--ui-chat-surface-background);
+  --codex-color-sidebar: var(--ui-sidebar-surface-background);
+  --codex-color-card: var(--dt-card, var(--ui-editor-surface-background));
+  --codex-color-elevated: var(--dt-popover, var(--ui-widget-surface-background));
+  --codex-color-bubble: var(--ui-chat-bubble-background);
+  --codex-color-status-panel: var(--ui-bg-tertiary, var(--codex-color-card));
+  --codex-color-text: var(--ui-text-primary);
+  --codex-color-text-secondary: var(--ui-text-secondary);
+  --codex-color-text-tertiary: var(--ui-text-tertiary);
+  --codex-color-text-quaternary: var(--ui-text-quaternary);
+  --codex-color-border: var(--ui-stroke-secondary);
+  --codex-color-border-subtle: var(--ui-stroke-tertiary);
+  --codex-color-hover: var(--ui-row-hover-background);
+  --codex-color-active: var(--ui-row-active-background);
+  --codex-color-primary: var(--dt-primary);
+  --codex-color-primary-foreground: var(--dt-primary-foreground);
+  --codex-color-success: var(--ui-green);
+  --codex-color-destructive: var(--dt-destructive);
+  --codex-shadow-floating: var(--shadow-md);
+}
+
+/* The bundled Codex theme keeps its exact palette seeds. Other Hermes themes
+   flow through the shared semantic UI tokens above. */
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'] {
+  --codex-color-card: var(--theme-card-seed);
+  --codex-color-elevated: var(--theme-elevated-seed);
+  --codex-color-bubble: var(--theme-bubble-seed);
+}
+
+/* The field colors are exact Codex seeds only in the ordinary opaque page.
+   Glass makes Hermes' semantic chat/sidebar fields transparent; do not repaint
+   them after the native material layer has taken ownership. */
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-hermes-glass]) {
+  --codex-color-chat: var(--theme-background-seed);
+  --ui-chat-surface-background: var(--codex-color-chat);
+  --codex-color-sidebar: var(--theme-sidebar-seed);
+}
+
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-glass] {
+  --codex-color-chat: var(--ui-chat-surface-background);
+  --codex-color-sidebar: var(--ui-sidebar-surface-background);
+}
+
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-hermes-glass]),
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-hermes-glass]) body {
+  background-color: var(--codex-color-chat) !important;
+}
+
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='light'] {
+  --codex-color-status-panel: color-mix(in srgb, var(--theme-card-seed) 96%, var(--dt-foreground));
 }
 
 html[data-codex-chat-look='true'][data-codex-composer-width='codex'] {
   --composer-width: 736px;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='light'] {
-  color-scheme: light;
-  --theme-primary: #0d0d0d;
-  --theme-secondary: #f3f3f3;
-  --theme-accent-soft: #ececec;
-  --theme-midground: #0d0d0d;
-  --theme-background-seed: #ffffff;
-  --theme-sidebar-seed: #fcfcfc;
-  --theme-bubble-seed: #f3f3f3;
-  --ui-accent: #0d0d0d;
-  --ui-accent-secondary: #0d0d0d;
 }
 
 html[data-codex-chat-look='true'] body,
@@ -123,9 +156,14 @@ html[data-codex-chat-look='true'] [contenteditable='true'] {
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_thread-viewport'],
-html[data-codex-chat-look='true'] [data-slot='aui_thread-content'],
+html[data-codex-chat-look='true'] [data-slot='aui_thread-content'] {
+  background: var(--codex-color-chat) !important;
+}
+
+/* The full-width sticky row is layout only. It never paints or clips the
+   transcript; the visible sent-message surface remains its own child. */
 html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] {
-  background: #ffffff !important;
+  background: transparent !important;
 }
 
 /* Keep one live-tail wrapper fully laid out only while the viewport is at the
@@ -138,7 +176,7 @@ html[data-codex-chat-look='true'] [data-slot='aui_thread-content'] > [data-codex
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-root'],
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'] {
   background: transparent !important;
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'],
@@ -149,11 +187,11 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-inline-text'] {
   font-size: 14px !important;
   line-height: 22px !important;
   font-weight: 400 !important;
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'] .aui-md li::marker {
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
   opacity: 1 !important;
 }
 
@@ -173,8 +211,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] .composer-
   max-width: 100% !important;
   border: 0 !important;
   border-radius: 17px !important;
-  background: #f3f3f3 !important;
-  color: #0d0d0d !important;
+  background: var(--codex-color-bubble) !important;
+  color: var(--codex-color-text) !important;
   padding: 8px 12px !important;
   text-align: left !important;
 }
@@ -211,8 +249,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'][data-codex
   bottom: 0;
   left: 0;
   height: 22px;
-  background: #f3f3f3;
-  color: #0d0d0d;
+  background: var(--codex-color-bubble);
+  color: var(--codex-color-text);
   content: '...';
   font: inherit;
   line-height: 22px;
@@ -230,14 +268,14 @@ html[data-codex-chat-look='true'] [data-codex-user-expand] {
   padding: 0;
   border: 0;
   background: transparent;
-  color: rgba(13, 13, 13, 0.66);
+  color: color-mix(in srgb, var(--codex-color-text) 66%, transparent);
   cursor: pointer;
   font: inherit;
   line-height: 22px;
 }
 
 html[data-codex-chat-look='true'] [data-codex-user-expand]:hover {
-  color: rgba(13, 13, 13, 0.86);
+  color: color-mix(in srgb, var(--codex-color-text) 86%, transparent);
 }
 
 html[data-codex-chat-look='true'] [data-codex-user-chevron] {
@@ -260,11 +298,6 @@ html[data-codex-chat-look='true'] [data-codex-user-expand][aria-expanded='true']
   }
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='aui_user-message-root'] .composer-human-message {
-  background: #f3f3f3 !important;
-  color: #0d0d0d !important;
-}
-
 /* Both sent-message editing and Queue editing stay native. The skin only gives
    their existing contenteditable/actions the same bubble language as Codex. */
 html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message-container {
@@ -276,10 +309,10 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer
   width: 100% !important;
   max-width: 100% !important;
   padding: 8px 12px !important;
-  border: 1px solid rgba(13, 13, 13, 0.10) !important;
+  border: 1px solid var(--codex-color-border) !important;
   border-radius: 17px !important;
-  background: #f3f3f3 !important;
-  color: #0d0d0d !important;
+  background: var(--codex-color-bubble) !important;
+  color: var(--codex-color-text) !important;
   box-shadow: none !important;
 }
 
@@ -287,8 +320,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-slo
   min-height: 44px !important;
   padding: 0 30px 0 0 !important;
   background: transparent !important;
-  color: #0d0d0d !important;
-  caret-color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
+  caret-color: var(--codex-color-text) !important;
   font-family: ${SYSTEM_FONT} !important;
   font-size: 14px !important;
   line-height: 22px !important;
@@ -303,8 +336,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer
   min-width: 28px !important;
   border: 0 !important;
   border-radius: 9999px !important;
-  background: #0d0d0d !important;
-  color: #ffffff !important;
+  background: var(--codex-color-primary) !important;
+  color: var(--codex-color-primary-foreground) !important;
 }
 
 /* Keep Hermes' compact live-thinking typography. The Codex answer font must
@@ -314,7 +347,7 @@ html[data-codex-chat-look='true'] [data-streaming='true'] [data-slot='aui_thinki
   font-size: 11px !important;
   line-height: 16.5px !important;
   font-weight: 400 !important;
-  color: rgba(13, 13, 13, 0.54) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 54%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-streaming='true'] [data-slot='aui_thinking-disclosure'] :where(button, span) {
@@ -331,16 +364,15 @@ html[data-codex-chat-look='true'] [data-streaming='true'] [data-slot='aui_reason
   font-size: 12px !important;
   line-height: 15px !important;
   font-weight: 400 !important;
-  color: rgba(13, 13, 13, 0.60) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 60%, transparent) !important;
 }
 
-/* Codex sidebar: #fcfcfc shell and exact #efefef selected-row fill sampled
-   from the Retina reference. Its 20px photographed radius is 10 CSS px. */
+/* Codex sidebar geometry, painted by the active Hermes theme. */
 html[data-codex-chat-look='true'] [data-slot='sidebar'],
 html[data-codex-chat-look='true'] [data-slot='sidebar-content'],
 html[data-codex-chat-look='true'] [data-slot='sidebar-group'],
 html[data-codex-chat-look='true'] [data-slot='sidebar-group-content'] {
-  background: #fcfcfc !important;
+  background: var(--codex-color-sidebar) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover[class*='ui-row-active-background'],
@@ -349,20 +381,16 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
   border: 0 !important;
   border-radius: 10px !important;
   outline: 0 !important;
-  background: #efefef !important;
+  background: var(--codex-color-active) !important;
   box-shadow: none !important;
-}
-
-html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-working='true'] {
-  --ui-accent: #0d0d0d;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span > .dither {
   display: none !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='sidebar'] [class~='group/section-label'] > span:first-child {
-  color: #0d0d0d !important;
+html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span:first-child {
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover[data-working='true'] {
@@ -378,8 +406,8 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover[data-working=
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-working='true'] [aria-label='Session running'],
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-working='true'] [aria-label='Session en cours'] {
-  background: #0d0d0d !important;
-  box-shadow: 0 0 0.625rem rgba(13, 13, 13, 0.26) !important;
+  background: var(--codex-color-primary) !important;
+  box-shadow: 0 0 0.625rem color-mix(in srgb, var(--codex-color-text) 26%, transparent) !important;
 }
 
 /* A turn that finished in another chat stays a steady green attention cue.
@@ -389,9 +417,11 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [role='status'][class~='
   min-width: 8px !important;
   height: 8px !important;
   flex: 0 0 8px !important;
-  background: #22c55e !important;
+  background: var(--codex-color-success) !important;
   opacity: 1 !important;
-  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.14), 0 0 8px rgba(34, 197, 94, 0.48) !important;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--codex-color-success) 14%, transparent),
+    0 0 8px color-mix(in srgb, var(--codex-color-success) 48%, transparent) !important;
 }
 
 /* Codex sidebar scrollbar: a neutral overlay thumb exists only while the user
@@ -421,11 +451,11 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-codex-scrollbar='t
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-codex-scrollbar='true'][data-codex-scrolling='true'] {
-  scrollbar-color: rgba(13, 13, 13, 0.28) transparent !important;
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 28%, transparent) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [data-codex-scrollbar='true'][data-codex-scrolling='true']::-webkit-scrollbar-thumb {
-  background-color: rgba(13, 13, 13, 0.28) !important;
+  background-color: color-mix(in srgb, var(--codex-color-text) 28%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_thread-viewport'][data-codex-scrollbar='true'] {
@@ -452,18 +482,18 @@ html[data-codex-chat-look='true'] [data-slot='aui_thread-viewport'][data-codex-s
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_thread-viewport'][data-codex-scrollbar='true'][data-codex-scrolling='true'] {
-  scrollbar-color: rgba(13, 13, 13, 0.28) transparent !important;
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 28%, transparent) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_thread-viewport'][data-codex-scrollbar='true'][data-codex-scrolling='true']::-webkit-scrollbar-thumb {
-  background-color: rgba(13, 13, 13, 0.28) !important;
+  background-color: color-mix(in srgb, var(--codex-color-text) 28%, transparent) !important;
 }
 
-/* The running activity glyph and elapsed time use Codex anthracite instead of blue. */
+/* Tool activity follows the selected theme's foreground instead of a fixed blue. */
 html[data-codex-chat-look='true'] [data-slot='tool-block'] [aria-label='Running'],
 html[data-codex-chat-look='true'] [data-slot='tool-block'] [aria-label='En cours'],
 html[data-codex-chat-look='true'] [data-slot='tool-block'] span[class*='tabular-nums'] {
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
   opacity: 0.70 !important;
 }
 
@@ -483,10 +513,10 @@ html[data-codex-chat-look='true'] [data-slot='aui_response-loading'][aria-label=
   gap: 7px !important;
   margin: 4px auto 8px !important;
   padding: 4px 8px !important;
-  border: 1px solid rgba(13, 13, 13, 0.08) !important;
+  border: 1px solid var(--codex-color-border-subtle) !important;
   border-radius: 10px !important;
-  background: #f3f3f3 !important;
-  color: rgba(13, 13, 13, 0.58) !important;
+  background: var(--codex-color-bubble) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 58%, transparent) !important;
   font-size: 12px !important;
   line-height: 20px !important;
 }
@@ -495,8 +525,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_response-loading'][aria-label=
   width: 12px !important;
   height: 12px !important;
   flex: 0 0 12px !important;
-  border: 1.5px solid rgba(13, 13, 13, 0.22) !important;
-  border-right-color: rgba(13, 13, 13, 0.72) !important;
+  border: 1.5px solid color-mix(in srgb, var(--codex-color-text) 22%, transparent) !important;
+  border-right-color: color-mix(in srgb, var(--codex-color-text) 72%, transparent) !important;
   border-radius: 999px !important;
   background: transparent !important;
   color: transparent !important;
@@ -540,18 +570,15 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden]
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] {
   min-height: 98px !important;
-  border: 0 none transparent !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 0.5px rgba(13, 13, 13, 0.117),
-    0 3px 7.5px rgba(0, 0, 0, 0.04),
-    0 0 20px rgba(0, 0, 0, 0.05) !important;
+  border: 0.5px solid var(--codex-color-border-subtle) !important;
+  background: var(--codex-color-card) !important;
+  box-shadow: var(--shadow-nous) !important;
   backdrop-filter: none !important;
   overflow: hidden !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden] {
-  background: #ffffff !important;
+  background: var(--codex-color-card) !important;
   backdrop-filter: none !important;
 }
 
@@ -578,14 +605,14 @@ html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] {
   min-height: 32px !important;
   gap: 8px !important;
   padding: 3px 4px 3px 10px !important;
-  border: 1px solid rgba(13, 13, 13, 0.08) !important;
+  border: 1px solid var(--codex-color-border-subtle) !important;
   border-radius: 10px !important;
-  background: rgba(13, 13, 13, 0.035) !important;
+  background: var(--ui-bg-tertiary) !important;
   box-shadow: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] > div:first-child {
-  color: rgba(13, 13, 13, 0.56) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 56%, transparent) !important;
   font-size: 12px !important;
   line-height: 18px !important;
   font-weight: 400 !important;
@@ -602,7 +629,7 @@ html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] button {
   border: 0 !important;
   border-radius: 8px !important;
   background: transparent !important;
-  color: rgba(13, 13, 13, 0.66) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 66%, transparent) !important;
   font-size: 11px !important;
   line-height: 16px !important;
   font-weight: 400 !important;
@@ -611,8 +638,8 @@ html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] button {
 html[data-codex-chat-look='true'] [data-codex-edit-banner='true'] button:last-child {
   padding: 0 10px !important;
   border-radius: 999px !important;
-  background: #0d0d0d !important;
-  color: #ffffff !important;
+  background: var(--codex-color-primary) !important;
+  color: var(--codex-color-primary-foreground) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input'] {
@@ -623,7 +650,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-rich-input'] {
   line-height: 20px !important;
   font-weight: 445 !important;
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(13, 13, 13, 0.22) transparent !important;
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input']::-webkit-scrollbar {
@@ -641,29 +668,17 @@ html[data-codex-chat-look='true'] [data-slot='composer-rich-input']::-webkit-scr
   min-height: 28px;
   border: 2px solid transparent !important;
   border-radius: 999px !important;
-  background-color: rgba(13, 13, 13, 0.22) !important;
+  background-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) !important;
   background-image: none !important;
   background-clip: padding-box !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input']::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(13, 13, 13, 0.38) !important;
+  background-color: color-mix(in srgb, var(--codex-color-text) 38%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input']::-webkit-scrollbar-button {
   display: none !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input'] {
-  scrollbar-color: rgba(236, 236, 236, 0.22) transparent !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input']::-webkit-scrollbar-thumb {
-  background-color: rgba(236, 236, 236, 0.22) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input']::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(236, 236, 236, 0.38) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-label='Add context'],
@@ -684,21 +699,21 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-lab
   min-height: 28px !important;
   border-radius: 9999px !important;
   padding: 0 8px !important;
-  color: rgba(13, 13, 13, 0.66) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 66%, transparent) !important;
   background: transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label^='Model ·'],[aria-label^='Modèle ·'])[data-state='open'] {
-  background: #f3f3f3 !important;
-  color: #0d0d0d !important;
+  background: var(--codex-color-active) !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-trigger-model] {
-  color: #0d0d0d;
+  color: var(--codex-color-text);
 }
 
 html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-trigger-effort] {
-  color: rgba(13, 13, 13, 0.49);
+  color: color-mix(in srgb, var(--codex-color-text) 49%, transparent);
 }
 
 /* Replace only the idle dictation/send glyphs; their actual Hermes buttons and
@@ -725,7 +740,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label='Voice dictation'],[aria-label='Dictée vocale']) {
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label='Stop dictation'],[aria-label='Transcribing dictation']) {
@@ -735,7 +750,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria
   padding: 0 !important;
   border-radius: 9999px !important;
   background: transparent !important;
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
   box-shadow: none !important;
 }
 
@@ -766,14 +781,31 @@ html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][
   line-height: 18px !important;
 }
 
+/* Reserve one 40px lane per native audio row at the top of the dock. The
+   composer stays bottom-anchored, while Hermes' own dock measurement includes
+   the lane in thread clearance. */
+html[data-codex-chat-look='true'] [data-slot='composer-dock']:has([data-codex-playback-floating='true']) {
+  padding-top: 40px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-dock']:has([data-codex-audio-dictation='true']):has([data-codex-audio-playback='true']) {
+  padding-top: 80px !important;
+}
+
 html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [data-codex-playback-floating='true'] {
   position: absolute !important;
-  top: calc(-28px - var(--codex-playback-edge-gap)) !important;
+  top: var(--codex-audio-lane-top, calc(-28px - var(--codex-playback-edge-gap))) !important;
   right: 15px !important;
   left: 15px !important;
   width: auto !important;
   margin: 0 !important;
   z-index: 6;
+}
+
+/* Native order is Dictation then Playback. When both exist, Playback occupies
+   the second reserved row nearest the rest of the dock. */
+html[data-codex-chat-look='true'] [data-slot='composer-fade']:has(> [data-codex-audio-dictation='true']):has(> [data-codex-audio-playback='true']) > [data-codex-audio-playback='true'] {
+  top: calc(var(--codex-audio-lane-top) + 40px) !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > div:first-child,
@@ -828,32 +860,18 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status']
   height: 12px !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
-  color: rgba(13, 13, 13, 0.62) !important;
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
+  color: var(--codex-color-text-secondary) !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
-  color: rgba(13, 13, 13, 0.48) !important;
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
+  color: var(--codex-color-text-tertiary) !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button:hover {
-  background: rgba(13, 13, 13, 0.055) !important;
-  color: rgba(13, 13, 13, 0.88) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button),
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-fade'] > [role='status'][aria-live='polite']:not(:has(> button)) {
-  color: rgba(236, 236, 236, 0.64) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) canvas {
-  color: rgba(236, 236, 236, 0.50) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button:hover {
-  background: rgba(236, 236, 236, 0.07) !important;
-  color: rgba(236, 236, 236, 0.90) !important;
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [role='status'][aria-live='polite']:has(> button) > button:hover {
+  background: var(--codex-color-hover) !important;
+  color: var(--codex-color-text) !important;
 }
 
 @keyframes codex-playback-enter {
@@ -918,13 +936,10 @@ html[data-codex-chat-look='true'] [data-codex-context-menu='true'] {
   max-width: calc(100vw - 24px) !important;
   max-height: min(40vh, 360px) !important;
   padding: 4px !important;
-  border: 1px solid rgba(13, 13, 13, 0.08) !important;
+  border: 1px solid var(--codex-color-border-subtle) !important;
   border-radius: 20px !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-  box-shadow:
-    0 0 0 0.5px rgba(13, 13, 13, 0.08),
-    0 -2px 8px rgba(0, 0, 0, 0.04),
-    0 -8px 24px -8px rgba(0, 0, 0, 0.10) !important;
+  background: var(--codex-color-elevated) !important;
+  box-shadow: var(--codex-shadow-floating) !important;
   backdrop-filter: blur(16px) !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
@@ -936,7 +951,7 @@ html[data-codex-chat-look='true'] [data-codex-context-menu-shell='true'] {
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-label'] {
   padding: 8px 12px 6px !important;
-  color: rgba(13, 13, 13, 0.50) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 50%, transparent) !important;
   font-family: ${SYSTEM_FONT} !important;
   font-size: 14px !important;
   line-height: 20px !important;
@@ -950,35 +965,36 @@ html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='d
   gap: 10px !important;
   padding: 8px 12px !important;
   border-radius: 12px !important;
-  color: rgba(13, 13, 13, 0.78) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 78%, transparent) !important;
   font-family: ${SYSTEM_FONT} !important;
   font-size: 14px !important;
   line-height: 20px !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item']:is(:hover,:focus,[data-highlighted]) {
-  background: rgba(13, 13, 13, 0.049) !important;
-  color: #0d0d0d !important;
+  background: var(--codex-color-hover) !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] svg {
   width: 20px !important;
   height: 20px !important;
-  color: rgba(13, 13, 13, 0.68) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 68%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'] {
   margin: 4px 8px !important;
-  background: rgba(13, 13, 13, 0.08) !important;
+  background: color-mix(in srgb, var(--codex-color-text) 8%, transparent) !important;
 }
 
-/* The native dock is 10px wider than the visible composer. Reuse the accepted
-   pre-polish geometry: 19px from the dock equals 14px from the visible surface.
-   Keep the vertical seam flush so Queue is never hidden behind the composer. */
+/* Keep the rear status card clear of the composer's rounded corner shoulders.
+   The native dock is 10px wider than the visible composer, so a 26px dock
+   inset produces a 21px visible step per side, flush with the 21px radius. The
+   vertical seam stays flush so Queue is never hidden behind the composer. */
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full {
-  right: 19px !important;
+  right: 26px !important;
   bottom: 100% !important;
-  left: 19px !important;
+  left: 26px !important;
   z-index: 3 !important;
   width: auto !important;
   padding: 0 !important;
@@ -999,9 +1015,9 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   left: auto !important;
   z-index: 3 !important;
   width: auto !important;
-  margin-right: 19px !important;
+  margin-right: 26px !important;
   margin-bottom: 0 !important;
-  margin-left: 19px !important;
+  margin-left: 26px !important;
   border: 0 !important;
   background: transparent !important;
   background-image: none !important;
@@ -1044,11 +1060,11 @@ html[data-codex-chat-look='true'] [data-slot='composer-status-stack']::-webkit-s
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-status-stack']:hover {
-  scrollbar-color: rgba(13, 13, 13, 0.22) transparent !important;
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-status-stack']:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(13, 13, 13, 0.22) !important;
+  background-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) !important;
 }
 
 /* Keep sibling status groups visible. The shared stack stops scrolling when a
@@ -1096,7 +1112,7 @@ html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div > div:n
 }
 
 html[data-codex-chat-look='true'] [data-codex-task-section='true'] > div > div:nth-child(2):hover {
-  scrollbar-color: rgba(13, 13, 13, 0.22) transparent !important;
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'],
@@ -1104,24 +1120,12 @@ html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='c
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child {
   margin: 0 !important;
   padding: 4px 8px 2px !important;
-  border: 1px solid rgba(13, 13, 13, 0.08) !important;
-  border-bottom: 0 !important;
+  border: 0 none transparent !important;
   border-radius: 20px 20px 0 0 !important;
-  background: #ffffff !important;
-  box-shadow:
-    0 0 0 0.5px rgba(13, 13, 13, 0.08),
-    0 -2px 8px rgba(0, 0, 0, 0.04),
-    0 -8px 24px -10px rgba(0, 0, 0, 0.10) !important;
+  background: var(--codex-color-status-panel) !important;
+  box-shadow: none !important;
   backdrop-filter: none !important;
   overflow: hidden !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-codex-status-card='true'],
-html[data-codex-chat-look='true'][data-hermes-mode='light'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child,
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child {
-  border: 0 !important;
-  background: #f5f5f5 !important;
-  box-shadow: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] > div + div,
@@ -1134,13 +1138,13 @@ html[data-codex-chat-look='true'] [data-codex-status-card='true'] button,
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child button,
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child button {
   border-radius: 12px !important;
-  color: rgba(13, 13, 13, 0.68) !important;
+  color: color-mix(in srgb, var(--codex-color-text) 68%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] button:hover,
 html[data-codex-chat-look='true'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child button:hover,
 html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child button:hover {
-  color: #0d0d0d !important;
+  color: var(--codex-color-text) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-status-card='true'] [class~='group/status-row'],
@@ -1152,290 +1156,11 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   border-radius: 8px !important;
 }
 
-html[data-codex-chat-look='true'][data-hermes-mode='light'] [data-slot='aui_intro'] [aria-label='HERMES AGENT'] {
-  color: #0d0d0d !important;
+html[data-codex-chat-look='true'] [data-slot='aui_intro'] [aria-label='HERMES AGENT'] {
+  color: var(--codex-color-text) !important;
   mix-blend-mode: normal !important;
 }
 
-/* Codex dark palette. Hermes owns the mode signal and updates
-   data-hermes-mode synchronously on every light/dark/system change. */
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] {
-  color-scheme: dark;
-  --ui-base: #ececec;
-  --ui-accent: #ececec;
-  --ui-text-primary: #ececec;
-  --ui-text-secondary: #b4b4b4;
-  --ui-text-tertiary: #8e8e8e;
-  --ui-text-quaternary: #666666;
-  --ui-stroke-primary: rgba(255, 255, 255, 0.14);
-  --ui-stroke-secondary: rgba(255, 255, 255, 0.10);
-  --ui-stroke-tertiary: rgba(255, 255, 255, 0.07);
-  --ui-bg-primary: rgba(255, 255, 255, 0.12);
-  --ui-bg-secondary: rgba(255, 255, 255, 0.08);
-  --ui-bg-tertiary: rgba(255, 255, 255, 0.05);
-  --ui-chat-surface-background: #212121;
-  --ui-sidebar-surface-background: #171717;
-  --ui-editor-surface-background: #212121;
-  --ui-row-active-background: #2f2f2f;
-  --ui-bg-chrome: #171717;
-  --dt-background: #212121 !important;
-  --dt-foreground: #ececec !important;
-  --dt-card: #2f2f2f !important;
-  --dt-card-foreground: #ececec !important;
-  --dt-muted: #2f2f2f !important;
-  --dt-muted-foreground: #8e8e8e !important;
-  --dt-popover: rgba(47, 47, 47, 0.97) !important;
-  --dt-popover-foreground: #ececec !important;
-  --dt-secondary: #2f2f2f !important;
-  --dt-secondary-foreground: #b4b4b4 !important;
-  --dt-accent: #424242 !important;
-  --dt-accent-foreground: #ececec !important;
-  --dt-border: #424242 !important;
-  --dt-input: #424242 !important;
-  --dt-ring: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] body {
-  background-color: #212121 !important;
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_thread-viewport'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_thread-content'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-message-root'] {
-  background: #212121 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_assistant-message-root'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_assistant-message-content'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_assistant-message-content'] .aui-md,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_assistant-message-content'] .aui-md :where(p, li, blockquote, table),
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-inline-text'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_assistant-message-content'] .aui-md li::marker {
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-message-root'] .composer-human-message {
-  background: #2f2f2f !important;
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] .composer-human-message {
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  background: #2f2f2f !important;
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] [data-slot='composer-rich-input'] {
-  color: #ececec !important;
-  caret-color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_edit-composer-root'] .composer-human-message > button:last-child {
-  background: #ececec !important;
-  color: #212121 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_user-message-root'][data-codex-long-user='true']:not([data-codex-user-expanded='true']) .sticky-human-clamp::after {
-  background: #2f2f2f;
-  color: #ececec;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-user-expand] {
-  color: rgba(236, 236, 236, 0.66);
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-user-expand]:hover {
-  color: rgba(236, 236, 236, 0.86);
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-streaming='true'] [data-slot='aui_thinking-disclosure'] {
-  color: rgba(236, 236, 236, 0.54) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-streaming='true'] [data-slot='aui_reasoning-text'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-streaming='true'] [data-slot='aui_reasoning-text'] .aui-md,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-streaming='true'] [data-slot='aui_reasoning-text'] .aui-md :where(p, li, blockquote) {
-  color: rgba(236, 236, 236, 0.60) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar-content'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar-group'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar-group-content'] {
-  background: #171717 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] .row-hover[class*='ui-row-active-background'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-active='true'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [aria-current='true'] {
-  background: #2f2f2f !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-working='true'] {
-  --ui-accent: #ececec;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-working='true'] [aria-label='Session running'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-working='true'] [aria-label='Session en cours'] {
-  background: #ececec !important;
-  box-shadow: 0 0 0.625rem rgba(236, 236, 236, 0.22) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-codex-scrollbar='true'][data-codex-scrolling='true'] {
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='sidebar'] [data-codex-scrollbar='true'][data-codex-scrolling='true']::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.28) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_thread-viewport'][data-codex-scrollbar='true'][data-codex-scrolling='true'] {
-  scrollbar-color: rgba(255, 255, 255, 0.28) transparent !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_thread-viewport'][data-codex-scrollbar='true'][data-codex-scrolling='true']::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.28) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-status-stack']:hover {
-  scrollbar-color: rgba(236, 236, 236, 0.22) transparent !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-status-stack']:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(236, 236, 236, 0.22) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-task-section='true'] > div > div:nth-child(2):hover {
-  scrollbar-color: rgba(236, 236, 236, 0.22) transparent !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] [aria-label='Running'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] [aria-label='En cours'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='tool-block'] span[class*='tabular-nums'] {
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] > [aria-hidden] {
-  background: #2f2f2f !important;
-  backdrop-filter: none !important;
-  box-shadow:
-    0 0 0 0.5px rgba(255, 255, 255, 0.12),
-    0 3px 8px rgba(0, 0, 0, 0.24),
-    0 0 20px rgba(0, 0, 0, 0.18) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input'] :where(textarea, [contenteditable='true']) {
-  color: #ececec !important;
-  caret-color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-rich-input'] :where(textarea, [contenteditable='true'])::placeholder {
-  color: #b4b4b4 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] {
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  background: rgba(255, 255, 255, 0.045) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] > div:first-child {
-  color: rgba(236, 236, 236, 0.58) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] button {
-  color: rgba(236, 236, 236, 0.68) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-edit-banner='true'] button:last-child {
-  background: #ececec !important;
-  color: #212121 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] button[aria-label^='Model ·'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] button[aria-label^='Modèle ·'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-model-trigger='true'] [data-codex-trigger-effort] {
-  color: rgba(236, 236, 236, 0.66) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] button:is([aria-label^='Model ·'],[aria-label^='Modèle ·'])[data-state='open'] {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-model-trigger='true'] [data-codex-trigger-model] {
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-surface'] button:is([aria-label='Voice dictation'],[aria-label='Dictée vocale']) {
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'],
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child {
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  background: #2f2f2f !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-label'] {
-  color: rgba(236, 236, 236, 0.54) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] {
-  color: rgba(236, 236, 236, 0.82) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item']:is(:hover,:focus,[data-highlighted]) {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] svg {
-  color: rgba(236, 236, 236, 0.70) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'] {
-  background: rgba(255, 255, 255, 0.10) !important;
-  border-color: rgba(255, 255, 255, 0.10) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'] > div + div,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child > div + div,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child > div + div {
-  background: transparent !important;
-  border-color: transparent !important;
-  border-top: 0 !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'] button,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child button,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child button {
-  color: rgba(236, 236, 236, 0.68) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-codex-status-card='true'] button:hover,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] :is([data-slot='composer-root'], [data-slot='composer-dock']) div.absolute.inset-x-0.bottom-full > div:first-child button:hover,
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='composer-dock'] > div[class~='overflow-y-auto'][class*='max-h-'] > div:first-child button:hover {
-  color: #ececec !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_response-loading'][aria-label='Summarizing thread'] {
-  border-color: rgba(255, 255, 255, 0.10) !important;
-  background: #2f2f2f !important;
-  color: rgba(236, 236, 236, 0.68) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-mode='dark'] [data-slot='aui_response-loading'][aria-label='Summarizing thread'] .dither {
-  border-color: rgba(236, 236, 236, 0.24) !important;
-  border-right-color: rgba(236, 236, 236, 0.82) !important;
-}
 
 `
 
@@ -1880,6 +1605,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   const dirtyPairs = new Set()
   const animatedPlaybackNodes = new WeakSet()
   const playbackAnimationTimers = new Set()
+  const audioLaneDocks = new Set()
   const playbackReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
   const PAIR_WORK_BATCH_SIZE = 8
   let threadViewport = null
@@ -1887,6 +1613,63 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let threadScrollTimer = 0
   let threadScrollbarTimer = 0
   let liveTailAtBottom = true
+
+  function composerFadeForDock(dock) {
+    const composer = dock?.querySelector?.(':scope > [data-slot="composer-root"]')
+    return composer?.querySelector('[data-slot="composer-fade"]') || null
+  }
+
+  function syncAudioLaneGeometry(dock) {
+    if (destroyed || !(dock instanceof Element) || !dock.isConnected) return
+    const fade = composerFadeForDock(dock)
+    if (!fade) return
+    const hasAudioRow = Boolean(fade.querySelector(':scope > [data-codex-playback-floating="true"]'))
+    if (!hasAudioRow) {
+      fade.style.removeProperty('--codex-audio-lane-top')
+      fade.removeAttribute('data-codex-audio-lane')
+      return
+    }
+    const dockRect = dock.getBoundingClientRect()
+    const fadeRect = fade.getBoundingClientRect()
+    if (dockRect.width <= 0 || fadeRect.width <= 0) return
+    const laneTop = dockRect.top - fadeRect.top
+    const next = `${laneTop}px`
+    if (fade.style.getPropertyValue('--codex-audio-lane-top') !== next) {
+      fade.style.setProperty('--codex-audio-lane-top', next)
+    }
+    fade.setAttribute('data-codex-audio-lane', 'true')
+  }
+
+  const audioLaneResizeObserver = new window.ResizeObserver(entries => {
+    if (destroyed) return
+    for (const entry of entries) syncAudioLaneGeometry(entry.target)
+  })
+
+  function refreshAudioLaneDocks() {
+    const current = new Set(document.querySelectorAll('[data-slot="composer-dock"]'))
+    for (const dock of audioLaneDocks) {
+      if (current.has(dock) && dock.isConnected) continue
+      audioLaneResizeObserver.unobserve(dock)
+      audioLaneDocks.delete(dock)
+    }
+    for (const dock of current) {
+      if (!audioLaneDocks.has(dock)) {
+        audioLaneDocks.add(dock)
+        audioLaneResizeObserver.observe(dock)
+      }
+      syncAudioLaneGeometry(dock)
+    }
+  }
+
+  function clearAudioLaneGeometry() {
+    audioLaneResizeObserver.disconnect()
+    audioLaneDocks.clear()
+    for (const fade of document.querySelectorAll('[data-codex-audio-lane]')) {
+      fade.style.removeProperty('--codex-audio-lane-top')
+      fade.removeAttribute('data-codex-audio-lane')
+    }
+  }
+
   function playbackStatusesIn(node) {
     if (!(node instanceof Element)) return []
     const statuses = []
@@ -1902,10 +1685,17 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
   function floatPlaybackStatus(status) {
     status.setAttribute('data-codex-playback-floating', 'true')
+    const playback = Boolean(status.querySelector(':scope > button'))
+    status.setAttribute(playback ? 'data-codex-audio-playback' : 'data-codex-audio-dictation', 'true')
+    syncAudioLaneGeometry(status.closest('[data-slot="composer-dock"]'))
   }
 
   function clearPlaybackStatusFloat(status) {
+    const dock = status.closest('[data-slot="composer-dock"]')
     status.removeAttribute('data-codex-playback-floating')
+    status.removeAttribute('data-codex-audio-playback')
+    status.removeAttribute('data-codex-audio-dictation')
+    syncAudioLaneGeometry(dock)
   }
 
   function animatePlaybackEntry(status) {
@@ -1970,6 +1760,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     }
     if (nextSibling?.parentNode === parent) parent.insertBefore(ghost, nextSibling)
     else parent.appendChild(ghost)
+    syncAudioLaneGeometry(parent.closest('[data-slot="composer-dock"]'))
     let graceTimer = 0
     let exitTimer = 0
     let exitStartTimer = 0
@@ -1990,7 +1781,9 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
         exitStartTimer = 0
       }
       delete ghost.__codexCancelPlaybackExit
+      const dock = ghost.closest('[data-slot="composer-dock"]')
       ghost.remove()
+      syncAudioLaneGeometry(dock)
     }
     ghost.__codexCancelPlaybackExit = removeGhost
     ghost.addEventListener('animationend', removeGhost, { once: true })
@@ -2210,6 +2003,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     if (composerDirty) {
       composerDirty = false
       decorateComposerChrome()
+      refreshAudioLaneDocks()
     }
   }
 
@@ -2326,6 +2120,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     observer.disconnect()
     cancelPairWork()
     clearPlaybackAnimations()
+    clearAudioLaneGeometry()
 
     window.clearTimeout(threadScrollTimer)
     window.clearTimeout(threadScrollbarTimer)

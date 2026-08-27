@@ -1,22 +1,24 @@
 # Codex Skin for Hermes Desktop
 
-Codex Skin gives Hermes Desktop a Codex-inspired theme and chat layout while preserving Hermes' native behavior. It adds selectable light/dark palettes, an optional 736 px composer, cleaner voice and status surfaces, denser Tasks and Queue presentation, and four-line message folding.
+Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving Hermes' native behavior. It supports native Hermes themes and the native Glass background, while the original Codex colors remain available through the **Codex Skin** theme in Appearance settings.
 
 > [!IMPORTANT]
 > This project is an independent community plugin. It is not affiliated with or endorsed by Nous Research or OpenAI.
 
 ## Status
 
-**Stable.** Version 1.1.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.2.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
 ## What it changes
 
-- A selectable **Codex Skin** theme in **Settings → Appearance**, with light and dark palettes
+- Native Hermes theme colors and Glass/Clear window translucency, without changing the Codex layout or typography
+- A selectable **Codex Skin** theme in **Settings → Appearance** for the original Codex light and dark palettes
 - Chat typography, spacing, sidebar, composer, Queue, bubbles, menus and loaders
 - Codex-style model name in the composer
 - Hermes' native model and Thinking Level menus after clicking the model name
 - Hermes' native auto-speak and wake-word controls inside the composer
 - Cleaner styling for Hermes' native **Voice dictation** and **Reading aloud** surfaces
+- Dynamic Voice dictation and Reading aloud lanes above Tasks, Queue and Background
 - Pixel-matched 736 CSS px Codex composer, with an optional native-width Hermes mode
 - User-message clamp at 4 lines / 110 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
@@ -26,7 +28,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired theme and chat layout while pre
 | Setting | Values | Default | Where |
 | --- | --- | --- | --- |
 | Codex Skin | On / Off | On after installation | **Settings → Plugins** |
-| Theme | Codex Skin / another Hermes theme | Hermes choice | **Settings → Appearance** |
+| Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
 
 Turning **Codex Skin** off restores Hermes' normal appearance.
@@ -41,6 +43,10 @@ Open the command palette and run **Codex Skin: Composer width**. The row shows t
 The `+` menu above the composer follows the rendered composer width in both modes.
 
 ## Screenshots
+
+### Native Hermes themes and Glass
+
+![Codex Skin using a native Hermes theme with the Glass background](screenshots/codex-skin-native-glass.png)
 
 ### Codex Skin theme
 
@@ -118,7 +124,7 @@ Invoke-WebRequest `
 Hermes watches the plugin folder and should load the file automatically. If it does not, open the command palette and run **Reload desktop plugins**. You can enable or disable it live under **Settings → Plugins**.
 
 > [!IMPORTANT]
-> Installing or enabling the plugin and selecting its theme are separate steps. After installation, open **Settings → Appearance** and select **Codex Skin**. If another theme remains selected, the plugin is active but its complete Codex light/dark palette is not.
+> Installing or enabling the plugin and selecting its theme are separate steps. After installation, open **Settings → Appearance** and select **Codex Skin** for the original Codex light/dark palette, or keep any other Hermes theme to use its colors with the Codex layout and typography.
 
 ## Update
 
