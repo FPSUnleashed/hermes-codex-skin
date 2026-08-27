@@ -1,5 +1,7 @@
 # Codex Skin for Hermes Desktop
 
+![Codex Skin using a native Hermes theme with the Glass background](screenshots/codex-skin-native-glass.png)
+
 Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving Hermes' native behavior. It supports native Hermes themes and the native Glass background, while the original Codex colors remain available through the **Codex Skin** theme in Appearance settings.
 
 > [!IMPORTANT]
@@ -43,10 +45,6 @@ Open the command palette and run **Codex Skin: Composer width**. The row shows t
 The `+` menu above the composer follows the rendered composer width in both modes.
 
 ## Screenshots
-
-### Native Hermes themes and Glass
-
-![Codex Skin using a native Hermes theme with the Glass background](screenshots/codex-skin-native-glass.png)
 
 ### Codex Skin theme
 
