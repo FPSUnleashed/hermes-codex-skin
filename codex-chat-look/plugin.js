@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.3.0'
+const BUILD_ID = 'v1.3.1'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -95,7 +95,11 @@ html[data-codex-chat-look='true'] {
   --codex-color-card: var(--dt-card, var(--ui-editor-surface-background));
   --codex-color-elevated: var(--dt-popover, var(--ui-widget-surface-background));
   --codex-color-bubble: var(--ui-chat-bubble-background);
-  --codex-color-status-panel: var(--ui-bg-tertiary, var(--codex-color-card));
+  --codex-color-status-panel: color-mix(
+    in srgb,
+    var(--ui-bg-tertiary, var(--codex-color-card)) 32.5%,
+    var(--codex-color-chat)
+  );
   --codex-color-text: var(--ui-text-primary);
   --codex-color-text-secondary: var(--ui-text-secondary);
   --codex-color-text-tertiary: var(--ui-text-tertiary);
@@ -136,10 +140,6 @@ html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-gl
 html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-hermes-glass]),
 html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-hermes-glass]) body {
   background-color: var(--codex-color-chat) !important;
-}
-
-html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='light'] {
-  --codex-color-status-panel: color-mix(in srgb, var(--theme-card-seed) 96%, var(--dt-foreground));
 }
 
 html[data-codex-chat-look='true'][data-codex-composer-width='codex'] {
