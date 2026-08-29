@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [1.3.1] - 2026-08-29
+
+### Improved
+
+- Reduced the composer task-status contrast by blending the active theme's tertiary color into the chat background, keeping the panel quieter without replacing the selected theme.
+
+### Verification
+
+- 65 automated checks pass.
+- The final contrast was selected in the live Hermes Desktop renderer with the Solarized light theme.
+
 ## [1.3.0] - 2026-08-29
 
 ### Added

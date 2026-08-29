@@ -52,6 +52,15 @@ test('theme changes stay live because every plugin color resolves through CSS va
   assert.deepEqual([...themeOverrides], ['codex-chat'])
 })
 
+test('composer task status keeps the active theme with reduced contrast', () => {
+  assert.equal([...CSS.matchAll(/--codex-color-status-panel\s*:/g)].length, 1)
+  assert.match(
+    CSS,
+    /--codex-color-status-panel:\s*color-mix\([\s\S]{0,120}var\(--ui-bg-tertiary, var\(--codex-color-card\)\) 32\.5%,[\s\S]{0,80}var\(--codex-color-chat\)/
+  )
+  assert.doesNotMatch(CSS, /data-hermes-theme=['"]codex-chat['"][^{]*\{[^}]*--codex-color-status-panel/)
+})
+
 test('composer keeps a uniform real border and a downward shadow without rings', () => {
   const start = CSS.indexOf("[data-slot='composer-surface'] {")
   assert.notEqual(start, -1)
