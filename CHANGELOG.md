@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+### Improved
+
+- Reworked the **Attach** menu into a compact 240 px popover with smaller rows, text and icons, native `+` anchoring, composer-matched surface chrome and a tighter menu-scale radius.
+
 ## [1.3.1] - 2026-08-29
 
 ### Improved

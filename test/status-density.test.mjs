@@ -56,6 +56,39 @@ test('menu separators inherit a visible rule from the active theme', () => {
   assert.match(block, /background: color-mix\(in srgb, var\(--codex-color-text\) 8%, transparent\) !important/)
 })
 
+test('Attach menu reuses the composer chrome at native compact density', () => {
+  const menuStart = source.indexOf("[data-codex-context-menu='true'] {")
+  const menuBlock = source.slice(menuStart, source.indexOf('\n}', menuStart) + 2)
+  assert.match(menuBlock, /border: 0\.5px solid var\(--codex-color-border-subtle\) !important/)
+  assert.match(menuBlock, /border-radius: 12px !important/)
+  assert.match(menuBlock, /background: var\(--codex-color-card\) !important/)
+  assert.match(menuBlock, /box-shadow: var\(--shadow-nous\) !important/)
+  assert.match(menuBlock, /backdrop-filter: none !important/)
+
+  const labelStart = source.indexOf("[data-codex-context-menu='true'] [data-slot='dropdown-menu-label'] {")
+  const labelBlock = source.slice(labelStart, source.indexOf('\n}', labelStart) + 2)
+  assert.match(labelBlock, /padding: 2px 8px !important/)
+  assert.match(labelBlock, /font-size: 10px !important/)
+  assert.match(labelBlock, /line-height: 14px !important/)
+  assert.match(labelBlock, /font-weight: 600 !important/)
+  assert.match(labelBlock, /text-transform: uppercase !important/)
+
+  const itemStart = source.indexOf("[data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] {")
+  const itemBlock = source.slice(itemStart, source.indexOf('\n}', itemStart) + 2)
+  assert.match(itemBlock, /height: 28px !important/)
+  assert.match(itemBlock, /min-height: 28px !important/)
+  assert.match(itemBlock, /gap: 8px !important/)
+  assert.match(itemBlock, /padding: 0 8px !important/)
+  assert.match(itemBlock, /border-radius: 6px !important/)
+  assert.match(itemBlock, /font-size: 12px !important/)
+  assert.match(itemBlock, /line-height: 16px !important/)
+
+  const iconStart = source.indexOf("[data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] svg")
+  const iconBlock = source.slice(iconStart, source.indexOf('\n}', iconStart) + 2)
+  assert.match(iconBlock, /width: 14px !important/)
+  assert.match(iconBlock, /height: 14px !important/)
+})
+
 test('the Tasks and Queue card has no border and no shadow halo', () => {
   const start = source.indexOf("[data-codex-status-card='true'],")
   const block = source.slice(start, source.indexOf('\n}', start) + 2)
