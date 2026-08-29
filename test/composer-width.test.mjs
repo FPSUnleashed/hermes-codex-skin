@@ -42,13 +42,14 @@ test('composer width is a persistent Codex versus Hermes palette setting', () =>
   assert.match(source, /run: \(\) => setComposerWidthMode\(readComposerWidthMode\(\) === 'codex' \? 'hermes' : 'codex'\)/)
 })
 
-test('the plus menu is pinned to the measured composer width, never viewport 100%', () => {
+test('the Attach menu keeps its native compact width and Radix anchoring', () => {
   const menuStart = source.indexOf("[data-codex-context-menu='true'] {")
   const menuRule = source.slice(menuStart, source.indexOf('\n}', menuStart) + 2)
-  assert.match(menuRule, /width: var\(--codex-context-menu-width\) !important/)
+  assert.match(menuRule, /width: 240px !important/)
   assert.doesNotMatch(menuRule, /width: 100%/)
-  assert.match(source, /contextMenu\.style\.setProperty\('--codex-context-menu-width', `\$\{surfaceRect\.width\}px`\)/)
-  assert.match(source, /element\.style\.removeProperty\('--codex-context-menu-width'\)/)
+  assert.doesNotMatch(source, /--codex-context-menu-width/)
+  assert.doesNotMatch(source, /data-codex-context-menu-shell/)
+  assert.doesNotMatch(source, /Object\.assign\(shell\.style/)
 })
 
 test('floating composers keep their Hermes-owned width', () => {

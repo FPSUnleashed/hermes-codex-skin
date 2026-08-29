@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.3.1'
+const BUILD_ID = 'v1.3.1-main-attach-menu'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -938,46 +938,43 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-codex-pla
   }
 }
 
-/* The Radix content is fixed-positioned, so 100% means the viewport rather
-   than its shell. Runtime provides the composer's measured width explicitly. */
+/* Keep the native Attach menu compact and let Radix own its placement against
+   the + trigger. Codex Skin changes only its visual density and chrome. */
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] {
-  width: var(--codex-context-menu-width) !important;
+  width: 240px !important;
   max-width: calc(100vw - 24px) !important;
   max-height: min(40vh, 360px) !important;
   padding: 4px !important;
-  border: 1px solid var(--codex-color-border-subtle) !important;
-  border-radius: 20px !important;
-  background: var(--codex-color-elevated) !important;
-  box-shadow: var(--codex-shadow-floating) !important;
-  backdrop-filter: blur(16px) !important;
+  border: 0.5px solid var(--codex-color-border-subtle) !important;
+  border-radius: 12px !important;
+  background: var(--codex-color-card) !important;
+  box-shadow: var(--shadow-nous) !important;
+  backdrop-filter: none !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
 }
 
-html[data-codex-chat-look='true'] [data-codex-context-menu-shell='true'] {
-  transform: none !important;
-}
-
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-label'] {
-  padding: 8px 12px 6px !important;
+  padding: 2px 8px !important;
   color: color-mix(in srgb, var(--codex-color-text) 50%, transparent) !important;
   font-family: ${SYSTEM_FONT} !important;
-  font-size: 14px !important;
-  line-height: 20px !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
+  font-size: 10px !important;
+  line-height: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] {
-  min-height: 40px !important;
-  gap: 10px !important;
-  padding: 8px 12px !important;
-  border-radius: 12px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  gap: 8px !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
   color: color-mix(in srgb, var(--codex-color-text) 78%, transparent) !important;
   font-family: ${SYSTEM_FONT} !important;
-  font-size: 14px !important;
-  line-height: 20px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item']:is(:hover,:focus,[data-highlighted]) {
@@ -986,13 +983,13 @@ html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='d
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-item'] svg {
-  width: 20px !important;
-  height: 20px !important;
+  width: 14px !important;
+  height: 14px !important;
   color: color-mix(in srgb, var(--codex-color-text) 68%, transparent) !important;
 }
 
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'] {
-  margin: 4px 8px !important;
+  margin: 4px !important;
   background: color-mix(in srgb, var(--codex-color-text) 8%, transparent) !important;
 }
 
@@ -1416,19 +1413,6 @@ function decorateLongUserMessage(pair) {
   control.title = expanded ? labels.less : labels.more
 }
 
-function rememberInlineStyle(element) {
-  if (element.hasAttribute('data-codex-original-style')) return
-  element.setAttribute('data-codex-original-style', element.getAttribute('style') ?? '__none__')
-}
-
-function restoreInlineStyle(element) {
-  const original = element.getAttribute('data-codex-original-style')
-  if (original === null) return
-  if (original === '__none__') element.removeAttribute('style')
-  else element.setAttribute('style', original)
-  element.removeAttribute('data-codex-original-style')
-}
-
 function prettyModelName(value) {
   const raw = value.trim()
   const match = raw.match(/^GPT-(\d+(?:\.\d+)?)-(.+)$/i)
@@ -1530,35 +1514,10 @@ function decorateComposerChrome() {
   if (!contextMenu) return
 
   contextMenu.setAttribute('data-codex-context-menu', 'true')
-  const shell = contextMenu.parentElement
-  if (!shell) return
-
-  shell.setAttribute('data-codex-context-menu-shell', 'true')
-  rememberInlineStyle(shell)
-
-  const surfaceRect = surface.getBoundingClientRect()
-  const menuHeight = Math.min(contextMenu.scrollHeight || contextMenu.getBoundingClientRect().height, 360, window.innerHeight * 0.4)
-  const top = Math.max(12, surfaceRect.top - menuHeight - 8)
-  contextMenu.style.setProperty('--codex-context-menu-width', `${surfaceRect.width}px`)
-  Object.assign(shell.style, {
-    position: 'fixed',
-    left: `${surfaceRect.left}px`,
-    top: `${top}px`,
-    width: `${surfaceRect.width}px`,
-    transform: 'none',
-    zIndex: '9999',
-    pointerEvents: 'auto'
-  })
 }
 
 function clearComposerChromeDecorations() {
-  for (const shell of document.querySelectorAll('[data-codex-context-menu-shell]')) {
-    restoreInlineStyle(shell)
-    shell.removeAttribute('data-codex-context-menu-shell')
-  }
-
   for (const element of document.querySelectorAll('[data-codex-context-menu], [data-codex-status-card], [data-codex-edit-banner], [data-codex-task-section], [data-codex-has-task-section]')) {
-    element.style.removeProperty('--codex-context-menu-width')
     element.removeAttribute('data-codex-context-menu')
     element.removeAttribute('data-codex-status-card')
     element.removeAttribute('data-codex-edit-banner')
