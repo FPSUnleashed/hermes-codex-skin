@@ -3,7 +3,7 @@ import vm from 'node:vm'
 
 const pluginUrl = new URL('../../codex-chat-look/plugin.js', import.meta.url)
 
-export async function loadPluginInternals(names = []) {
+export async function loadPluginInternals(names = [], overrides = {}) {
   let source = await readFile(pluginUrl, 'utf8')
   source = source.replace(/^import .*$/gm, '').replace(/export default\s*\{/, 'globalThis.__pluginDefault = {')
   const exposed = names
@@ -27,7 +27,8 @@ export async function loadPluginInternals(names = []) {
     TITLEBAR_AREAS: { center: 'center' },
     PALETTE_AREA: 'palette',
     window: { location: { hash: '#/theme-test' } },
-    console
+    console,
+    ...overrides
   })
   context.globalThis = context
   vm.runInContext(source, context, { filename: pluginUrl.pathname })

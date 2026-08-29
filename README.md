@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-**Stable.** Version 1.2.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.3.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
 ## What it changes
 
@@ -22,6 +22,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Cleaner styling for Hermes' native **Voice dictation** and **Reading aloud** surfaces
 - Dynamic Voice dictation and Reading aloud lanes above Tasks, Queue and Background
 - Pixel-matched 736 CSS px Codex composer, with an optional native-width Hermes mode
+- Optional unpinned user messages while keeping Hermes' pinned behavior as the default
 - User-message clamp at 4 lines / 110 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
 
@@ -32,6 +33,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 | Codex Skin | On / Off | On after installation | **Settings → Plugins** |
 | Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
+| Pinned user messages | Hermes / Off | Hermes | Command palette |
 
 Turning **Codex Skin** off restores Hermes' normal appearance.
 
@@ -43,6 +45,13 @@ Open the command palette and run **Codex Skin: Composer width**. The row shows t
 - **Hermes** restores Hermes' native full-width composer and conversation column.
 
 The `+` menu above the composer follows the rendered composer width in both modes.
+
+### Pinned user messages
+
+Open the command palette and run **Codex Skin: Pinned user messages**. The row shows the active mode and the choice persists locally.
+
+- **Hermes** preserves Hermes' native behavior, where the latest user message stays pinned at the top while scrolling.
+- **Off** lets every user message scroll normally with the rest of the conversation.
 
 ## Screenshots
 
@@ -150,7 +159,7 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 Desktop plugins execute inside the Hermes renderer and therefore carry the same local authority as the app. Review local plugins before installing them.
 
-This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width** preference.
+This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width** and **Pinned user messages** preferences.
 
 ## Compatibility
 
