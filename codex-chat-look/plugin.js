@@ -4,12 +4,13 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.2.0'
+const BUILD_ID = 'v1.3.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
 const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
 const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
+const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
 let pluginStorage = null
@@ -164,6 +165,14 @@ html[data-codex-chat-look='true'] [data-slot='aui_thread-content'] {
    transcript; the visible sent-message surface remains its own child. */
 html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] {
   background: transparent !important;
+}
+
+/* Hermes pins each user prompt to the top of the thread. Keep that native
+   behavior unless the user explicitly opts out through the plugin setting. */
+html[data-codex-chat-look='true'][data-codex-pinned-user-messages='off'] [data-slot='aui_user-message-root'] {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
 }
 
 /* Keep one live-tail wrapper fully laid out only while the viewport is at the
@@ -1589,6 +1598,27 @@ function setComposerWidthMode(mode) {
   window.requestAnimationFrame(() => decorateComposerChrome())
 }
 
+function readPinnedUserMessagesMode() {
+  try {
+    const mode = pluginStorage?.get(PINNED_USER_MESSAGES_STORAGE_KEY, 'hermes')
+    return mode === 'off' ? 'off' : 'hermes'
+  } catch {
+    return 'hermes'
+  }
+}
+
+function syncPinnedUserMessagesRoot() {
+  const mode = readPinnedUserMessagesMode()
+  document.documentElement.setAttribute('data-codex-pinned-user-messages', mode)
+  return mode
+}
+
+function setPinnedUserMessagesMode(mode) {
+  const normalized = mode === 'off' ? 'off' : 'hermes'
+  pluginStorage?.set(PINNED_USER_MESSAGES_STORAGE_KEY, normalized)
+  syncPinnedUserMessagesRoot()
+}
+
 function installBehaviorRuntime(afterFinalCleanup = null) {
   const pendingHandoff = window[RUNTIME_HANDOFF_KEY]
   if (pendingHandoff?.timer) window.clearTimeout(pendingHandoff.timer)
@@ -2164,10 +2194,12 @@ function CodexChatStyleRuntime() {
     root.dataset.codexChatLook = 'true'
     root.dataset.codexChatLookBuild = BUILD_ID
     syncComposerWidthRoot()
+    syncPinnedUserMessagesRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
       root.removeAttribute('data-codex-composer-width')
+      root.removeAttribute('data-codex-pinned-user-messages')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
       if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
@@ -2197,6 +2229,19 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'composer', 'width', 'narrow', 'full', 'hermes'],
         run: () => setComposerWidthMode(readComposerWidthMode() === 'codex' ? 'hermes' : 'codex')
+      }
+    })
+    ctx.register({
+      id: 'toggle-pinned-user-messages',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-pinned-user-messages',
+        label: 'Codex Skin: Pinned user messages',
+        detail: () => (readPinnedUserMessagesMode() === 'hermes' ? 'Hermes' : 'Off'),
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'pinned', 'sticky', 'user', 'message', 'prompt', 'hermes'],
+        run: () => setPinnedUserMessagesMode(readPinnedUserMessagesMode() === 'hermes' ? 'off' : 'hermes')
       }
     })
     ctx.register({

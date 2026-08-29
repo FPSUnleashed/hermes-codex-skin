@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here.
 
+## [1.3.0] - 2026-08-29
+
+### Added
+
+- Optional **Pinned user messages** command-palette setting with persisted `Hermes` and `Off` modes. Native Hermes pinning remains the default.
+
+### Verification
+
+- 64 automated checks pass.
+- The exact toggle was validated in the live Hermes Desktop renderer: `Hermes` keeps `position: sticky`, `Off` applies `position: static`, and switching back restores native pinning.
+
 ## [1.2.0] - 2026-08-27
 
 ### Added
