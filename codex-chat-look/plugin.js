@@ -4,13 +4,15 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.3.1-main-attach-menu'
+const BUILD_ID = 'v1.4.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
 const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
 const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
 const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
+const CLEAN_TRANSCRIPT_STORAGE_KEY = 'clean-transcript'
+const CLEAN_TRANSCRIPT_EVENT = `${ID}:clean-transcript`
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
 let pluginStorage = null
@@ -186,6 +188,30 @@ html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-root'],
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'] {
   background: transparent !important;
   color: var(--codex-color-text) !important;
+}
+
+/* Clean transcript is post-turn only. Runtime adds the settled marker after
+   Hermes mounts a real final message and while no native liveness or human
+   action remains in that turn. */
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  > [data-codex-clean-interim='true'],
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  [data-codex-clean-interim-part='true'],
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  > [data-role='system']:not(:has([role='alert'])),
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  [data-slot='tool-block']:not(:has([data-slot='aui_generated-image'], [data-slot='aui_artifact-card'])),
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  [data-slot='aui_thinking-disclosure'],
+html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
+  [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
+  [data-slot='aui_changed-files'] {
+  display: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'],
@@ -394,12 +420,100 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
   box-shadow: none !important;
 }
 
+/* Keep row geometry invariant across pointer state. If 10 px begins only at
+   :hover, Chromium can paint one native 6 px frame before the hover cascade. */
+html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover {
+  border-radius: 10px !important;
+}
+
+/* Round the chat surface only when the sessions track physically precedes it.
+   The tree writes display:none on that exact track when the sidebar is hidden,
+   so the corner disappears with no JS state mirror or transition race. */
+html[data-codex-chat-look='true']
+  [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  background: var(--ui-sidebar-surface-background);
+  pointer-events: none;
+}
+
+html[data-codex-chat-look='true']
+  [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div
+  > [data-tree-group='grp-main'] {
+  border-top-left-radius: 16px !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div
+  > [role='separator']
+  > span {
+  opacity: 0 !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-tree-group='grp-sessions']
+  [data-zone-tabstrip='grp-sessions']
+  [role='tab'][data-tree-tab] {
+  border-left-color: transparent !important;
+}
+
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span > .dither {
   display: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span:first-child {
   color: var(--codex-color-text) !important;
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 14px !important;
+  line-height: 21px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span:first-child > span:last-child {
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 14px !important;
+  line-height: 21px !important;
+  font-weight: 500 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar-menu-button'] {
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 14px !important;
+  line-height: 21px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar'] span[class*='text-[0.8125rem]'] {
+  font-family: ${SYSTEM_FONT} !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+/* Pure idle has no information to communicate. Hide only Hermes' uncolored
+   grey fallback dot; keep project-colored idle identity and every semantic
+   state (draft, working, stalled, background, unread and needs-input). */
+html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover
+  span[aria-hidden='true'][class~='size-1'][class*='bg-(--ui-text-quaternary)']:not([style*='background-color']) {
+  display: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover[data-working='true'] {
@@ -504,6 +618,71 @@ html[data-codex-chat-look='true'] [data-slot='tool-block'] [aria-label='En cours
 html[data-codex-chat-look='true'] [data-slot='tool-block'] span[class*='tabular-nums'] {
   color: var(--codex-color-text) !important;
   opacity: 0.70 !important;
+}
+
+/* Codex file diffs are quiet resource cards, not dark editor islands. Keep
+   Hermes in charge of every color and borrow only Codex's geometry, density,
+   and 80/20 semantic tint ratio. Ordinary tool rows are deliberately outside
+   this data-file-edit scope. */
+html[data-codex-chat-look='true'] [data-slot='tool-block'][data-file-edit][data-tool-open] {
+  --codex-diff-card-surface: color-mix(in srgb, var(--codex-color-elevated) 50%, transparent);
+  --codex-diff-add-surface: color-mix(
+    in srgb,
+    var(--codex-diff-card-surface) 80%,
+    var(--ui-diff-add-border)
+  );
+  --codex-diff-remove-surface: color-mix(
+    in srgb,
+    var(--codex-diff-card-surface) 80%,
+    var(--ui-diff-remove-border)
+  );
+  background: var(--codex-diff-card-surface) !important;
+  border-color: color-mix(in srgb, var(--codex-color-border-subtle) 50%, transparent) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-slot='tool-block'][data-file-edit][data-tool-open]
+  > div:first-child {
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  border-bottom-color: color-mix(in srgb, var(--codex-color-border-subtle) 50%, transparent) !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-slot='tool-block'][data-file-edit][data-tool-open]
+  [data-slot='file-diff-panel'] {
+  background: transparent !important;
+  color: var(--codex-color-text-secondary) !important;
+  font-size: 12px !important;
+  line-height: 18px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-slot='tool-block'][data-file-edit][data-tool-open]
+  [data-slot='file-diff-panel'] span[class*='border-l-2'] {
+  border-left-width: 0 !important;
+  line-height: 18px !important;
+  padding: 0 12px !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-slot='tool-block'][data-file-edit][data-tool-open]
+  [data-slot='file-diff-panel'] span[class*='border-(--ui-diff-add-border)'] {
+  background: var(--codex-diff-add-surface) !important;
+  border-left-width: 0 !important;
+  color: var(--codex-color-text-secondary) !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-slot='tool-block'][data-file-edit][data-tool-open]
+  [data-slot='file-diff-panel'] span[class*='border-(--ui-diff-remove-border)'] {
+  background: var(--codex-diff-remove-surface) !important;
+  border-left-width: 0 !important;
+  color: var(--codex-color-text-secondary) !important;
 }
 
 @keyframes codex-compaction-spin {
@@ -991,6 +1170,56 @@ html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='d
 html[data-codex-chat-look='true'] [data-codex-context-menu='true'] [data-slot='dropdown-menu-separator'] {
   margin: 4px !important;
   background: color-mix(in srgb, var(--codex-color-text) 8%, transparent) !important;
+}
+
+/* The slash completion drawer keeps Hermes' native groups, rows, icons and
+   typography. Codex Skin owns only the reference frame and scrollbar paint. */
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer'] {
+  right: 5px !important;
+  left: 5px !important;
+  width: auto !important;
+  max-width: none !important;
+  max-height: min(40vh, 360px) !important;
+  padding: 4px !important;
+  border: 0.5px solid var(--codex-color-border-subtle) !important;
+  border-radius: 12px !important;
+  background: var(--codex-color-card) !important;
+  box-shadow: var(--shadow-nous) !important;
+  backdrop-filter: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar-track {
+  margin-block: 8px !important;
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar-button {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar-thumb {
+  min-height: 24px !important;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--codex-color-text) 22%, transparent) !important;
+  background-clip: padding-box !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-completion-drawer']::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--codex-color-text) 36%, transparent) !important;
+  background-clip: padding-box !important;
 }
 
 /* Keep the rear status card clear of the composer's rounded corner shoulders.
@@ -1578,6 +1807,165 @@ function setPinnedUserMessagesMode(mode) {
   syncPinnedUserMessagesRoot()
 }
 
+function readCleanTranscriptMode() {
+  try {
+    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'off')
+    return mode === 'on' ? 'on' : 'off'
+  } catch {
+    return 'off'
+  }
+}
+
+function syncCleanTranscriptRoot() {
+  const mode = readCleanTranscriptMode()
+  document.documentElement.setAttribute('data-codex-clean-transcript', mode)
+  return mode
+}
+
+function setCleanTranscriptMode(mode) {
+  const normalized = mode === 'on' ? 'on' : 'off'
+  pluginStorage?.set(CLEAN_TRANSCRIPT_STORAGE_KEY, normalized)
+  syncCleanTranscriptRoot()
+  window.dispatchEvent(new window.Event(CLEAN_TRANSCRIPT_EVENT))
+}
+
+function clearCleanTranscriptDecorations(scope = document) {
+  const pairs = scope?.matches?.('[data-slot="aui_turn-pair"]')
+    ? [scope]
+    : [...(scope?.querySelectorAll?.('[data-slot="aui_turn-pair"]') || [])]
+
+  for (const pair of pairs) {
+    pair.removeAttribute('data-codex-clean-settled')
+    for (const element of pair.querySelectorAll('[data-codex-clean-interim], [data-codex-clean-interim-part]')) {
+      element.removeAttribute('data-codex-clean-interim')
+      element.removeAttribute('data-codex-clean-interim-part')
+    }
+  }
+}
+
+function cleanPairActive(pair) {
+  return Boolean(
+    pair.querySelector(
+      '[data-role="assistant"][data-streaming="true"], '
+      + '[role="status"], '
+      + '[data-slot="tool-approval-inline"], '
+      + '[data-slot="clarify-inline"], '
+      + '[data-slot="mcp-setup-inline"]'
+    )
+  )
+}
+
+function cleanRootHasMeaningfulContent(root) {
+  const content = root.querySelector('[data-slot="aui_assistant-message-content"]')
+  if ((content?.textContent || '').trim()) return true
+  if ((root.textContent || '').trim()) return true
+
+  return Boolean(
+    root.querySelector(
+      '[data-slot="tool-block"], '
+      + '[data-slot="aui_thinking-disclosure"], '
+      + '[data-slot="aui_generated-image"], '
+      + '[data-slot="aui_artifact-card"], '
+      + '[data-slot="aui_changed-files"], '
+      + '[data-slot="clarify-inline"], '
+      + '[data-slot="mcp-setup-inline"], '
+      + '[role="alert"]'
+    )
+  )
+}
+
+function cleanRootMustStayVisible(root) {
+  return Boolean(
+    root.querySelector(
+      '[data-slot="aui_generated-image"], '
+      + '[data-slot="aui_artifact-card"], '
+      + '[data-slot="clarify-inline"], '
+      + '[data-slot="mcp-setup-inline"], '
+      + '[data-slot="tool-approval-inline"], '
+      + '[role="alert"]'
+    )
+  )
+}
+
+function cleanPartMustStayVisible(part) {
+  return Boolean(
+    part.querySelector(
+      '[data-slot="aui_generated-image"], '
+      + '[data-slot="aui_artifact-card"], '
+      + '[data-slot="aui_markdown-alert"], '
+      + '[data-slot="aui_zoomable-image"], '
+      + '[role="alert"], img, audio, video'
+    )
+  )
+}
+
+function reconcileCleanTranscript(pair) {
+  clearCleanTranscriptDecorations(pair)
+  if (document.documentElement.getAttribute('data-codex-clean-transcript') !== 'on') return
+  if (cleanPairActive(pair)) return
+
+  const roots = [...pair.querySelectorAll(':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+  const finalIndex = roots.findLastIndex(root => Boolean(root.querySelector('[data-slot="aui_msg-actions"]')))
+  if (finalIndex < 0) return
+
+  /* An empty trailing shell is a harmless renderer remnant. Any actual content
+     after the identified final is uncertain, so keep the whole turn visible. */
+  if (roots.slice(finalIndex + 1).some(cleanRootHasMeaningfulContent)) return
+
+  pair.setAttribute('data-codex-clean-settled', 'true')
+  for (const root of roots.slice(0, finalIndex)) {
+    if (!cleanRootMustStayVisible(root)) root.setAttribute('data-codex-clean-interim', 'true')
+  }
+
+  /* Hydrated history folds the live turn's separate assistant bubbles into one
+     message containing several markdown parts. Keep the last text part as the
+     final answer and hide earlier commentary plus its timestamp. */
+  const finalRoot = roots[finalIndex]
+  const content = finalRoot.querySelector(':scope > [data-slot="aui_assistant-message-content"]')
+  const markdownParts = [...(content?.children || [])].filter(element => element.matches('.aui-md'))
+  for (const part of markdownParts.slice(0, -1)) {
+    if (cleanPartMustStayVisible(part)) continue
+    part.setAttribute('data-codex-clean-interim-part', 'true')
+    const timestamp = part.previousElementSibling
+    if (timestamp?.matches?.('[data-slot="timeline-timestamp"]')) {
+      timestamp.setAttribute('data-codex-clean-interim-part', 'true')
+    }
+  }
+}
+
+function collectNestedTurnPairs(node) {
+  if (!(node instanceof Element)) return []
+  if (node.matches('[data-slot="sidebar"]') || node.closest?.('[data-slot="sidebar"]')) return []
+  if (node.matches('[data-slot="aui_turn-pair"]')) return [node]
+
+  const pairs = []
+  const descendants = [...node.children]
+  for (let index = 0; index < descendants.length; index += 1) {
+    const current = descendants[index]
+    if (current.matches('[data-slot="aui_turn-pair"]')) {
+      pairs.push(current)
+      continue
+    }
+    descendants.push(...current.children)
+  }
+  return pairs
+}
+
+function isCleanPartMutationNode(node) {
+  if (!(node instanceof Element)) return false
+  const selector = '.aui-md, [data-slot="aui_assistant-message-content"]'
+  return node.matches(selector) || Boolean(node.firstElementChild && node.querySelector(selector))
+}
+
+function isTurnPairMutationRoot(node) {
+  if (!(node instanceof Element)) return false
+  if (node.matches('[data-slot="sidebar"]') || node.closest?.('[data-slot="sidebar"]')) return false
+  if (node.matches('[data-session-anchor], [data-slot="aui_turn-pair"], [data-slot="aui_thread-content"]')) return true
+
+  const insideTranscript = node.closest?.('[data-session-anchor], [data-slot="aui_thread-content"]')
+  return Boolean(insideTranscript && node.firstElementChild && node.querySelector('[data-slot="aui_turn-pair"]'))
+}
+
 function installBehaviorRuntime(afterFinalCleanup = null) {
   const pendingHandoff = window[RUNTIME_HANDOFF_KEY]
   if (pendingHandoff?.timer) window.clearTimeout(pendingHandoff.timer)
@@ -1886,11 +2274,10 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   const markPairsIn = node => {
     if (!(node instanceof Element)) return
     if (node.matches('[data-slot="aui_turn-pair"]')) markPair(node)
-    else if (
-      node.matches('[data-session-anchor], [data-slot="aui_thread-content"]')
-      || node.closest?.('[data-slot="aui_thread-content"]')
-    ) {
+    else if (node.matches('[data-session-anchor], [data-slot="aui_thread-content"]')) {
       historicalPairScanPending = true
+    } else {
+      for (const pair of collectNestedTurnPairs(node)) markPair(pair)
     }
   }
 
@@ -1916,6 +2303,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       if (!pair?.isConnected) continue
       stripImageAttachmentMarker(pair)
       decorateLongUserMessage(pair)
+      reconcileCleanTranscript(pair)
       processed += 1
     }
     if (dirtyPairs.size) schedulePairWork()
@@ -2004,7 +2392,17 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
   const runtimeSignalSelector = [
     '[data-slot="aui_user-message-root"]',
+    '[data-role="assistant"][data-slot="aui_assistant-message-root"]',
+    '[data-role="system"][data-slot="aui_system-message-root"]',
     '[data-slot="aui_turn-pair"]',
+    '[data-slot="aui_msg-actions"]',
+    '[data-slot="tool-block"]',
+    '[data-slot="aui_thinking-disclosure"]',
+    '[data-slot="aui_changed-files"]',
+    '[data-slot="aui_generated-image"]',
+    '[data-slot="clarify-inline"]',
+    '[data-slot="mcp-setup-inline"]',
+    '[data-slot="tool-approval-inline"]',
     '[role="status"]',
     '[data-slot="dropdown-menu-content"][role="menu"]',
     '[data-slot="composer-dock"]',
@@ -2032,7 +2430,10 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
         if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
           if (pair) markPair(pair)
           relevant = true
-        } else if (record.attributeName === 'role' && target?.matches?.('[role="status"]')) {
+        } else if (
+          (record.attributeName === 'role' && target?.matches?.('[role="status"]'))
+          || (record.attributeName === 'data-streaming' && target?.matches?.('[data-role="assistant"]'))
+        ) {
           if (pair) markPair(pair)
           relevant = true
         } else if (target?.closest?.('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
@@ -2055,12 +2456,13 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
         }
       }
       const signalChanged = changedElements.some(carriesRuntimeSignal)
+      const cleanPartChanged = changedElements.some(isCleanPartMutationNode)
 
-      if (pair && (target?.closest?.('[data-role="user"]') || signalChanged)) {
+      if (pair && (target?.closest?.('[data-role="user"]') || signalChanged || cleanPartChanged)) {
         markPair(pair)
         relevant = true
       }
-      if (signalChanged) relevant = true
+      if (signalChanged || cleanPartChanged) relevant = true
       if (target?.closest?.('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
         composerDirty = true
         relevant = true
@@ -2068,7 +2470,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
       for (const node of changedElements) {
         if (node.matches('[data-slot="sidebar"]') || node.closest?.('[data-slot="sidebar"]')) continue
-        if (node.matches('[data-session-anchor], [data-slot="aui_turn-pair"], [data-slot="aui_thread-content"]')) {
+        if (isTurnPairMutationRoot(node)) {
           markPairsIn(node)
           relevant = true
         }
@@ -2086,7 +2488,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['aria-label', 'role', 'data-clamped']
+    attributeFilter: ['aria-label', 'role', 'data-clamped', 'data-streaming']
   })
   for (const status of document.querySelectorAll('[data-slot="composer-fade"] > [role="status"][aria-live="polite"]')) {
     animatePlaybackEntry(status)
@@ -2097,8 +2499,10 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     schedule()
   }
   const onHashChange = () => reconcileSession()
+  const onCleanTranscriptChange = () => reconcileSession()
   window.addEventListener('resize', onResize)
   window.addEventListener('hashchange', onHashChange)
+  window.addEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
   reconcileSession()
 
   const cleanup = () => {
@@ -2119,6 +2523,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     liveTailWrapper?.removeAttribute('data-codex-live-tail')
     window.removeEventListener('resize', onResize)
     window.removeEventListener('hashchange', onHashChange)
+    window.removeEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
     offProfileState?.()
     offGatewayState?.()
     offActiveSession?.()
@@ -2128,6 +2533,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     handoff.timer = window.setTimeout(() => {
       if (window[RUNTIME_HANDOFF_KEY] !== handoff) return
       for (const user of document.querySelectorAll('[data-slot="aui_user-message-root"]')) clearLongUserDecoration(user)
+      clearCleanTranscriptDecorations()
       clearImageAttachmentMarkers()
       clearComposerChromeDecorations()
       afterFinalCleanup?.()
@@ -2154,11 +2560,13 @@ function CodexChatStyleRuntime() {
     root.dataset.codexChatLookBuild = BUILD_ID
     syncComposerWidthRoot()
     syncPinnedUserMessagesRoot()
+    syncCleanTranscriptRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
       root.removeAttribute('data-codex-composer-width')
       root.removeAttribute('data-codex-pinned-user-messages')
+      root.removeAttribute('data-codex-clean-transcript')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
       if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
@@ -2201,6 +2609,19 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'pinned', 'sticky', 'user', 'message', 'prompt', 'hermes'],
         run: () => setPinnedUserMessagesMode(readPinnedUserMessagesMode() === 'hermes' ? 'off' : 'hermes')
+      }
+    })
+    ctx.register({
+      id: 'toggle-clean-transcript',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-clean-transcript',
+        label: 'Codex Skin: Clean transcript',
+        detail: () => (readCleanTranscriptMode() === 'on' ? 'On' : 'Off'),
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'clean', 'transcript', 'tool', 'calls', 'interim', 'messages'],
+        run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
       }
     })
     ctx.register({
