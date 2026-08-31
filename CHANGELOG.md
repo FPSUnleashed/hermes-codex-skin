@@ -2,11 +2,34 @@
 
 All notable changes to this project are documented here.
 
-## Unreleased
+## [1.4.0] - 2026-09-01
+
+### Added
+
+- Added an opt-in **Clean transcript** command-palette setting. It is Off by default, keeps native progress visible during a run, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices and interim replies after the final response mounts.
 
 ### Improved
 
 - Reworked the **Attach** menu into a compact 240 px popover with smaller rows, text and icons, native `+` anchoring, composer-matched surface chrome and a tighter menu-scale radius.
+- Matched the `/` completion menu frame to the full useful composer width with 5 px side insets while preserving native content and placement.
+- Matched Codex Desktop's sidebar typography hierarchy and stabilized chat rows at a 10 px radius before hover, focus and selection.
+- Hid only the uninformative pure-idle grey session dot while preserving project identity and every active or attention state.
+- Restyled expanded **Patched file** diffs as smoother Codex resource cards with 8 px geometry, a theme-owned translucent surface, 12/18 code rhythm and subtle add/remove tints.
+- Rounded the chat surface into the visible sessions sidebar and removed unnecessary divider paint while preserving native tab, drag and resize interactions.
+
+### Fixed
+
+- Reconciled newly mounted historical turns and late final markdown additions without document-wide rescans, preventing safely identified pre-final text from reappearing in Clean transcript mode.
+- Preserved generated images, artifacts, alerts, user messages and final answers while Clean transcript is active, and failed open whenever Hermes does not expose enough information to hide content safely.
+
+### Known limitation
+
+- Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. Clean transcript leaves uncertain content visible rather than risk hiding a real final answer.
+
+### Verification
+
+- 75 automated checks pass.
+- The exact candidate was hot-reloaded and visually accepted in Hermes Desktop on macOS without restarting the app.
 
 ## [1.3.1] - 2026-08-29
 

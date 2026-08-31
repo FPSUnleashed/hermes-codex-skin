@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-**Stable.** Version 1.3.1 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.4.0 has been exercised in Hermes Desktop and is covered by an automated regression suite. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
 ## What it changes
 
@@ -23,8 +23,10 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Dynamic Voice dictation and Reading aloud lanes above Tasks, Queue and Background
 - Pixel-matched 736 CSS px Codex composer, with an optional native-width Hermes mode
 - Optional unpinned user messages while keeping Hermes' pinned behavior as the default
+- Optional **Clean transcript** mode that hides safely identified settled execution details after the final response while keeping live progress and important content visible
 - User-message clamp at 4 lines / 110 px, with a **Show more** control for longer messages
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
+- Compact Attach and `/` completion menus, smoother Patched file cards and cleaner sidebar/chat chrome
 
 ## Adjustable settings
 
@@ -34,6 +36,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 | Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
+| Clean transcript | On / Off | Off | Command palette |
 
 Turning **Codex Skin** off restores Hermes' normal appearance.
 
@@ -52,6 +55,15 @@ Open the command palette and run **Codex Skin: Pinned user messages**. The row s
 
 - **Hermes** preserves Hermes' native behavior, where the latest user message stays pinned at the top while scrolling.
 - **Off** lets every user message scroll normally with the rest of the conversation.
+
+### Clean transcript
+
+Open the command palette and run **Codex Skin: Clean transcript**. The row shows the active mode and the choice persists locally.
+
+- **Off** preserves Hermes' complete native transcript presentation.
+- **On** keeps all live progress visible, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices and interim replies after the final response mounts. User messages, final answers, generated images, artifacts and alerts stay visible.
+
+Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. The plugin leaves uncertain content visible rather than risk hiding a real final answer.
 
 ## Screenshots
 
@@ -159,7 +171,7 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 Desktop plugins execute inside the Hermes renderer and therefore carry the same local authority as the app. Review local plugins before installing them.
 
-This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width** and **Pinned user messages** preferences.
+This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width**, **Pinned user messages** and **Clean transcript** preferences.
 
 ## Compatibility
 
