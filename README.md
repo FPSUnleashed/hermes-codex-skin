@@ -74,25 +74,35 @@ Open the command palette and run **Codex Skin: Titlebar autohide**. It is **Off 
 
 ## Screenshots
 
+### Version 1.5.0
+
+Square image previews and the refined composer in dark mode:
+
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.5.0/codex-skin-v1.5.0.png" alt="Codex Skin v1.5.0 in dark mode" width="800" />
+
+A light theme with the top bar hidden:
+
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.5.0/codex-skin-v1.5.0-light.png" alt="Codex Skin v1.5.0 with a light theme and the top bar hidden" width="600" />
+
 ### Codex Skin theme
 
-![Codex Skin theme in Hermes Appearance settings](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-theme-appearance.png)
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-theme-appearance.png" alt="Codex Skin theme in Hermes Appearance settings" width="600" />
 
 ### Composer width setting
 
-![Codex Skin Composer width setting in the command palette](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-composer-width-setting.png)
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-composer-width-setting.png" alt="Codex Skin Composer width setting in the command palette" width="480" />
 
 ### Voice dictation and Reading aloud
 
-![Voice dictation in Codex Skin](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-voice-dictation.png)
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-voice-dictation.png" alt="Voice dictation in Codex Skin" width="560" />
 
-![Reading aloud in Codex Skin](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-reading-aloud.png)
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-reading-aloud.png" alt="Reading aloud in Codex Skin" width="560" />
 
 ### Tasks
 
 *Demo weather steps used only to show the Tasks layout.*
 
-![Tasks in Codex Skin with demo weather steps](https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-tasks-demo.png)
+<img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.1.0/codex-skin-tasks-demo.png" alt="Tasks in Codex Skin with demo weather steps" width="600" />
 
 ## What it deliberately does not do
 
