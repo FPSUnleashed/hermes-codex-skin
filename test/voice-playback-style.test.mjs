@@ -62,13 +62,8 @@ test('Reading aloud inherits neutral colors from the active theme', () => {
   assert.doesNotMatch(source, /data-hermes-mode='(?:light|dark)'[^\n]+\[role='status'\]\[aria-live='polite'\]/)
 })
 
-test('Reading aloud uses the same exact 12px gap above and below', () => {
-  assert.match(
-    source,
-    /\[data-slot='composer-fade'\] \{[\s\S]{0,180}--codex-playback-edge-gap: 12px;[\s\S]{0,100}padding: 12px 15px 10px !important;[\s\S]{0,60}gap: 0 !important/
-  )
-  assert.match(rule(PLAYBACK), /margin-bottom: var\(--codex-playback-edge-gap\);/)
-})
+// Playback spacing is exercised as computed geometry in
+// composer-reference-runtime.test.mjs, rather than freezing composer padding.
 
 test('Reading aloud uses compositor-only motion instead of stepped layout animation', () => {
   assert.match(source, /@keyframes codex-playback-enter/)

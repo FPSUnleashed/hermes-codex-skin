@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## [1.5.0] - 2026-09-14
+
+### Added
+
+- Optional **Titlebar autohide**, Off by default, active only with the left sidebar closed. The opening and keep-open zones both cover the full titlebar height. Native controls, focus and menus remain usable without moving the conversation.
+
+### Improved
+
+- Square previews in the composer and right-aligned sent attachments above user messages, while keeping generated images at their normal size.
+- Codex-style browser tabs, address bar and controls without restyling the websites inside.
+- Refined dark colors, composer spacing, attachment button and long-draft scrolling with a conditional fade.
+- Larger image-removal control with a centered icon that scales only once.
+
+### Fixed
+
+- Sent image attachments appearing on the left instead of alongside user messages (#7).
+- Images briefly appearing at full size before becoming thumbnails.
+
 ## [1.4.0] - 2026-09-01
 
 ### Added

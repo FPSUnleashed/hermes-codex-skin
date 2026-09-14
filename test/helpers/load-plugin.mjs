@@ -33,5 +33,5 @@ export async function loadPluginInternals(names = [], overrides = {}) {
   context.globalThis = context
   vm.runInContext(source, context, { filename: pluginUrl.pathname })
 
-  return context.__pluginInternals
+  return { ...context.__pluginInternals, plugin: context.__pluginDefault }
 }

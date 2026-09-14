@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.4.0'
+const BUILD_ID = 'v1.5.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -13,6 +13,8 @@ const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
 const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
 const CLEAN_TRANSCRIPT_STORAGE_KEY = 'clean-transcript'
 const CLEAN_TRANSCRIPT_EVENT = `${ID}:clean-transcript`
+const TITLEBAR_AUTOHIDE_STORAGE_KEY = 'titlebar-autohide'
+const TITLEBAR_AUTOHIDE_EVENT = `${ID}:titlebar-autohide`
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
 let pluginStorage = null
@@ -51,30 +53,30 @@ const CODEX_THEME = {
     userBubbleBorder: '#F3F3F3'
   },
   darkColors: {
-    background: '#212121',
-    foreground: '#ECECEC',
-    card: '#2F2F2F',
-    cardForeground: '#ECECEC',
-    muted: '#2F2F2F',
+    background: '#111111',
+    foreground: '#FCFCFC',
+    card: '#212121',
+    cardForeground: '#FCFCFC',
+    muted: '#242424',
     mutedForeground: '#B4B4B4',
-    popover: '#2F2F2F',
-    popoverForeground: '#ECECEC',
-    primary: '#ECECEC',
-    primaryForeground: '#212121',
-    secondary: '#2F2F2F',
-    secondaryForeground: '#ECECEC',
-    accent: '#424242',
-    accentForeground: '#ECECEC',
-    border: '#424242',
-    input: '#424242',
-    ring: '#ECECEC',
-    composerRing: '#565656',
+    popover: '#242424',
+    popoverForeground: '#FCFCFC',
+    primary: '#FCFCFC',
+    primaryForeground: '#111111',
+    secondary: '#242424',
+    secondaryForeground: '#FCFCFC',
+    accent: '#2C2C2C',
+    accentForeground: '#FCFCFC',
+    border: '#2E2E2E',
+    input: '#2E2E2E',
+    ring: '#FCFCFC',
+    composerRing: '#2E2E2E',
     destructive: '#EF4444',
     destructiveForeground: '#FFFFFF',
-    sidebarBackground: '#171717',
-    sidebarBorder: '#2F2F2F',
-    userBubble: '#2F2F2F',
-    userBubbleBorder: '#424242'
+    sidebarBackground: '#1C1C1C',
+    sidebarBorder: '#242424',
+    userBubble: '#1D1D1D',
+    userBubbleBorder: '#1D1D1D'
   },
   typography: {
     fontSans: SYSTEM_FONT,
@@ -84,6 +86,17 @@ const CODEX_THEME = {
 
 const MIC_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M18.5848 13.4121C18.7715 12.9516 19.2961 12.7296 19.7567 12.916C20.217 13.1027 20.4391 13.6274 20.2528 14.0879C19.0405 17.0826 16.2438 19.2675 12.9003 19.6035V22C12.9003 22.4971 12.4969 22.9004 11.9999 22.9004C11.5029 22.9003 11.0995 22.497 11.0995 22V19.6035C7.75618 19.2673 4.96018 17.0823 3.74791 14.0879C3.56144 13.6272 3.78344 13.1026 4.244 12.916C4.70458 12.7298 5.22933 12.9517 5.41588 13.4121C6.46985 16.0157 9.02264 17.8496 12.0008 17.8496C14.9787 17.8493 17.531 16.0155 18.5848 13.4121ZM11.9999 1.34961C14.7061 1.34961 16.9003 3.5438 16.9003 6.25V10.7334C16.9003 13.4396 14.7061 15.6338 11.9999 15.6338C9.29371 15.6337 7.09947 13.4396 7.09947 10.7334V6.25C7.09947 3.54384 9.29372 1.34967 11.9999 1.34961ZM11.9999 3.15039C10.2878 3.15045 8.90025 4.53795 8.90025 6.25V10.7334C8.90025 12.4454 10.2878 13.8339 11.9999 13.834C13.7119 13.834 15.0995 12.4455 15.0995 10.7334V6.25C15.0995 4.53792 13.7119 3.15039 11.9999 3.15039Z'/%3E%3C/svg%3E")`
 const SEND_MASK = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M11.25 18.25V7.56L7.53 11.28a.75.75 0 0 1-1.06-1.06l5-5a.75.75 0 0 1 1.06 0l5 5a.75.75 0 1 1-1.06 1.06l-3.72-3.72v10.69a.75.75 0 0 1-1.5 0Z'/%3E%3C/svg%3E")`
+
+// Palette data stays separate from the theme-inheriting layout rules.
+const BROWSER_PALETTE_CSS = `
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark'] {
+  --codex-browser-background: var(--codex-color-chat);
+  --codex-browser-tab: #1d1d1d;
+  --codex-browser-address: #222222;
+  --codex-browser-border: #323232;
+  --codex-browser-divider: #232323;
+}
+`
 
 const CSS = `
 html[data-codex-chat-look='true'] {
@@ -125,6 +138,16 @@ html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'] {
   --codex-color-bubble: var(--theme-bubble-seed);
 }
 
+/* Keep the measured dark palette exact instead of tinting its neutral seeds. */
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark'] {
+  --codex-color-text: var(--theme-foreground);
+  --codex-color-active: var(--theme-accent-soft);
+  --codex-color-border: var(--dt-border);
+  --codex-color-border-subtle: var(--dt-composer-ring);
+  --ui-row-active-background: var(--theme-accent-soft);
+  --ui-widget-surface-background: var(--theme-elevated-seed);
+}
+
 /* The field colors are exact Codex seeds only in the ordinary opaque page.
    Glass makes Hermes' semantic chat/sidebar fields transparent; do not repaint
    them after the native material layer has taken ownership. */
@@ -132,6 +155,10 @@ html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-herm
   --codex-color-chat: var(--theme-background-seed);
   --ui-chat-surface-background: var(--codex-color-chat);
   --codex-color-sidebar: var(--theme-sidebar-seed);
+}
+
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark']:not([data-hermes-glass]) {
+  --ui-sidebar-surface-background: var(--theme-sidebar-seed);
 }
 
 html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-glass] {
@@ -251,6 +278,162 @@ html[data-codex-chat-look='true'] [data-slot='aui_user-message-root'] .composer-
   padding: 8px 12px !important;
   text-align: left !important;
 }
+
+/* Native Hermes leaves sent attachments as a sibling after the sticky user
+   root. Order them before the bubble without reparenting React nodes, then
+   make only those user-owned images Codex thumbnails. The selector is anchored
+   to the user root so assistant output images keep their full native size and
+   lightbox behavior. */
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair']
+  > [data-role='user']
+  + *:not([data-role]):has([data-slot='aui_embedded-images']) {
+  order: -1 !important;
+  width: 100% !important;
+  align-self: stretch !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  margin: 0 0 calc(-1 * var(--conversation-turn-gap, 12px) + 8px) !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'] > [data-role='user']
+  + *:not([data-role]) [data-slot='aui_embedded-images'] {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  margin-top: 0 !important;
+  gap: 8px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair'] > [data-role='user']
+  + *:not([data-role]) [data-slot='aui_embedded-images'] > [aria-hidden] {
+  width: 80px !important;
+  height: 80px !important;
+  border-radius: 10px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair']
+  > [data-role='user']
+  + *:not([data-role]):has([data-slot='aui_directive-image'], [data-slot='aui_embedded-image'])
+  :is([data-slot='aui_directive-image'], [data-slot='aui_embedded-image']) {
+  width: 80px !important;
+  height: 80px !important;
+  max-width: 80px !important;
+  max-height: 80px !important;
+  flex: 0 0 80px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--codex-color-border-subtle) !important;
+  border-radius: 10px !important;
+  padding: 0 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair']
+  > [data-role='user']
+  + *:not([data-role]):has([data-slot='aui_directive-image'], [data-slot='aui_embedded-image'])
+  :is([data-slot='aui_directive-image'], [data-slot='aui_embedded-image']) img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  padding: 0 !important;
+  object-fit: cover !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+}
+
+/* Legacy inline image directives can live inside the user bubble rather than
+   the metadata attachment row. Keep them bounded to user content and preserve
+   the native zoomable element. */
+html[data-codex-chat-look='true'] [data-slot='aui_user-message-root']
+  .composer-human-message [data-slot='aui_embedded-images'] {
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_turn-pair']
+  > [data-role='user']
+  + *:not([data-role]):has([data-slot='aui_directive-image'], [data-slot='aui_embedded-image'])
+  [data-slot='aui_embedded-images'] {
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_user-message-root']
+  .composer-human-message [data-slot='aui_embedded-images']
+  :is([data-slot='aui_directive-image'], [data-slot='aui_embedded-image']) {
+  width: 80px !important;
+  height: 80px !important;
+  max-width: 80px !important;
+  max-height: 80px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--codex-color-border-subtle) !important;
+  border-radius: 10px !important;
+  padding: 0 !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='aui_user-message-root']
+  .composer-human-message [data-slot='aui_embedded-images']
+  :is([data-slot='aui_directive-image'], [data-slot='aui_embedded-image']) img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  border-radius: inherit !important;
+}
+
+/* The native composer inserts ImageIcon before its asynchronous thumbnail.
+   Reserve the frame from that first state, not from the later img insertion.
+   IconPhoto is the image-kind fallback in AttachmentPill; file-kind icons do
+   not match. Native labels remain available through aria-label and tooltip,
+   and upload/error overlays and removal buttons retain their handlers. */
+html[data-codex-chat-look='true'] [data-slot='composer-attachments'] {
+  gap: 12px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-attachments'] .group\\/attachment:has(> button:first-child > span:first-child > :is(img, svg.icon-tabler-photo)) > button:first-child {
+  width: 122px !important;
+  height: 122px !important;
+  max-width: 122px !important;
+  padding: 0 !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  border-radius: 12px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-attachments'] .group\\/attachment:has(> button:first-child > span:first-child > :is(img, svg.icon-tabler-photo)) > button:first-child > span:first-child {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-attachments'] .group\\/attachment:has(> button:first-child > span:first-child > :is(img, svg.icon-tabler-photo)) > button:first-child > span:last-child {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-attachments'] .group\\/attachment:has(> button:first-child img) > button:first-child img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  border-radius: inherit !important;
+}
+
+/* Scale the native removal button once, including its native 10px glyph.
+   Center origin preserves its location. Do not also increase the glyph font:
+   that compounds the scale and makes the cross overflow its circle. */
+html[data-codex-chat-look='true'] [data-slot='composer-attachments']
+  .group\\/attachment:has(> button:first-child > span:first-child > :is(img, svg.icon-tabler-photo))
+  > button:nth-child(2) {
+  transform: scale(2) !important;
+  transform-origin: center !important;
+  z-index: 2;
+}
+
 
 html[data-codex-chat-look='true'] [data-codex-image-marker='true'] {
   display: none !important;
@@ -772,7 +955,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden]
 
 html[data-codex-chat-look='true'] [data-slot='composer-fade'] {
   --codex-playback-edge-gap: 12px;
-  padding: 12px 15px 10px !important;
+  padding: 11px 7px 7px !important;
   gap: 0 !important;
 }
 
@@ -785,7 +968,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child {
   grid-template-columns: auto 1fr auto !important;
   grid-template-areas: "input input input" "menu . controls" !important;
   align-items: center !important;
-  row-gap: 4px !important;
+  row-gap: 0 !important;
   column-gap: 5px !important;
 }
 
@@ -836,9 +1019,51 @@ html[data-codex-chat-look='true'] [data-slot='composer-rich-input'] {
   font-family: ${SYSTEM_FONT} !important;
   font-size: 14px !important;
   line-height: 20px !important;
-  font-weight: 445 !important;
+  font-weight: 400 !important;
   scrollbar-width: thin !important;
   scrollbar-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > [data-slot='composer-attachments'] {
+  padding: 0 4px !important;
+  margin-bottom: 4px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child > div:has(> [data-slot='composer-rich-input']),
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child > div:has(> div > [data-slot='composer-rich-input']) {
+  padding-inline: 4px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-fade'] > div:last-child > div:has(button > .codicon-add) {
+  translate: none !important;
+  transform: none !important;
+  align-self: center !important;
+}
+
+/* Twelve text lines before scrolling; sent-message editing stays native. */
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-slot='composer-rich-input'] {
+  min-height: 50px !important;
+  max-height: 240px !important;
+  padding-top: 2px !important;
+  color: var(--codex-color-text) !important;
+}
+
+/* Match the sampled placeholder with 24% foreground mixed into the fill;
+   entered text remains at the sampled full foreground intensity. */
+html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark'] [data-slot='composer-surface'] [data-slot='composer-rich-input']:is(:empty, [data-empty])::before {
+  color: color-mix(in srgb, var(--codex-color-text) 24%, var(--codex-color-card)) !important;
+}
+
+@supports (animation-timeline: scroll(self block)) {
+  @keyframes codex-composer-scroll-edge {
+    from { mask-image: linear-gradient(to bottom, black, black); }
+    to { mask-image: linear-gradient(to bottom, transparent, black 16px); }
+  }
+  html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-slot='composer-rich-input'] {
+    animation: codex-composer-scroll-edge 1s steps(1, end) both;
+    animation-timeline: scroll(self block);
+    animation-range: 0px 1px;
+  }
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-rich-input']::-webkit-scrollbar {
@@ -902,6 +1127,35 @@ html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-
 
 html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-trigger-effort] {
   color: color-mix(in srgb, var(--codex-color-text) 49%, transparent);
+}
+
+/* Match the drawn plus while retaining the native menu button and handler. */
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .codicon-add) {
+  position: relative;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+  color: var(--codex-color-primary) !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button > .codicon-add {
+  visibility: hidden;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .codicon-add)::before,
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .codicon-add)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .codicon-add)::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 /* Replace only the idle dictation/send glyphs; their actual Hermes buttons and
@@ -1396,6 +1650,189 @@ html[data-codex-chat-look='true'] [data-slot='aui_intro'] [aria-label='HERMES AG
   mix-blend-mode: normal !important;
 }
 
+/* Browser chrome only; native pane controls and guest documents stay owned
+   by Hermes. Exact sampled colors apply only to the Codex dark palette. */
+html[data-codex-chat-look='true'] {
+  --codex-browser-background: var(--ui-editor-surface-background);
+  --codex-browser-tab: var(--ui-row-active-background);
+  --codex-browser-address: var(--ui-control-background, var(--codex-color-card));
+  --codex-browser-border: var(--ui-stroke-secondary);
+  --codex-browser-divider: var(--ui-stroke-tertiary);
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] {
+  --pane-tab-active-accent: transparent;
+  --pane-tab-active-bg: var(--codex-browser-tab);
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  padding: 8px !important;
+  gap: 4px !important;
+  border: 0 !important;
+  background: var(--codex-browser-background) !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] > [role='tablist'] {
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'] {
+  --tab-bg: var(--codex-browser-background);
+  --tab-face: var(--codex-browser-background);
+  height: 28px !important;
+  min-height: 28px !important;
+  border-radius: 10px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'][data-active='true'] {
+  --tab-bg: var(--codex-browser-tab);
+  --tab-face: var(--codex-browser-tab);
+  background: var(--codex-browser-tab) !important;
+  color: var(--ui-text-primary) !important;
+}
+
+/* Only PaneTabLabel text: preserve glyphs, dirty dots and close controls. */
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate {
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] {
+  background: var(--codex-browser-background) !important;
+}
+
+/* Width responds to the pane, not the whole window. Keep every native action
+   reachable when a split narrows: wrap instead of clipping the address. */
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) {
+  height: auto !important;
+  min-height: 40px !important;
+  flex: 0 0 auto !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  padding: 5px 8px 6px !important;
+  gap: 4px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--codex-browser-divider) !important;
+  border-radius: 0 !important;
+  background: var(--codex-browser-background) !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > div:has(> input[data-slot='input']) {
+  min-width: 80px !important;
+  flex: 1 1 80px !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) input[data-slot='input'] {
+  width: 100% !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  border-width: 1px !important;
+  border-style: solid !important;
+  background: var(--codex-browser-address) !important;
+  color: var(--ui-text-primary) !important;
+  padding-left: 10px !important;
+  padding-right: 28px !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] input[data-slot='input']:not([aria-invalid='true']) {
+  border-color: var(--codex-browser-border) !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] input[data-slot='input']:focus-visible {
+  outline: 1px solid var(--ui-text-tertiary) !important;
+  outline-offset: 1px !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) button {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  flex-shrink: 0 !important;
+  border-radius: 7px !important;
+  box-shadow: none !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:not([aria-pressed='true']) {
+  background: transparent !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:is(:hover, :focus-visible):not(:disabled),
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button[aria-pressed='true'] {
+  background: var(--ui-row-hover-background) !important;
+  color: var(--ui-text-primary) !important;
+}
+
+/* Optional titlebar autohide. The bar becomes fixed overlay chrome only while
+   active and the physical left sidebar is closed; hover transitions never
+   remeasure or shift the chat. Electron's native window controls remain untouched. */
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar] {
+  position: fixed !important;
+  z-index: 60 !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar],
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar-cluster] {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease !important;
+  will-change: transform, opacity;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-native-titlebar] {
+  transform: translateY(-34px) !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-native-titlebar-cluster] {
+  transform: translateY(-34px) !important;
+  pointer-events: none !important;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-titlebar-edge-trigger] {
+  pointer-events: auto;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'][data-codex-titlebar-revealed='true'] [data-codex-titlebar-edge-trigger] {
+  pointer-events: none;
+}
+
+html[data-codex-chat-look='true'] [data-codex-titlebar-edge-trigger] {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 34px;
+  pointer-events: none;
+}
+
+html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-titlebar-edge-trigger] {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'] [data-codex-native-titlebar],
+  html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'] [data-codex-native-titlebar-cluster] {
+    transition: none !important;
+  }
+}
+
 
 `
 
@@ -1829,6 +2266,27 @@ function setCleanTranscriptMode(mode) {
   window.dispatchEvent(new window.Event(CLEAN_TRANSCRIPT_EVENT))
 }
 
+function readTitlebarAutohideMode() {
+  try {
+    return pluginStorage?.get(TITLEBAR_AUTOHIDE_STORAGE_KEY, 'off') === 'on' ? 'on' : 'off'
+  } catch {
+    return 'off'
+  }
+}
+
+function syncTitlebarAutohideRoot() {
+  const mode = readTitlebarAutohideMode()
+  document.documentElement.setAttribute('data-codex-titlebar-autohide', mode)
+  return mode
+}
+
+function setTitlebarAutohideMode(mode) {
+  const normalized = mode === 'on' ? 'on' : 'off'
+  pluginStorage?.set(TITLEBAR_AUTOHIDE_STORAGE_KEY, normalized)
+  syncTitlebarAutohideRoot()
+  window.dispatchEvent(new window.Event(TITLEBAR_AUTOHIDE_EVENT))
+}
+
 function clearCleanTranscriptDecorations(scope = document) {
   const pairs = scope?.matches?.('[data-slot="aui_turn-pair"]')
     ? [scope]
@@ -1978,6 +2436,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let pairWorkHandle = 0
   let pairWorkUsesIdleCallback = false
   let composerDirty = true
+  let titlebarDirty = true
   let destroyed = false
   const dirtyPairs = new Set()
   const animatedPlaybackNodes = new WeakSet()
@@ -1990,6 +2449,134 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let threadScrollTimer = 0
   let threadScrollbarTimer = 0
   let liveTailAtBottom = true
+  let titlebarEdgeTrigger = null
+  let titlebarRevealTimer = 0
+  let titlebarChrome = []
+
+  function titlebarClusterFor(button) {
+    let node = button?.parentElement
+    while (node && node !== document.body) {
+      const classes = typeof node.className === 'string' ? node.className : ''
+      if (classes.includes('fixed') && classes.includes('z-70')) return node
+      node = node.parentElement
+    }
+    return null
+  }
+
+  function titlebarBarFor() {
+    return document.querySelector('[data-contrib-shell] > div[class~="h-[34px]"]')
+      || [...document.querySelectorAll('div')].find(element => {
+        const classes = typeof element.className === 'string' ? element.className : ''
+        return classes.includes('relative') && classes.includes('flex') && classes.includes('h-[34px]')
+          && element.querySelector(':scope > [aria-hidden="true"][class*="app-region"]')
+      }) || null
+  }
+
+  function setTitlebarRevealed(revealed) {
+    if (destroyed) return
+    const root = document.documentElement
+    if (revealed) {
+      root.setAttribute('data-codex-titlebar-revealed', 'true')
+      return
+    }
+    root.removeAttribute('data-codex-titlebar-revealed')
+  }
+
+  function scheduleTitlebarHide() {
+    window.clearTimeout(titlebarRevealTimer)
+    titlebarRevealTimer = window.setTimeout(() => {
+      titlebarRevealTimer = 0
+      const focused = titlebarChrome.some(element => element.matches?.(':focus-within'))
+      const menuOpen = titlebarChrome.some(element => element.querySelector?.('[aria-expanded="true"]'))
+      const hovered = titlebarChrome.some(element => element.matches?.(':hover'))
+      if (destroyed || (!focused && !menuOpen && !hovered)) setTitlebarRevealed(false)
+    }, 220)
+  }
+
+  function clearTitlebarChrome() {
+    window.clearTimeout(titlebarRevealTimer)
+    titlebarRevealTimer = 0
+    titlebarChrome.forEach(element => {
+      element.removeAttribute('data-codex-native-titlebar')
+      element.removeAttribute('data-codex-native-titlebar-cluster')
+      element.removeEventListener('pointerenter', onTitlebarPointerEnter)
+      element.removeEventListener('pointerleave', onTitlebarPointerLeave)
+    })
+    titlebarChrome = []
+    titlebarEdgeTrigger?.remove()
+    titlebarEdgeTrigger = null
+    document.documentElement.removeAttribute('data-codex-titlebar-revealed')
+    document.documentElement.removeAttribute('data-codex-left-sidebar')
+  }
+
+  function onTitlebarPointerEnter() {
+    window.clearTimeout(titlebarRevealTimer)
+    titlebarRevealTimer = 0
+    if (document.documentElement.getAttribute('data-codex-left-sidebar') === 'closed') setTitlebarRevealed(true)
+  }
+
+  function onTitlebarPointerLeave() {
+    scheduleTitlebarHide()
+  }
+
+  function refreshTitlebarChrome() {
+    if (destroyed) return
+    const root = document.documentElement
+    const sidebarToggle = document.querySelector('button:has(.codicon-layout-sidebar-left)')
+    const sidebar = document.querySelector('[data-slot="sidebar"]')
+    const bar = titlebarBarFor()
+    const leftCluster = titlebarClusterFor(sidebarToggle)
+    const rightCluster = titlebarClusterFor(document.querySelector('button:has(.codicon-layout-sidebar-right)'))
+    const label = sidebarToggle?.getAttribute('aria-label') || ''
+    const closed = Boolean(sidebarToggle && sidebar && /show|afficher|montrer/i.test(label))
+    const nextChrome = bar && leftCluster && rightCluster && sidebarToggle && sidebar ? [bar, leftCluster, rightCluster] : []
+    const sameChrome = nextChrome.length === titlebarChrome.length && nextChrome.every((element, index) => element === titlebarChrome[index])
+
+    if (!sameChrome) clearTitlebarChrome()
+    if (!nextChrome.length) return
+    root.setAttribute('data-codex-left-sidebar', closed ? 'closed' : 'open')
+    if (readTitlebarAutohideMode() !== 'on' || !closed) setTitlebarRevealed(false)
+    if (sameChrome) return
+
+    bar.setAttribute('data-codex-native-titlebar', 'true')
+    leftCluster.setAttribute('data-codex-native-titlebar-cluster', 'true')
+    rightCluster.setAttribute('data-codex-native-titlebar-cluster', 'true')
+    titlebarChrome = nextChrome
+    for (const element of titlebarChrome) {
+      element.addEventListener('pointerenter', onTitlebarPointerEnter)
+      element.addEventListener('pointerleave', onTitlebarPointerLeave)
+    }
+    titlebarEdgeTrigger = document.createElement('div')
+    titlebarEdgeTrigger.setAttribute('data-codex-titlebar-edge-trigger', 'true')
+    titlebarEdgeTrigger.addEventListener('pointerenter', onTitlebarPointerEnter)
+    titlebarEdgeTrigger.addEventListener('pointerleave', onTitlebarPointerLeave)
+    document.body.appendChild(titlebarEdgeTrigger)
+  }
+
+  const onTitlebarFocus = event => {
+    if (titlebarChrome.some(element => element.contains(event.target))) onTitlebarPointerEnter()
+  }
+  const onTitlebarFocusOut = event => {
+    if (!titlebarChrome.some(element => element.contains(event.relatedTarget))) scheduleTitlebarHide()
+  }
+  // Switching the trigger to pointer-events:none can skip an element-level
+  // leave during the slide. Track the same fixed band on real pointer motion
+  // too, without adding a hit target over the native controls.
+  const onTitlebarPointerMove = event => {
+    const root = document.documentElement
+    if (destroyed || root.getAttribute('data-codex-titlebar-autohide') !== 'on'
+      || root.getAttribute('data-codex-left-sidebar') !== 'closed') return
+    const height = titlebarEdgeTrigger?.getBoundingClientRect().height || 0
+    if (event.clientY >= 0 && event.clientY < height) {
+      onTitlebarPointerEnter()
+    } else if (root.hasAttribute('data-codex-titlebar-revealed') && !titlebarRevealTimer) {
+      scheduleTitlebarHide()
+    }
+  }
+  document.addEventListener('pointermove', onTitlebarPointerMove, true)
+  document.addEventListener('focusin', onTitlebarFocus)
+  document.addEventListener('focusout', onTitlebarFocusOut)
+  refreshTitlebarChrome()
 
   function composerFadeForDock(dock) {
     const composer = dock?.querySelector?.(':scope > [data-slot="composer-root"]')
@@ -2377,6 +2964,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
     refreshLiveTail()
 
+    if (titlebarDirty) {
+      titlebarDirty = false
+      refreshTitlebarChrome()
+    }
+
     if (composerDirty) {
       composerDirty = false
       decorateComposerChrome()
@@ -2422,11 +3014,24 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
+      const directSidebarChanged = record.type === 'childList'
+        && [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element && node.matches('[data-slot="sidebar"]'))
+      if (directSidebarChanged) {
+        titlebarDirty = true
+        relevant = true
+      }
       if (target?.closest?.('[data-codex-user-expand]')) continue
       if (target?.closest?.('[data-slot="sidebar"]')) continue
 
       const pair = target?.closest?.('[data-slot="aui_turn-pair"]')
       if (record.type === 'attributes') {
+        if (
+          record.attributeName === 'aria-label'
+          && target?.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right)')
+        ) {
+          titlebarDirty = true
+          relevant = true
+        }
         if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
           if (pair) markPair(pair)
           relevant = true
@@ -2447,6 +3052,13 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       const addedElements = [...record.addedNodes].filter(node => node instanceof Element)
       const removedElements = [...record.removedNodes].filter(node => node instanceof Element)
       const changedElements = [...addedElements, ...removedElements]
+      if (changedElements.some(node =>
+        node.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"]')
+        || node.querySelector?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"]')
+      )) {
+        titlebarDirty = true
+        relevant = true
+      }
       if (target?.closest?.('[data-slot="composer-surface"]')) {
         for (const node of addedElements) {
           for (const status of playbackStatusesIn(node)) animatePlaybackEntry(status)
@@ -2500,9 +3112,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   }
   const onHashChange = () => reconcileSession()
   const onCleanTranscriptChange = () => reconcileSession()
+  const onTitlebarAutohideChange = () => refreshTitlebarChrome()
   window.addEventListener('resize', onResize)
   window.addEventListener('hashchange', onHashChange)
   window.addEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
+  window.addEventListener(TITLEBAR_AUTOHIDE_EVENT, onTitlebarAutohideChange)
   reconcileSession()
 
   const cleanup = () => {
@@ -2524,6 +3138,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     window.removeEventListener('resize', onResize)
     window.removeEventListener('hashchange', onHashChange)
     window.removeEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
+    window.removeEventListener(TITLEBAR_AUTOHIDE_EVENT, onTitlebarAutohideChange)
+    document.removeEventListener('pointermove', onTitlebarPointerMove, true)
+    document.removeEventListener('focusin', onTitlebarFocus)
+    document.removeEventListener('focusout', onTitlebarFocusOut)
+    clearTitlebarChrome()
     offProfileState?.()
     offGatewayState?.()
     offActiveSession?.()
@@ -2554,19 +3173,23 @@ function CodexChatStyleRuntime() {
       style.id = STYLE_ID
       document.head.appendChild(style)
     }
-    style.textContent = CSS
+    style.textContent = CSS + BROWSER_PALETTE_CSS
     style.dataset.codexChatLookBuild = BUILD_ID
     root.dataset.codexChatLook = 'true'
     root.dataset.codexChatLookBuild = BUILD_ID
     syncComposerWidthRoot()
     syncPinnedUserMessagesRoot()
     syncCleanTranscriptRoot()
+    syncTitlebarAutohideRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
       root.removeAttribute('data-codex-composer-width')
       root.removeAttribute('data-codex-pinned-user-messages')
       root.removeAttribute('data-codex-clean-transcript')
+      root.removeAttribute('data-codex-titlebar-autohide')
+      root.removeAttribute('data-codex-titlebar-revealed')
+      root.removeAttribute('data-codex-left-sidebar')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
       if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
@@ -2622,6 +3245,19 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'clean', 'transcript', 'tool', 'calls', 'interim', 'messages'],
         run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
+      }
+    })
+    ctx.register({
+      id: 'toggle-titlebar-autohide',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-titlebar-autohide',
+        label: 'Codex Skin: Titlebar autohide',
+        detail: () => (readTitlebarAutohideMode() === 'on' ? 'On' : 'Off'),
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'titlebar', 'title bar', 'autohide', 'sidebar', 'hover'],
+        run: () => setTitlebarAutohideMode(readTitlebarAutohideMode() === 'on' ? 'off' : 'on')
       }
     })
     ctx.register({
