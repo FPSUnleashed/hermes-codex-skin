@@ -45,7 +45,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 | Composer width | Codex / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
 | Clean transcript | On / Off | Off | Command palette |
-| Titlebar autohide | On / Off | Off | Command palette |
+| Titlebar autohide | On / Off | On | Command palette |
 
 ### Recommended settings
 
@@ -85,7 +85,7 @@ Older content loaded through **Show previous messages** can remain visible when 
 
 ### Titlebar autohide
 
-Open the command palette and run **Codex Skin: Titlebar autohide**. It is **Off by default**. When enabled, the top bar hides only while the left sidebar is closed. Hover unused space in the top bar's full-height band to reveal it; the same band keeps it open.
+Open the command palette and run **Codex Skin: Titlebar autohide**. It is **On by default** starting in v1.6.0 (previously Off). Existing saved On or Off choices are preserved; the new default applies only when no choice has been saved. You can turn it off at any time. When enabled, the top bar hides only while the left sidebar is closed. Hover unused space in the top bar's full-height band to reveal it; the same band keeps it open.
 
 Tabs and their controls take priority: moving across tabs, their gaps or neighboring tab groups does not reveal the bar over them. Tab close buttons and the `+` button remain clickable; the unused space after `+` still reveals the bar. Keyboard focus and open menus remain usable, and the conversation does not move.
 

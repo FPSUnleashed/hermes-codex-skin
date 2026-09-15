@@ -39,7 +39,8 @@ const root=document.documentElement,bar=document.getElementById('bar'),shell=doc
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const snap=()=>({side:root.getAttribute('data-codex-left-sidebar'),reveal:root.getAttribute('data-codex-titlebar-revealed'),position:getComputedStyle(bar).position,chatTop:document.getElementById('chat').getBoundingClientRect().top,barTop:bar.getBoundingClientRect().top,edge:document.querySelectorAll('[data-codex-titlebar-edge-trigger]').length,edgeRect:(()=>{const r=document.querySelector('[data-codex-titlebar-edge-trigger]')?.getBoundingClientRect();return r?{top:r.top,bottom:r.bottom,height:r.height}:null})()});
 (async()=>{try{
-syncTitlebarAutohideRoot();const dispose=installBehaviorRuntime();await wait(80);const off=snap();
+syncTitlebarAutohideRoot();const dispose=installBehaviorRuntime();await wait(260);const initial=snap();
+setTitlebarAutohideMode('off');await wait(260);const off=snap();
 setTitlebarAutohideMode('on');await wait(260);const hidden=snap();
 const edge=document.querySelector('[data-codex-titlebar-edge-trigger]');const bottomBandTarget=document.elementFromPoint(500,33)?.getAttribute('data-codex-titlebar-edge-trigger');const belowBandTarget=document.elementFromPoint(500,34)?.getAttribute('data-codex-titlebar-edge-trigger') || document.elementFromPoint(500,34)?.getAttribute('data-codex-native-titlebar');edge.dispatchEvent(new PointerEvent('pointerenter'));await wait(260);const hover=snap();
 const retainedBandTarget=document.elementFromPoint(500,17)?.getAttribute('data-codex-native-titlebar');bar.dispatchEvent(new PointerEvent('pointerleave',{relatedTarget:document.body}));await wait(280);const exited=snap();
@@ -54,7 +55,7 @@ document.querySelector('[data-contrib-shell]').appendChild(sidebarHost);await wa
 left.dispatchEvent(new PointerEvent('pointerenter'));await wait(260);const beforeDispose=snap();
 left.dispatchEvent(new PointerEvent('pointerleave'));dispose();await wait(300);const disposed=snap();
 edge.dispatchEvent(new PointerEvent('pointerenter'));toggle.focus();await wait(280);const stale=snap();
-document.title=btoa(JSON.stringify({off,hidden,hover,exited,keyboard,menu,closedMenu,sidebarOpen,sidebarClosed,unknown,beforeDispose,disposed,stale,bottomBandTarget,belowBandTarget,retainedBandTarget}));
+document.title=btoa(JSON.stringify({initial,off,hidden,hover,exited,keyboard,menu,closedMenu,sidebarOpen,sidebarClosed,unknown,beforeDispose,disposed,stale,bottomBandTarget,belowBandTarget,retainedBandTarget}));
 }catch(error){document.title=btoa(JSON.stringify({error:String(error),stack:error.stack}))}})();`
   const html = `<!doctype html><html data-codex-chat-look="true"><head><style>*{box-sizing:border-box}html,body{margin:0}.fixed{position:fixed;z-index:70;top:5px;height:24px}.left{left:8px}.right{right:8px}[data-contrib-shell]{--titlebar-height:34px;display:flex;flex-direction:column}#bar{height:34px;flex-shrink:0;background:#222;position:relative}button{width:24px;height:24px}#chat{height:200px}</style></head><body><div data-contrib-shell><div id="bar" class="relative flex h-[34px]"><div aria-hidden="true" class="app-region"></div></div><div id="left" class="fixed z-70 left"><button id="toggle" aria-label="Show sidebar"><span class="codicon-layout-sidebar-left"></span></button></div><div class="fixed z-70 right"><button aria-label="Show right sidebar"><span class="codicon-layout-sidebar-right"></span></button></div><div data-slot="sidebar" id="sidebar" hidden></div><main id="chat">Chat</main></div><script>${script.replaceAll('</script','<\\/script')}</script></body></html>`
   try {
@@ -63,6 +64,8 @@ document.title=btoa(JSON.stringify({off,hidden,hover,exited,keyboard,menu,closed
     assert.ok(title,'real runtime probe completed')
     const r = JSON.parse(Buffer.from(title,'base64').toString())
     assert.equal(r.error,undefined,JSON.stringify(r))
+    assert.equal(r.initial.position,'fixed','fresh settings enable autohide')
+    assert.equal(r.initial.barTop,-34,'fresh settings hide the bar with the sidebar closed')
     assert.equal(r.off.position,'relative')
     assert.equal(r.hidden.side,'closed')
     assert.equal(r.hidden.position,'fixed')

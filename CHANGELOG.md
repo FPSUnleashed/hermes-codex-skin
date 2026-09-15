@@ -4,13 +4,16 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-15
+
 ### Added
 
 - Left-side history ticks with proximity hover, a single question/reply preview and the native click-to-jump action. Previews are pane-scoped, keyboard-accessible and removed on plugin teardown.
-- Recommended settings in the README: **Composer width = Codex**, **Pinned user messages = Off**, **Clean transcript = On**, and **Titlebar autohide = On**, without changing the defaults.
+- Recommended settings in the README: **Composer width = Codex**, **Pinned user messages = Off**, **Clean transcript = On**, and **Titlebar autohide = On**.
 
 ### Improved
 
+- **Titlebar autohide** is now On by default (previously Off) when no choice has been saved. Existing On and Off choices are preserved, and the setting remains adjustable through the command palette.
 - Applied browser-style tabs to the main pane groups while preserving the original Sessions/Bots appearance and aligning its header height.
 
 ### Fixed

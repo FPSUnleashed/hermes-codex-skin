@@ -2435,7 +2435,7 @@ function setCleanTranscriptMode(mode) {
 
 function readTitlebarAutohideMode() {
   try {
-    return pluginStorage?.get(TITLEBAR_AUTOHIDE_STORAGE_KEY, 'off') === 'on' ? 'on' : 'off'
+    return pluginStorage?.get(TITLEBAR_AUTOHIDE_STORAGE_KEY, 'on') === 'on' ? 'on' : 'off'
   } catch {
     return 'off'
   }
