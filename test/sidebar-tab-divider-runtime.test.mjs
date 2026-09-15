@@ -54,6 +54,9 @@ test('Sessions and Bots keep their tab geometry without a visible divider', asyn
       [role='tab'] { width: 64px; height: 28px; pointer-events: auto; }
       [role='tab'] + [role='tab'] { border-left: 1px solid rgb(224, 218, 198); }
       [data-active='true'] { box-shadow: inset 0 -2px 0 rgb(103, 94, 53); }
+      .rail { width: 28px; }
+      .rail [role='tablist'] { flex-direction: column; }
+      .rail [role='tab'] { writing-mode: vertical-rl; width: 100%; height: auto; max-height: 192px; padding: 8px 0; }
       ${CSS}
     </style>
   </head>
@@ -75,19 +78,66 @@ test('Sessions and Bots keep their tab geometry without a visible divider', asyn
       </div>
     </div>
     <script>
+      const sessionsStrip = document.querySelector('[data-zone-tabstrip="grp-sessions"]')
+      const otherStrip = document.querySelector('[data-zone-tabstrip="grp-other"]')
       const sessions = document.querySelector('[data-tree-tab="sessions"]')
       const bots = document.querySelector('[data-tree-tab="hermes-bots:pane"]')
       const other = document.getElementById('other-second')
       const sessionsStyle = getComputedStyle(sessions)
       const botsStyle = getComputedStyle(bots)
       const otherStyle = getComputedStyle(other)
-      document.title = btoa(JSON.stringify({
+      const expanded = {
         sessionsUnderline: sessionsStyle.boxShadow,
+        sessionsStripHeight: sessionsStrip.getBoundingClientRect().height,
+        otherStripHeight: otherStrip.getBoundingClientRect().height,
+        sessionsHeight: sessions.getBoundingClientRect().height,
+        botsHeight: bots.getBoundingClientRect().height,
+        otherHeight: other.getBoundingClientRect().height,
+        sessionsRadius: sessionsStyle.borderRadius,
         botsBorderWidth: botsStyle.borderLeftWidth,
         botsBorderColor: botsStyle.borderLeftColor,
         botsPointerEvents: botsStyle.pointerEvents,
-        otherBorderColor: otherStyle.borderLeftColor
-      }))
+        otherBorderWidth: otherStyle.borderLeftWidth
+      }
+      // Native row minimization replaces the horizontal strip with a vertical
+      // rail, without data-zone-tabstrip. A click on either rail tab restores it.
+      const group = sessionsStrip.parentElement
+      const list = sessionsStrip.querySelector('[role="tablist"]')
+      const rail = document.createElement('div')
+      rail.className = 'rail'
+      const collapse = document.createElement('button')
+      collapse.onclick = () => {
+        rail.append(list)
+        sessionsStrip.replaceWith(rail)
+      }
+      const restore = () => {
+        sessionsStrip.append(list)
+        rail.replaceWith(sessionsStrip)
+      }
+      sessions.addEventListener('click', restore)
+      bots.addEventListener('click', restore)
+      const states = []
+      for (const target of [sessions, bots]) {
+        collapse.click()
+        // Compare layout with identical typography: the skin's global font
+        // change is intentional and must not be mistaken for rail clipping.
+        target.style.font = getComputedStyle(target).font
+        document.documentElement.removeAttribute('data-codex-chat-look')
+        const nativeHeight = target.getBoundingClientRect().height
+        document.documentElement.setAttribute('data-codex-chat-look', 'true')
+        const rect = target.getBoundingClientRect()
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)
+        states.push({
+          nativeHeight, height: rect.height,
+          writingMode: getComputedStyle(target).writingMode,
+          clickable: hit === target || target.contains(hit)
+        })
+        target.click()
+        states.at(-1).restored = group.contains(sessionsStrip) && sessionsStrip.contains(target)
+        states.at(-1).restoredHeight = target.getBoundingClientRect().height
+        states.at(-1).restoredStripHeight = sessionsStrip.getBoundingClientRect().height
+      }
+      document.title = btoa(JSON.stringify({ ...expanded, states }))
     </script>
   </body>
 </html>`
@@ -104,8 +154,23 @@ test('Sessions and Bots keep their tab geometry without a visible divider', asyn
     assert.equal(result.botsBorderWidth, '1px')
     assert.equal(result.botsBorderColor, 'rgba(0, 0, 0, 0)')
     assert.equal(result.botsPointerEvents, 'auto')
+    assert.equal(result.sessionsStripHeight, 44)
+    assert.equal(result.otherStripHeight, 44)
+    assert.equal(result.sessionsHeight, 28)
+    assert.equal(result.botsHeight, 28)
+    assert.equal(result.otherHeight, 28)
+    assert.equal(result.sessionsRadius, '0px')
     assert.notEqual(result.sessionsUnderline, 'none')
-    assert.equal(result.otherBorderColor, 'rgb(224, 218, 198)')
+    assert.equal(result.otherBorderWidth, '0px')
+    for (const state of result.states) {
+      assert.ok(state.nativeHeight > 28, 'vertical labels need more than the horizontal tab height')
+      assert.equal(state.height, state.nativeHeight, 'skin must preserve native vertical tab height')
+      assert.equal(state.writingMode, 'vertical-rl')
+      assert.equal(state.clickable, true)
+      assert.equal(state.restored, true)
+      assert.equal(state.restoredHeight, 28)
+      assert.equal(state.restoredStripHeight, 44)
+    }
   } finally {
     await rm(tempDir, { force: true, recursive: true })
   }

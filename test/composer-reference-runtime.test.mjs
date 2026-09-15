@@ -45,7 +45,7 @@ test('composer reference geometry, native plus action and real-frame scroll fade
 :root{--theme-background-seed:${CODEX_THEME.darkColors.background};--theme-card-seed:${CODEX_THEME.darkColors.card};--theme-elevated-seed:${CODEX_THEME.darkColors.popover};--theme-bubble-seed:${CODEX_THEME.darkColors.userBubble};--theme-foreground:${CODEX_THEME.darkColors.foreground};--ui-text-primary:${CODEX_THEME.darkColors.foreground};--dt-primary:${CODEX_THEME.darkColors.primary};--dt-primary-foreground:${CODEX_THEME.darkColors.primaryForeground};--dt-border:${CODEX_THEME.darkColors.border};--dt-composer-ring:${CODEX_THEME.darkColors.composerRing};--ui-text-tertiary:#999;--composer-input-max-height:192px}
 #surface{width:503px}#fade{display:flex;flex-direction:column}#grid{display:grid;width:100%}.menu{grid-area:menu;display:flex;align-self:start;translate:0 3px}.input-area{grid-area:input;min-width:0}.controls{grid-area:controls;display:flex;align-items:center;justify-content:flex-end;gap:4px}#editor{max-height:var(--composer-input-max-height);overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;outline:0}#editor:empty:before{content:attr(data-placeholder);color:#999}.attachments{display:flex;flex-wrap:wrap;gap:6px;padding:4px}.group\\/attachment{position:relative}.group\\/attachment>button:first-child{display:flex;gap:6px;border:1px solid #444}.group\\/attachment>button:first-child>span:first-child{display:flex;width:16px;height:16px}.group\\/attachment>button:nth-child(2){position:absolute;right:-4px;top:-4px;width:14px;height:14px}.group\\/attachment>button:nth-child(2)>.codicon{font-size:.625rem}img{width:100%;height:100%}#edit{max-height:192px;overflow-y:auto}
 ${CSS}\n${BROWSER_PALETTE_CSS}
-</style></head><body><div id="surface" data-slot="composer-surface"><div id="fade" data-slot="composer-fade"><div id="grid"><div class="menu"><button id="plus" aria-label="Add context"><i class="codicon codicon-add" aria-hidden="true">+</i></button></div><div class="input-area"><div class="relative"><div id="editor" contenteditable="true" data-slot="composer-rich-input" data-placeholder="Que voulez-vous faire ?"></div></div></div><div class="controls"><button>GPT-6 Astra</button><button aria-label="Voice dictation">Mic</button><button aria-label="Send">Send</button></div></div></div></div><div data-slot="aui_edit-composer-root"><div id="edit" data-slot="composer-rich-input" contenteditable="true">Separate sent-message editor</div></div></body></html>`
+</style></head><body><div data-slot="composer-root" style="position:relative;width:503px"><div id="outer-fade" class="pointer-events-none absolute inset-0" style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.1))"></div><div id="surface" data-slot="composer-surface"><div id="fade" data-slot="composer-fade"><div id="grid"><div class="menu"><button id="plus" aria-label="Add context"><i class="codicon codicon-add" aria-hidden="true">+</i></button></div><div class="input-area"><div class="relative"><div id="editor" contenteditable="true" data-slot="composer-rich-input" data-placeholder="Que voulez-vous faire ?"></div></div></div><div class="controls"><button>GPT-6 Astra</button><button aria-label="Voice dictation">Mic</button><button aria-label="Send">Send</button></div></div></div></div></div><div data-slot="aui_edit-composer-root"><div id="edit" data-slot="composer-rich-input" contenteditable="true">Separate sent-message editor</div></div></body></html>`
     await evaluate(`document.write(${JSON.stringify(html)}); document.close(); window.plusClicks=0; document.getElementById('plus').onclick=()=>window.plusClicks++`)
     const frames = 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))'
     await evaluate(frames)
@@ -63,6 +63,7 @@ ${CSS}\n${BROWSER_PALETTE_CSS}
     assert.equal(await evaluate("getComputedStyle(document.getElementById('editor')).paddingTop"),'2px')
     assert.equal(empty.textColor, 'rgb(252, 252, 252)')
     assert.equal(empty.plusColor, 'rgb(252, 252, 252)')
+    assert.equal(await evaluate("getComputedStyle(document.getElementById('outer-fade')).backgroundImage"), 'none')
     const placeholderPixel = await evaluate(`(() => {
       const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');
       ctx.fillStyle=getComputedStyle(document.getElementById('surface')).backgroundColor;ctx.fillRect(0,0,1,1);
@@ -122,6 +123,7 @@ ${CSS}\n${BROWSER_PALETTE_CSS}
     await evaluate("document.documentElement.removeAttribute('data-codex-chat-look')")
     await evaluate(frames)
     assert.equal((await evaluate(metrics)).mask, 'none')
+    assert.match(await evaluate("getComputedStyle(document.getElementById('outer-fade')).backgroundImage"), /^linear-gradient/)
   } finally {
     proc.kill('SIGTERM')
     await new Promise(resolve => proc.exitCode !== null ? resolve() : proc.once('exit', resolve))

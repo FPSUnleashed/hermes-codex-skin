@@ -67,7 +67,7 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
       </div>
       <div id="main-track" style="flex: 1 1 0px">
         <div id="separator" role="separator"><span></span><span></span></div>
-        <div data-tree-group="grp-main" id="main-chat"></div>
+        <div data-tree-group="grp-main" id="main-chat"><div data-zone-tabstrip="grp-main"></div></div>
       </div>
     </div>
     <div data-tree-split="spl-flipped" id="flipped-split">
@@ -79,8 +79,15 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
       const mainTrack = main.parentElement
       const separator = document.getElementById('separator')
       const sessionsTrack = document.getElementById('sessions-track')
+      const mainTabs = main.querySelector('[data-zone-tabstrip]')
       const visible = getComputedStyle(main).borderTopLeftRadius
-      const visibleBackdrop = getComputedStyle(mainTrack, '::before')
+      const visibleBackdropStyle = getComputedStyle(mainTrack, '::before')
+      const visibleBackdrop = {
+        content: visibleBackdropStyle.content,
+        width: visibleBackdropStyle.width,
+        height: visibleBackdropStyle.height,
+        backgroundColor: visibleBackdropStyle.backgroundColor
+      }
       const separatorAtRest = Array.from(separator.children, node => getComputedStyle(node).opacity)
       separator.classList.add('force-hover')
       const separatorOnHover = Array.from(separator.children, node => getComputedStyle(node).opacity)
@@ -90,26 +97,28 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
         pointerEvents: getComputedStyle(separator).pointerEvents
       }
       separator.classList.remove('force-hover')
-      sessionsTrack.style.display = 'none'
+      mainTabs.style.display = 'none'
       const hidden = getComputedStyle(main).borderTopLeftRadius
       const hiddenBackdrop = getComputedStyle(mainTrack, '::before').content
-      sessionsTrack.style.display = 'flex'
+      mainTabs.style.display = 'flex'
       const restored = getComputedStyle(main).borderTopLeftRadius
+      sessionsTrack.style.display = 'none'
+      const noSessions = getComputedStyle(main).borderTopLeftRadius
+      sessionsTrack.style.display = 'flex'
+      mainTabs.remove()
+      const removed = getComputedStyle(main).borderTopLeftRadius
       const flipped = getComputedStyle(document.getElementById('flipped-chat')).borderTopLeftRadius
-      const flippedBackdrop = getComputedStyle(document.getElementById('flipped-chat').parentElement, '::before')
+      const flippedBackdrop = getComputedStyle(document.getElementById('flipped-chat').parentElement, '::before').content
       document.title = btoa(JSON.stringify({
         visible,
         hidden,
         restored,
+        noSessions,
+        removed,
         flipped,
-        visibleBackdrop: {
-          content: visibleBackdrop.content,
-          width: visibleBackdrop.width,
-          height: visibleBackdrop.height,
-          backgroundColor: visibleBackdrop.backgroundColor
-        },
+        visibleBackdrop,
         hiddenBackdrop,
-        flippedBackdrop: flippedBackdrop.content,
+        flippedBackdrop,
         separatorAtRest,
         separatorOnHover,
         separatorHitbox
@@ -129,16 +138,13 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
 
     assert.deepEqual(result, {
       visible: '16px',
-      hidden: '0px',
+      hidden: '16px',
       restored: '16px',
       flipped: '0px',
-      visibleBackdrop: {
-        content: '""',
-        width: '16px',
-        height: '16px',
-        backgroundColor: 'rgb(23, 23, 23)'
-      },
-      hiddenBackdrop: 'none',
+      visibleBackdrop: { content: '""', width: '16px', height: '16px', backgroundColor: 'rgb(23, 23, 23)' },
+      hiddenBackdrop: '""',
+      noSessions: '0px',
+      removed: '16px',
       flippedBackdrop: 'none',
       separatorAtRest: ['0', '0'],
       separatorOnHover: ['0', '0'],

@@ -16,7 +16,7 @@ Contributions are welcome, especially compatibility fixes for newer Hermes Deskt
 ## Before opening a pull request
 
 1. Run `node --check codex-chat-look/plugin.js`.
-2. Run `node --test test/*.test.mjs`.
+2. Run `node --test --test-concurrency=1 test/*.test.mjs` (the same serial browser-test run as CI).
 3. Install the exact candidate through Hermes' disk plugin directory.
 4. Verify enable, disable and hot-reload behavior.
 5. Check both light and dark themes.

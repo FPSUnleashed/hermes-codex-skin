@@ -48,8 +48,9 @@ toggle.setAttribute('aria-expanded','true');toggle.blur();left.dispatchEvent(new
 toggle.setAttribute('aria-expanded','false');left.dispatchEvent(new PointerEvent('pointerleave'));await wait(280);const closedMenu=snap();
 toggle.setAttribute('aria-label','Hide sidebar');await wait(280);const sidebarOpen=snap();
 toggle.setAttribute('aria-label','Show sidebar');await wait(280);const sidebarClosed=snap();
-const sidebar=document.getElementById('sidebar');sidebar.remove();await wait(280);const unknown=snap();
-document.querySelector('[data-contrib-shell]').appendChild(sidebar);await wait(280);
+const sidebar=document.getElementById('sidebar');const sidebarHost=document.createElement('div');sidebarHost.id='sidebar-host';sidebar.replaceWith(sidebarHost);sidebarHost.appendChild(sidebar);await wait(280);
+sidebarHost.remove();await wait(280);const unknown=snap();
+document.querySelector('[data-contrib-shell]').appendChild(sidebarHost);await wait(280);
 left.dispatchEvent(new PointerEvent('pointerenter'));await wait(260);const beforeDispose=snap();
 left.dispatchEvent(new PointerEvent('pointerleave'));dispose();await wait(300);const disposed=snap();
 edge.dispatchEvent(new PointerEvent('pointerenter'));toggle.focus();await wait(280);const stale=snap();
@@ -69,7 +70,7 @@ document.title=btoa(JSON.stringify({off,hidden,hover,exited,keyboard,menu,closed
     assert.equal(r.hidden.edgeRect.top,0)
     assert.equal(r.hidden.edgeRect.bottom,34)
     assert.equal(r.hidden.edgeRect.height,34)
-    assert.equal(r.bottomBandTarget,'true','bottom pixel of full titlebar band must open')
+    assert.equal(r.bottomBandTarget,null,'reveal band must not intercept underlying controls')
     assert.equal(r.hidden.chatTop,0,'no empty header strip')
     assert.equal(r.hover.reveal,'true')
     assert.equal(r.retainedBandTarget,'true','same titlebar band must retain the reveal')
