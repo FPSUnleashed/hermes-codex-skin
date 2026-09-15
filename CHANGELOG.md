@@ -15,6 +15,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Matched the left Bots sidebar to Sessions: sidebar background, row hover, selected fill and 10 px corners. Bot avatars, status colors and secondary text keep their native theme styling.
 - Made history-tick lengths follow the pointer continuously instead of changing in steps when crossing a tick.
 - Kept tabs, close buttons and the `+` control above hover-to-reveal behavior, including gaps and horizontal travel between tab groups. Unused space after the controls still reveals the titlebar.
 - Reconciled titlebar state when the sidebar remounts, without adding a blank band or moving tabs.

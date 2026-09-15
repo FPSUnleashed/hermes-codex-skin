@@ -586,6 +586,7 @@ html[data-codex-chat-look='true'] [data-streaming='true'] [data-slot='aui_reason
 }
 
 /* Codex sidebar geometry, painted by the active Hermes theme. */
+html[data-codex-chat-look='true'] [data-tree-group='grp-sessions'],
 html[data-codex-chat-look='true'] [data-slot='sidebar'],
 html[data-codex-chat-look='true'] [data-slot='sidebar-content'],
 html[data-codex-chat-look='true'] [data-slot='sidebar-group'],
@@ -607,6 +608,24 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
    :hover, Chromium can paint one native 6 px frame before the hover cascade. */
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover {
   border-radius: 10px !important;
+}
+
+/* Native Bots/group rows are full-width buttons, not .row-hover elements.
+   Scope their paint to the left sidebar; leave avatars, status colors and
+   toolbar actions alone. Selected rows keep their fill under the pointer. */
+html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
+  button[aria-label][class~='w-full'][class~='text-left'][class~='hover:bg-(--chrome-action-hover)'] {
+  border-radius: 10px !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
+  button[aria-label][class~='w-full'][class~='text-left'][class~='hover:bg-(--chrome-action-hover)']:hover {
+  background: var(--codex-color-hover) !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
+  button[aria-label][class~='w-full'][class~='text-left'][class~='hover:bg-(--chrome-action-hover)'][class~='bg-(--ui-row-active-background)'] {
+  background: var(--codex-color-active) !important;
 }
 
 /* Round the chat surface beside the visible sessions sidebar, with or without tabs. */
