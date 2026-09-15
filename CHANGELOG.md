@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Clear the composer's scroll fade when a long draft is shortened or emptied, or a wider composer makes it fit. Long scrolled drafts retain their fade.
+
 ## [1.6.0] - 2026-09-15
 
 ### Added
