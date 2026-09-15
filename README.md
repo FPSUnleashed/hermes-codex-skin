@@ -32,6 +32,9 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Square image previews, right-aligned sent attachments and Codex-style browser controls
 - Optional titlebar autohide while the left sidebar is closed, without moving the conversation
 - Hidden Sessions/Bots minimize button: use the full sidebar toggle instead. Restore remains available for previously minimized layouts.
+- Left-side history ticks with a proximity hover effect and one question/reply preview at a time. Clicking a tick keeps Hermes' native jump behavior.
+
+History previews use the rendered exchange when available. Older turns in the main chat can use a read-only history request; if the plugin cannot safely match an exchange, it shows the question only. Split panes never borrow another pane's response. Disabling the plugin restores the native timeline.
 
 ## Adjustable settings
 
