@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Left-side history ticks with proximity hover, a single question/reply preview and the native click-to-jump action. Previews are pane-scoped, keyboard-accessible and removed on plugin teardown.
 - Recommended settings in the README: **Composer width = Codex**, **Pinned user messages = Off**, **Clean transcript = On**, and **Titlebar autohide = On**, without changing the defaults.
 
 ### Improved
@@ -14,6 +15,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Made history-tick lengths follow the pointer continuously instead of changing in steps when crossing a tick.
 - Kept tabs, close buttons and the `+` control above hover-to-reveal behavior, including gaps and horizontal travel between tab groups. Unused space after the controls still reveals the titlebar.
 - Reconciled titlebar state when the sidebar remounts, without adding a blank band or moving tabs.
 - Removed the dark background behind tab close controls while preserving clicks.

@@ -763,6 +763,96 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [role='status'][class~='
     0 0 8px color-mix(in srgb, var(--codex-color-success) 48%, transparent) !important;
 }
 
+/* Left-edge history index. Native buttons still own message navigation; only
+   the hover presentation is replaced. Dimensions follow the 2x reference. */
+html[data-codex-chat-look='true'] [data-codex-history-rail] {
+  left: 16px !important;
+  right: auto !important;
+  width: 36px !important;
+  align-items: flex-start !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] {
+  align-items: flex-start !important;
+  width: 36px !important;
+  max-height: min(60vh, 360px, var(--codex-history-rail-height, 360px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding: 4px 0 !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button {
+  flex: 0 0 10px !important;
+  width: 36px !important;
+  height: 10px !important;
+  min-height: 10px !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  cursor: pointer;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > span {
+  width: var(--codex-history-tick-width, 6px) !important;
+  height: 2px !important;
+  flex: none !important;
+  border-radius: 0 !important;
+  background: var(--codex-color-text) !important;
+  background-image: none !important;
+  opacity: .65 !important;
+  transition: width 140ms cubic-bezier(.2,.8,.2,1), opacity 140ms ease !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > .dither,
+html[data-codex-chat-look='true'] [data-codex-history-rail][data-codex-history-open] [data-slot='thread-timeline-ticks'] > button > span {
+  opacity: .2 !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button[data-codex-history-hover] > span {
+  opacity: 1 !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-popover'] {
+  display: none !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-preview] {
+  position: absolute;
+  z-index: 50;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--codex-color-text) 12%, transparent);
+  border-radius: 12px;
+  background: var(--codex-color-elevated);
+  color: var(--codex-color-text);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--codex-color-text) 12%, transparent);
+  font-family: ${SYSTEM_FONT};
+  font-size: 13px;
+  line-height: 18px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  -webkit-app-region: no-drag;
+}
+html[data-codex-chat-look='true'] [data-codex-history-preview][hidden] { display: none !important; }
+html[data-codex-chat-look='true'] [data-codex-history-question],
+html[data-codex-chat-look='true'] [data-codex-history-answer] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+}
+html[data-codex-chat-look='true'] [data-codex-history-question] { font-weight: 500; }
+html[data-codex-chat-look='true'] [data-codex-history-answer] {
+  -webkit-line-clamp: 4;
+  margin-top: 8px;
+  color: var(--codex-color-text-secondary);
+  font-weight: 400;
+}
+html[data-codex-chat-look='true'] [data-codex-history-answer] p { margin: 0 0 8px; }
+html[data-codex-chat-look='true'] [data-codex-history-answer] p:last-child { margin-bottom: 0; }
+html[data-codex-chat-look='true'] [data-codex-history-answer] strong { font-weight: 600; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > span { transition: none !important; }
+}
+
 /* Codex sidebar scrollbar: a neutral overlay thumb exists only while the user
    is actively scrolling. Runtime attributes avoid a permanent gutter/blue
    system-accent thumb without replacing the native scroll container. */
@@ -2482,11 +2572,316 @@ function isTurnPairMutationRoot(node) {
   return Boolean(insideTranscript && node.firstElementChild && node.querySelector('[data-slot="aui_turn-pair"]'))
 }
 
+// Keep preview markup inert: copy only text and a small formatting vocabulary,
+// never message attributes, links, media, event handlers or tool-card controls.
+function historyPreviewFragment(source) {
+  const fragment = document.createDocumentFragment()
+  let remaining = 600
+  let visited = 0
+  const copy = (node, parent) => {
+    if (remaining <= 0 || ++visited > 160) return
+    if (node.nodeType === 3) {
+      const text = (node.nodeValue || '').slice(0, remaining)
+      remaining -= text.length
+      parent.appendChild(document.createTextNode(text))
+      return
+    }
+    if (!(node instanceof Element) || node.matches('script, style, button, svg, img, video, audio, iframe, [aria-hidden="true"]')) return
+    const tag = node.tagName.toLowerCase()
+    const destination = ['p', 'strong', 'b', 'em', 'i', 'code', 'br'].includes(tag) ? document.createElement(tag) : parent
+    if (destination !== parent) parent.appendChild(destination)
+    for (const child of node.childNodes) copy(child, destination)
+  }
+  for (const child of source.childNodes) copy(child, fragment)
+  if (!remaining) fragment.appendChild(document.createTextNode('…'))
+  return fragment
+}
+
+function historyPromptPreview(text) {
+  const collapsed = String(text || '').replace(/\s+/g, ' ').trim()
+  return collapsed.length > 120 ? `${collapsed.slice(0, 119).trimEnd()}…` : collapsed
+}
+
+function historyTranscriptEntries(messages) {
+  const entries = []
+  let turn = null
+  for (const message of messages || []) {
+    if (typeof message?.text !== 'string') continue
+    if (message.display_kind && message.display_kind !== 'skill_invocation') continue
+    const text = message.text.trim()
+    if (message.role === 'user') {
+      if (!text || /^\[IMPORTANT: Background process [\s\S]*\]$/.test(text)) continue
+      turn = { question: text, answer: '' }
+      entries.push(turn)
+    } else if (message.role === 'assistant' && turn && text) {
+      turn.answer = text.slice(0, 600)
+    }
+  }
+  return entries
+}
+
+function historyPlainFragment(text) {
+  const fragment = document.createDocumentFragment()
+  for (const paragraph of text.slice(0, 600).split(/\n\s*\n/).slice(0, 5)) {
+    const p = document.createElement('p')
+    // Tiny, inert emphasis support for RPC excerpts; no HTML/Markdown engine.
+    for (const token of paragraph.split(/(\*\*[^*]+\*\*)/g)) {
+      const node = document.createElement(token.startsWith('**') && token.endsWith('**') ? 'strong' : 'span')
+      node.textContent = node.tagName === 'STRONG' ? token.slice(2, -2) : token
+      p.appendChild(node)
+    }
+    fragment.appendChild(p)
+  }
+  return fragment
+}
+
+function installHistoryRailRuntime() {
+  const selector = '[data-slot="thread-timeline"]'
+  const rails = new Map()
+  let serial = 0
+  const mount = root => {
+    if (rails.has(root)) return
+    const surface = root.closest('[data-session-anchor]')
+    const strip = root.querySelector('[data-slot="thread-timeline-ticks"]')
+    if (!surface || !strip) return
+    const card = document.createElement('div')
+    card.setAttribute('data-codex-history-preview', '')
+    card.setAttribute('data-suppress-pane-reveal', '')
+    card.setAttribute('role', 'tooltip')
+    card.id = `codex-history-preview-${++serial}`
+    card.hidden = true
+    const question = document.createElement('div')
+    question.setAttribute('data-codex-history-question', '')
+    const answer = document.createElement('div')
+    answer.setAttribute('data-codex-history-answer', '')
+    card.append(question, answer)
+    surface.appendChild(card)
+    root.setAttribute('data-codex-history-rail', '')
+    let buttons = []
+    let hovered = null
+    let previousDescription = null
+    let closeTimer = 0
+    let revision = 0
+    let historyCache = null
+    let labels = ''
+    let waveFrame = 0
+    let waveY = 0
+    const cancelClose = () => window.clearTimeout(closeTimer)
+    const queueWave = y => {
+      waveY = y
+      if (waveFrame) return
+      waveFrame = window.requestAnimationFrame(() => {
+        waveFrame = 0
+        if (!hovered || !buttons.length) return
+        // All hit targets have the same fixed height. Read the track geometry
+        // before any writes; changing a line's width never moves its neighbors.
+        const first = buttons[0].getBoundingClientRect()
+        if (!first.height) return
+        const pitch = buttons.length > 1 ? buttons[1].getBoundingClientRect().top - first.top : first.height
+        const radius = Math.max(first.height, pitch) * 3.2
+        buttons.forEach((tick, index) => {
+          const distance = Math.abs(first.top + first.height / 2 + index * pitch - waveY)
+          const phase = Math.min(1, distance / radius)
+          const width = 6 + 10 * (1 + Math.cos(Math.PI * phase))
+          tick.style.setProperty('--codex-history-tick-width', `${width}px`)
+        })
+      })
+    }
+    const close = (resetWave = true) => {
+      revision += 1
+      cancelClose()
+      window.cancelAnimationFrame(waveFrame)
+      waveFrame = 0
+      if (hovered) {
+        if (previousDescription === null) hovered.removeAttribute('aria-describedby')
+        else hovered.setAttribute('aria-describedby', previousDescription)
+      }
+      hovered = null
+      card.hidden = true
+      question.textContent = ''
+      answer.replaceChildren()
+      root.removeAttribute('data-codex-history-open')
+      for (const button of buttons) {
+        if (resetWave !== false) button.style.removeProperty('--codex-history-tick-width')
+        button.removeAttribute('data-codex-history-hover')
+      }
+    }
+    const refresh = () => {
+      const next = [...strip.querySelectorAll(':scope > button')]
+      const nextLabels = JSON.stringify(next.map(button => button.getAttribute('aria-label')))
+      if (nextLabels !== labels || next.length !== buttons.length || next.some((b, i) => b !== buttons[i])) close()
+      labels = nextLabels
+      buttons = next
+    }
+    const position = () => {
+      if (!hovered || card.hidden) return
+      const boundary = surface.getBoundingClientRect()
+      const tick = hovered.getBoundingClientRect()
+      const edge = root.getBoundingClientRect().left - boundary.left + 36
+      card.style.left = `${edge}px`
+      card.style.width = `${Math.max(0, Math.min(320, boundary.width - edge - 8))}px`
+      card.style.maxHeight = `${Math.max(0, boundary.height - 16)}px`
+      const height = card.getBoundingClientRect().height
+      card.style.top = `${Math.max(8, Math.min(boundary.height - height - 8, tick.top + tick.height / 2 - boundary.top - height / 2))}px`
+    }
+    const fillUnloaded = (button, index) => {
+      // The SDK's active runtime belongs to the primary workspace, not a tile's
+      // stored ID. Never send a tile's identifier to this runtime-only RPC.
+      if (surface.getAttribute('data-session-anchor') !== 'workspace' || typeof host.request !== 'function') return
+      const sessionId = currentRuntimeSessionId()
+      if (!sessionId) return
+      const scope = JSON.stringify([sessionId, currentProfileScope(), routedStoredSessionId(), labels])
+      const expectedRevision = revision
+      if (!historyCache || historyCache.scope !== scope || Date.now() - historyCache.time > 20000) {
+        historyCache = { scope, time: Date.now(), promise: Promise.resolve().then(() => host.request('session.history', { session_id: sessionId })).then(result => historyTranscriptEntries(result?.messages)) }
+      }
+      historyCache.promise.then(entries => {
+        if (revision !== expectedRevision || hovered !== button || !root.isConnected || card.hidden) return
+        if (JSON.stringify([currentRuntimeSessionId(), currentProfileScope(), routedStoredSessionId(), labels]) !== scope) return
+        // Optimistic/filtered UI turns may differ from stored history. Require
+        // the entire index to match before resolving even a duplicated prompt.
+        if (entries.length !== buttons.length || entries.some((entry, i) => historyPromptPreview(entry.question) !== buttons[i].getAttribute('aria-label'))) return
+        const entry = entries[index]
+        question.textContent = entry.question
+        answer.replaceChildren(historyPlainFragment(entry.answer))
+        answer.hidden = !entry.answer
+        position()
+      }).catch(() => { /* Keep the native question preview on missing history. */ })
+    }
+    const show = (button, pointerY = null) => {
+      cancelClose()
+      if (button === hovered) {
+        if (pointerY !== null) queueWave(pointerY)
+        return
+      }
+      for (const [otherRoot, state] of rails) state.close(otherRoot !== root)
+      refresh()
+      const index = buttons.indexOf(button)
+      if (index < 0) return
+      hovered = button
+      previousDescription = button.getAttribute('aria-describedby')
+      button.setAttribute('aria-describedby', [previousDescription, card.id].filter(Boolean).join(' '))
+      root.setAttribute('data-codex-history-open', '')
+      buttons.forEach((tick, i) => {
+        tick.toggleAttribute('data-codex-history-hover', i === index)
+      })
+      const rect = button.getBoundingClientRect()
+      queueWave(pointerY ?? rect.top + rect.height / 2)
+      question.textContent = button.getAttribute('aria-label') || ''
+      answer.replaceChildren()
+      // Virtualized content is a suffix of the same native prompt index. Verify
+      // the entire suffix before pairing; never match duplicate text globally.
+      const viewport = surface.querySelector('[data-slot="aui_thread-viewport"]')
+      const users = [...(viewport?.querySelectorAll('[data-slot="aui_user-message-root"]') || [])]
+        .map(user => ({ user, text: user.querySelector('[data-slot="aui_user-message-text"]')?.textContent || '' }))
+        .filter(row => row.text.trim() && !/^\[IMPORTANT: Background process [\s\S]*\]$/.test(row.text.trim()))
+      const offset = buttons.length - users.length
+      const aligned = offset >= 0 && users.every((row, i) => historyPromptPreview(row.text) === buttons[offset + i].getAttribute('aria-label'))
+      const row = aligned && users[index - offset]
+      const pair = row?.user?.closest('[data-slot="aui_turn-pair"]')
+      if (pair) {
+        question.textContent = row.text
+        const roots = [...pair.querySelectorAll(':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+        const final = roots.findLast(node => node.querySelector('[data-slot="aui_msg-actions"]')) || roots.at(-1)
+        const parts = final?.querySelectorAll('[data-slot="aui_assistant-message-content"] > .aui-md')
+        const text = parts?.[parts.length - 1]
+        if (text) answer.appendChild(historyPreviewFragment(text))
+      }
+      answer.hidden = !answer.textContent.trim()
+      card.hidden = false
+      position()
+      if (!pair) fillUnloaded(button, index)
+    }
+    const onOver = event => {
+      // Stop only native hover expansion. Click/keyboard navigation remains on
+      // the original buttons and never goes through reconstructed message IDs.
+      event.stopPropagation()
+      const button = event.target.closest?.('button')
+      if (button?.parentElement === strip) show(button, event.clientY)
+    }
+    const onMove = event => { if (hovered && strip.contains(event.target)) queueWave(event.clientY) }
+    const onOut = event => {
+      event.stopPropagation()
+      if (root.contains(event.relatedTarget) || card.contains(event.relatedTarget)) return
+      cancelClose()
+      closeTimer = window.setTimeout(close, 120)
+    }
+    const onFocus = event => { if (event.target.parentElement === strip) show(event.target) }
+    const onKey = event => { if (event.key === 'Escape') { close(); event.stopPropagation() } }
+    root.addEventListener('mouseover', onOver, true)
+    root.addEventListener('pointermove', onMove, { passive: true })
+    root.addEventListener('mouseout', onOut, true)
+    root.addEventListener('focusin', onFocus)
+    root.addEventListener('focusout', onOut)
+    root.addEventListener('keydown', onKey)
+    strip.addEventListener('scroll', close, { passive: true })
+    card.addEventListener('mouseover', cancelClose)
+    card.addEventListener('mouseout', onOut)
+    const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+      root.style.setProperty('--codex-history-rail-height', `${Math.max(10, entries[0].contentRect.height - 32)}px`)
+      close()
+    }) : null
+    resize?.observe(surface)
+    const cleanup = () => {
+      close()
+      historyCache = null
+      resize?.disconnect()
+      root.removeEventListener('mouseover', onOver, true)
+      root.removeEventListener('pointermove', onMove)
+      root.removeEventListener('mouseout', onOut, true)
+      root.removeEventListener('focusin', onFocus)
+      root.removeEventListener('focusout', onOut)
+      root.removeEventListener('keydown', onKey)
+      strip.removeEventListener('scroll', close)
+      root.removeAttribute('data-codex-history-rail')
+      root.style.removeProperty('--codex-history-rail-height')
+      card.remove()
+    }
+    rails.set(root, { close, cleanup, refresh, surface, invalidate: () => { close(); historyCache = null } })
+    refresh()
+  }
+  const scan = node => {
+    if (!(node instanceof Element)) return
+    if (node.matches(selector)) mount(node)
+    if (node.firstElementChild) node.querySelectorAll(selector).forEach(mount)
+  }
+  document.querySelectorAll(selector).forEach(mount)
+  const closeAll = () => { for (const state of rails.values()) state.close() }
+  window.addEventListener('resize', closeAll)
+  window.addEventListener('hashchange', closeAll)
+  const invalidateAll = () => { for (const state of rails.values()) state.invalidate() }
+  const subscriptions = ['activeSessionId', 'profile', 'gateway']
+    .map(key => host.state[key]?.subscribe?.(invalidateAll))
+    .filter(unsubscribe => typeof unsubscribe === 'function')
+  return {
+    observe(records) {
+      for (const record of records) {
+        const root = record.target.closest?.(selector)
+        if (record.type === 'childList') for (const node of record.addedNodes) scan(node)
+        if (root) { mount(root); rails.get(root)?.refresh() }
+      }
+      for (const [root, state] of rails) {
+        if (!root.isConnected || root.closest('[data-session-anchor]') !== state.surface) {
+          state.cleanup(); rails.delete(root)
+        }
+      }
+    },
+    cleanup() {
+      window.removeEventListener('resize', closeAll)
+      window.removeEventListener('hashchange', closeAll)
+      subscriptions.forEach(unsubscribe => unsubscribe())
+      for (const state of rails.values()) state.cleanup()
+      rails.clear()
+    }
+  }
+}
+
 function installBehaviorRuntime(afterFinalCleanup = null) {
   const pendingHandoff = window[RUNTIME_HANDOFF_KEY]
   if (pendingHandoff?.timer) window.clearTimeout(pendingHandoff.timer)
   if (pendingHandoff) delete window[RUNTIME_HANDOFF_KEY]
 
+  const historyRail = installHistoryRailRuntime()
   let scheduled = false
   let animationFrame = 0
   let processAllPairs = true
@@ -3101,6 +3496,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   )
 
   const handleMutations = records => {
+    historyRail.observe(records)
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
@@ -3215,6 +3611,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     animationFrame = 0
     scheduled = false
     observer.disconnect()
+    historyRail.cleanup()
     cancelPairWork()
     clearPlaybackAnimations()
     clearAudioLaneGeometry()
