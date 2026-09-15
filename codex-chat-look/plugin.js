@@ -1208,7 +1208,7 @@ html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mo
     from { mask-image: linear-gradient(to bottom, black, black); }
     to { mask-image: linear-gradient(to bottom, transparent, black 16px); }
   }
-  html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-slot='composer-rich-input'] {
+  html[data-codex-chat-look='true'] [data-slot='composer-surface'] [data-slot='composer-rich-input'][data-codex-composer-overflow] {
     animation: codex-composer-scroll-edge 1s steps(1, end) both;
     animation-timeline: scroll(self block);
     animation-range: 0px 1px;
@@ -2895,12 +2895,50 @@ function installHistoryRailRuntime() {
   }
 }
 
+function installComposerOverflowRuntime() {
+  const selector = '[data-slot="composer-surface"] [data-slot="composer-rich-input"]'
+  const attribute = 'data-codex-composer-overflow'
+  const editors = new Set()
+  // Chromium can retain a forwards-filled scroll animation when its timeline
+  // becomes inactive. Remove the animation itself once the editor fits again.
+  // Auto-height editors resize at the overflow boundary; no per-key layout read.
+  const sync = editor => {
+    const overflowing = editor.clientHeight > 0 && editor.scrollHeight > editor.clientHeight
+    if (editor.hasAttribute(attribute) !== overflowing) editor.toggleAttribute(attribute, overflowing)
+  }
+  const observer = new window.ResizeObserver(entries => {
+    for (const { target } of entries) if (editors.has(target)) sync(target)
+  })
+  return {
+    refresh() {
+      for (const editor of editors) {
+        if (editor.isConnected && editor.matches(selector)) continue
+        observer.unobserve(editor)
+        editor.removeAttribute(attribute)
+        editors.delete(editor)
+      }
+      for (const editor of document.querySelectorAll(selector)) {
+        if (editors.has(editor)) continue
+        editors.add(editor)
+        sync(editor)
+        observer.observe(editor)
+      }
+    },
+    cleanup() {
+      observer.disconnect()
+      for (const editor of editors) editor.removeAttribute(attribute)
+      editors.clear()
+    }
+  }
+}
+
 function installBehaviorRuntime(afterFinalCleanup = null) {
   const pendingHandoff = window[RUNTIME_HANDOFF_KEY]
   if (pendingHandoff?.timer) window.clearTimeout(pendingHandoff.timer)
   if (pendingHandoff) delete window[RUNTIME_HANDOFF_KEY]
 
   const historyRail = installHistoryRailRuntime()
+  const composerOverflow = installComposerOverflowRuntime()
   let scheduled = false
   let animationFrame = 0
   let processAllPairs = true
@@ -3476,6 +3514,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     if (composerDirty) {
       composerDirty = false
       decorateComposerChrome()
+      composerOverflow.refresh()
       refreshAudioLaneDocks()
     }
   }
@@ -3631,6 +3670,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     scheduled = false
     observer.disconnect()
     historyRail.cleanup()
+    composerOverflow.cleanup()
     cancelPairWork()
     clearPlaybackAnimations()
     clearAudioLaneGeometry()

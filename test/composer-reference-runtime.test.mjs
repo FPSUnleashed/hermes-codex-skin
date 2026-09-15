@@ -11,7 +11,7 @@ const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome-stable', '/usr/b
 
 test('composer reference geometry, native plus action and real-frame scroll fade', { timeout: 30000 }, async t => {
   if (!chrome) return t.skip('Chrome required')
-  const { CSS, BROWSER_PALETTE_CSS, CODEX_THEME } = await loadPluginInternals(['CSS', 'BROWSER_PALETTE_CSS', 'CODEX_THEME'])
+  const { CSS, BROWSER_PALETTE_CSS, CODEX_THEME, installComposerOverflowRuntime } = await loadPluginInternals(['CSS', 'BROWSER_PALETTE_CSS', 'CODEX_THEME', 'installComposerOverflowRuntime'])
   const temp = await mkdtemp(path.join(os.tmpdir(), 'codex-composer-'))
   const proc = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--remote-debugging-pipe', `--user-data-dir=${temp}`], { stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] })
   const pending = new Map()
@@ -47,6 +47,7 @@ test('composer reference geometry, native plus action and real-frame scroll fade
 ${CSS}\n${BROWSER_PALETTE_CSS}
 </style></head><body><div data-slot="composer-root" style="position:relative;width:503px"><div id="outer-fade" class="pointer-events-none absolute inset-0" style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent,rgba(255,255,255,.1))"></div><div id="surface" data-slot="composer-surface"><div id="fade" data-slot="composer-fade"><div id="grid"><div class="menu"><button id="plus" aria-label="Add context"><i class="codicon codicon-add" aria-hidden="true">+</i></button></div><div class="input-area"><div class="relative"><div id="editor" contenteditable="true" data-slot="composer-rich-input" data-placeholder="Que voulez-vous faire ?"></div></div></div><div class="controls"><button>GPT-6 Astra</button><button aria-label="Voice dictation">Mic</button><button aria-label="Send">Send</button></div></div></div></div></div><div data-slot="aui_edit-composer-root"><div id="edit" data-slot="composer-rich-input" contenteditable="true">Separate sent-message editor</div></div></body></html>`
     await evaluate(`document.write(${JSON.stringify(html)}); document.close(); window.plusClicks=0; document.getElementById('plus').onclick=()=>window.plusClicks++`)
+    await evaluate(`window.composerOverflow=(${installComposerOverflowRuntime.toString()})();window.composerOverflow.refresh()`)
     const frames = 'new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))'
     await evaluate(frames)
     const metrics = `(() => {const e=document.getElementById('editor'),s=document.getElementById('surface'),p=document.getElementById('plus'); const r=s.getBoundingClientRect(),er=e.getBoundingClientRect(),pr=p.getBoundingClientRect(),rm=document.querySelector('[class~="group/attachment"] > button:nth-child(2)'),rr=rm?.getBoundingClientRect(),gr=rm?.parentElement.getBoundingClientRect();return {height:r.height,inputX:er.x-r.x,inputY:er.y-r.y,inputHeight:er.height,plusX:pr.x+pr.width/2-r.x,plusBottom:r.bottom-pr.y-pr.height/2,plusWidth:getComputedStyle(p,'::before').width,plusStroke:getComputedStyle(p,'::before').height,plusColor:getComputedStyle(p).color,textColor:getComputedStyle(e).color,weight:getComputedStyle(e).fontWeight,mask:getComputedStyle(e).maskImage,scrollTop:e.scrollTop,scrollHeight:e.scrollHeight,clientHeight:e.clientHeight,editMax:getComputedStyle(document.getElementById('edit')).maxHeight,removeWidth:rr?.width,removeHeight:rr?.height,removeCenterX:rr?.x+rr?.width/2,removeCenterY:rr?.y+rr?.height/2,nativeCenterX:gr?.right-3,nativeCenterY:gr?.top+3,removeHit:rr&&document.elementFromPoint(rr.x+rr.width/2,rr.y+rr.height/2)?.matches('button')}})()`
@@ -112,6 +113,17 @@ ${CSS}\n${BROWSER_PALETTE_CSS}
       await writeFile(path.join(dir, 'composer-refined.png'), Buffer.from(data, 'base64'))
       await writeFile(path.join(dir, 'composer-metrics.json'), JSON.stringify({empty,top,scrolled},null,2))
     }
+    // Shrinking a scrolled draft deactivates its scroll timeline. The old
+    // forwards-filled animation must not leave its last mask on short text.
+    await evaluate("document.getElementById('editor').textContent='Message court'")
+    await evaluate(frames)
+    const shortened = await evaluate(metrics)
+    assert.equal(shortened.scrollTop, 0)
+    assert.equal(shortened.scrollHeight, shortened.clientHeight)
+    assert.ok(!shortened.mask.includes('rgba(0, 0, 0, 0)'), `short draft retained the scroll fade: ${JSON.stringify(shortened)}`)
+    await evaluate("document.getElementById('editor').textContent='longmessage'.repeat(500);document.getElementById('editor').scrollTop=100")
+    await evaluate(frames)
+    assert.ok((await evaluate(metrics)).mask.includes('rgba(0, 0, 0, 0)'), 'fade returns for a newly overflowing draft')
     await evaluate("document.getElementById('editor').scrollTop=0")
     await evaluate(frames)
     assert.ok(!(await evaluate(metrics)).mask.includes('rgba(0, 0, 0, 0)'), 'fade clears when back at top')
