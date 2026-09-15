@@ -11,6 +11,8 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 **Stable.** Version 1.5.0 adds square image previews, Codex-style browser chrome, a refined composer and optional titlebar autohide. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
 
+`main` can receive tested improvements between tagged releases. Merging changes does not create a new release or replace existing release assets. This README describes the current source, which may include changes not yet included in a tagged release.
+
 ## What it changes
 
 - Native Hermes theme colors and Glass/Clear window translucency, without changing the Codex layout or typography
@@ -29,6 +31,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Compact Attach and `/` completion menus, smoother Patched file cards and cleaner sidebar/chat chrome
 - Square image previews, right-aligned sent attachments and Codex-style browser controls
 - Optional titlebar autohide while the left sidebar is closed, without moving the conversation
+- Hidden Sessions/Bots minimize button: use the full sidebar toggle instead. Restore remains available for previously minimized layouts.
 
 ## Adjustable settings
 
@@ -40,6 +43,15 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
 | Clean transcript | On / Off | Off | Command palette |
 | Titlebar autohide | On / Off | Off | Command palette |
+
+### Recommended settings
+
+For the recommended Codex-style setup, choose these values through the command palette. These are recommendations, not changes to the defaults listed above.
+
+- **Composer width:** Codex
+- **Pinned user messages:** Off
+- **Clean transcript:** On
+- **Titlebar autohide:** On
 
 Turning **Codex Skin** off restores Hermes' normal appearance.
 
@@ -70,7 +82,9 @@ Older content loaded through **Show previous messages** can remain visible when 
 
 ### Titlebar autohide
 
-Open the command palette and run **Codex Skin: Titlebar autohide**. It is **Off by default**. When enabled, the top bar hides only while the left sidebar is closed. Hover anywhere in the top bar's full-height band to reveal it; the same band keeps it open. Controls, keyboard focus and open menus remain usable, and the conversation does not move.
+Open the command palette and run **Codex Skin: Titlebar autohide**. It is **Off by default**. When enabled, the top bar hides only while the left sidebar is closed. Hover unused space in the top bar's full-height band to reveal it; the same band keeps it open.
+
+Tabs and their controls take priority: moving across tabs, their gaps or neighboring tab groups does not reveal the bar over them. Tab close buttons and the `+` button remain clickable; the unused space after `+` still reveals the bar. Keyboard focus and open menus remain usable, and the conversation does not move.
 
 ## Screenshots
 
@@ -165,6 +179,8 @@ Hermes watches the plugin folder and should load the file automatically. If it d
 ## Update
 
 Run the relevant install command again. Hermes hot-reloads the replaced file. Compare its SHA-256 against [`CHECKSUMS.sha256`](CHECKSUMS.sha256) when you want byte-level verification.
+
+The manual install commands above download from `main`, so running them can fetch improvements before the next tagged release. A merge alone does not replace a manually installed local file.
 
 ## Uninstall
 

@@ -609,13 +609,11 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover {
   border-radius: 10px !important;
 }
 
-/* Round the chat surface only when the sessions track physically precedes it.
-   The tree writes display:none on that exact track when the sidebar is hidden,
-   so the corner disappears with no JS state mirror or transition race. */
+/* Round the chat surface beside the visible sessions sidebar, with or without tabs. */
 html[data-codex-chat-look='true']
   [data-tree-split]
   > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
-  + div::before {
+  + div:has(> [data-tree-group='grp-main'])::before {
   content: '';
   position: absolute;
   top: 0;
@@ -648,6 +646,41 @@ html[data-codex-chat-look='true']
   [data-zone-tabstrip='grp-sessions']
   [role='tab'][data-tree-tab] {
   border-left-color: transparent !important;
+}
+
+/* Match the shared 44px header row while preserving the original square
+   Sessions/Bots tabs, underline and divider behavior. */
+html[data-codex-chat-look='true']
+  [data-tree-group='grp-sessions']
+  > [data-zone-tabstrip='grp-sessions'] {
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  padding-block: 8px !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-tree-group='grp-sessions']
+  > [data-zone-tabstrip='grp-sessions']
+  > [role='tablist'] {
+  align-items: center !important;
+}
+
+html[data-codex-chat-look='true']
+  [data-tree-group='grp-sessions']
+  > [data-zone-tabstrip='grp-sessions']
+  [role='tab'][data-tree-tab] {
+  height: 28px !important;
+  min-height: 28px !important;
+}
+
+/* Prefer the full sidebar toggle to partial minimization. Keep Restore
+   available for layouts saved before this control was hidden. */
+html[data-codex-chat-look='true']
+  [data-tree-group='grp-sessions']
+  > [data-zone-tabstrip='grp-sessions']
+  > button:has(> .codicon-chevron-down) {
+  display: none !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span > .dither {
@@ -951,6 +984,13 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] {
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] > [aria-hidden] {
   background: var(--codex-color-card) !important;
   backdrop-filter: none !important;
+}
+
+/* Remove Hermes' outer composer wash; the Codex surface already owns its fill. */
+html[data-codex-chat-look='true']
+  [data-slot='composer-root']
+  > .pointer-events-none.absolute.inset-0 {
+  background: transparent !important;
 }
 
 html[data-codex-chat-look='true'] [data-slot='composer-fade'] {
@@ -1650,7 +1690,7 @@ html[data-codex-chat-look='true'] [data-slot='aui_intro'] [aria-label='HERMES AG
   mix-blend-mode: normal !important;
 }
 
-/* Browser chrome only; native pane controls and guest documents stay owned
+/* Shared pane tabs and browser chrome; controls and guest documents stay owned
    by Hermes. Exact sampled colors apply only to the Codex dark palette. */
 html[data-codex-chat-look='true'] {
   --codex-browser-background: var(--ui-editor-surface-background);
@@ -1660,7 +1700,7 @@ html[data-codex-chat-look='true'] {
   --codex-browser-divider: var(--ui-stroke-tertiary);
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] {
   --pane-tab-active-accent: transparent;
   --pane-tab-active-bg: var(--codex-browser-tab);
   height: 44px !important;
@@ -1673,12 +1713,12 @@ html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-brows
   box-shadow: none !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] > [role='tablist'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] > [role='tablist'] {
   align-items: center !important;
   gap: 4px !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'] {
   --tab-bg: var(--codex-browser-background);
   --tab-face: var(--codex-browser-background);
   height: 28px !important;
@@ -1689,7 +1729,7 @@ html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-brows
   overflow: hidden !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'][data-active='true'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'][data-active='true'] {
   --tab-bg: var(--codex-browser-tab);
   --tab-face: var(--codex-browser-tab);
   background: var(--codex-browser-tab) !important;
@@ -1697,11 +1737,29 @@ html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-brows
 }
 
 /* Only PaneTabLabel text: preserve glyphs, dirty dots and close controls. */
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate {
   font-size: 12px !important;
   font-weight: 400 !important;
   text-transform: none !important;
   letter-spacing: normal !important;
+}
+
+/* Keep the close control readable without a dark runway or button block. */
+html[data-codex-chat-look='true']
+  [data-tree-group]:not([data-tree-group='grp-sessions'])
+  > [data-zone-tabstrip]
+  [role='tab']
+  > span:last-child:has(> button[aria-label])
+  > [aria-hidden],
+html[data-codex-chat-look='true']
+  [data-tree-group]:not([data-tree-group='grp-sessions'])
+  > [data-zone-tabstrip]
+  [role='tab']
+  > span:last-child:has(> button[aria-label])
+  > button[aria-label] {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 html[data-codex-chat-look='true'] aside[data-preview-browser] {
@@ -1805,7 +1863,7 @@ html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-
 }
 
 html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-titlebar-edge-trigger] {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'][data-codex-titlebar-revealed='true'] [data-codex-titlebar-edge-trigger] {
@@ -1823,7 +1881,7 @@ html[data-codex-chat-look='true'] [data-codex-titlebar-edge-trigger] {
 }
 
 html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-titlebar-edge-trigger] {
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2509,7 +2567,39 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     document.documentElement.removeAttribute('data-codex-left-sidebar')
   }
 
-  function onTitlebarPointerEnter() {
+  function onTitlebarPointerEnter(event) {
+    // Underlying controls win over hover-to-reveal. No layout or hit-zone changes.
+    if (!document.documentElement.hasAttribute('data-codex-titlebar-revealed') && event?.target instanceof Element) {
+      const target = event.target
+      if (target.closest('button, a[href], input, select, textarea, summary, label, [role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="checkbox"], [role="switch"], [role="radio"], [role="slider"], [role="combobox"], [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])')
+        || window.getComputedStyle(target).cursor === 'pointer') return
+      // Protect horizontal travel across every visible tab group on the row,
+      // including rounded corners, inline add controls and pane separators.
+      // Empty space after the rightmost visible control still reveals the bar.
+      const row = []
+      for (const list of document.querySelectorAll('[data-zone-tabstrip] > [role="tablist"]')) {
+        const listStyle = window.getComputedStyle(list)
+        if (listStyle.display === 'none' || listStyle.visibility === 'hidden') continue
+        const listRect = list.getBoundingClientRect()
+        const visibleRect = element => {
+          const style = window.getComputedStyle(element)
+          const rect = element.getBoundingClientRect()
+          if (style.display === 'none' || style.visibility === 'hidden' || rect.width <= 0 || rect.height <= 0
+            || rect.right <= listRect.left || rect.left >= listRect.right) return null
+          return { ...rect.toJSON(), left: Math.max(rect.left, listRect.left), right: Math.min(rect.right, listRect.right) }
+        }
+        const tabs = [...list.querySelectorAll('[role="tab"]')].map(visibleRect).filter(Boolean)
+        if (!tabs.length) continue
+        const rowTop = Math.min(...tabs.map(rect => rect.top))
+        const rowBottom = Math.max(...tabs.map(rect => rect.bottom))
+        if (event.clientY < rowTop || event.clientY >= rowBottom) continue
+        row.push(...tabs, ...[...list.children]
+          .filter(child => !child.matches('[role="tab"]') && (child.matches('button') || child.querySelector('button')))
+          .map(visibleRect).filter(Boolean))
+      }
+      if (row.length && row.some(rect => event.clientX >= rect.left)
+        && row.some(rect => event.clientX < rect.right)) return
+    }
     window.clearTimeout(titlebarRevealTimer)
     titlebarRevealTimer = 0
     if (document.documentElement.getAttribute('data-codex-left-sidebar') === 'closed') setTitlebarRevealed(true)
@@ -2568,7 +2658,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       || root.getAttribute('data-codex-left-sidebar') !== 'closed') return
     const height = titlebarEdgeTrigger?.getBoundingClientRect().height || 0
     if (event.clientY >= 0 && event.clientY < height) {
-      onTitlebarPointerEnter()
+      onTitlebarPointerEnter(event)
     } else if (root.hasAttribute('data-codex-titlebar-revealed') && !titlebarRevealTimer) {
       scheduleTitlebarHide()
     }
@@ -3053,8 +3143,8 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       const removedElements = [...record.removedNodes].filter(node => node instanceof Element)
       const changedElements = [...addedElements, ...removedElements]
       if (changedElements.some(node =>
-        node.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"]')
-        || node.querySelector?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"]')
+        node.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"], [data-slot="sidebar"]')
+        || node.querySelector?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"], [data-slot="sidebar"]')
       )) {
         titlebarDirty = true
         relevant = true

@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Recommended settings in the README: **Composer width = Codex**, **Pinned user messages = Off**, **Clean transcript = On**, and **Titlebar autohide = On**, without changing the defaults.
+
+### Improved
+
+- Applied browser-style tabs to the main pane groups while preserving the original Sessions/Bots appearance and aligning its header height.
+
+### Fixed
+
+- Kept tabs, close buttons and the `+` control above hover-to-reveal behavior, including gaps and horizontal travel between tab groups. Unused space after the controls still reveals the titlebar.
+- Reconciled titlebar state when the sidebar remounts, without adding a blank band or moving tabs.
+- Removed the dark background behind tab close controls while preserving clicks.
+- Preserved the chat corner beside the visible sidebar, including when tabs are present.
+- Removed the outer composer wash while preserving the long-draft fade inside the composer.
+
+### Removed
+
+- Hid the Sessions/Bots partial-minimize button in favor of the full sidebar toggle. Restore remains available for previously minimized layouts.
+
 ## [1.5.0] - 2026-09-14
 
 ### Added

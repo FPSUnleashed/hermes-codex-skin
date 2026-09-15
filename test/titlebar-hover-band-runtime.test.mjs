@@ -96,6 +96,63 @@ test('full titlebar band opens and retains hover without covering native control
     await move(500, 400)
     await settle()
     assert.equal((await evaluate('snapshot()')).revealed, null)
+    // Controls in the original content flow win over the reveal band.
+    for (const markup of ['<button><span>Button</span></button>', '<a href="#"><span>Link</span></a>', '<div role="tab" tabindex="-1"><span>Tab</span></div>', '<input>', '<div style="cursor:pointer"><span>Custom</span></div>']) {
+      await evaluate(`(() => {const control=document.createElement('div');control.id='control';control.style.cssText='height:28px;margin-left:180px;width:120px';control.innerHTML=${JSON.stringify(markup)};control.firstElementChild.style.cssText+=';display:block;width:120px;height:28px';document.getElementById('chat').before(control);window.controlClicks=0;control.onclick=e=>{e.preventDefault();window.controlClicks++}})()`)
+      await settle()
+      const before = await evaluate("({control:document.getElementById('control').getBoundingClientRect().top,chat:snapshot().chatTop})")
+      assert.equal(before.control, 0, 'no added space above content')
+      await move(220, 14)
+      await settle()
+      assert.equal((await evaluate('snapshot()')).revealed, null, markup)
+      for (const type of ['mousePressed', 'mouseReleased']) await call('Input.dispatchMouseEvent', {type,x:220,y:14,button:'left',clickCount:1})
+      assert.equal(await evaluate('window.controlClicks'), 1)
+      assert.deepEqual(await evaluate("({control:document.getElementById('control').getBoundingClientRect().top,chat:snapshot().chatTop})"), before)
+      await evaluate('document.activeElement.blur()')
+      await move(500, 14)
+      await settle()
+      assert.equal((await evaluate('snapshot()')).revealed, 'true', 'empty space still reveals')
+      assert.equal((await evaluate('snapshot()')).chatTop, before.chat)
+      await move(500,400)
+      await settle()
+      await evaluate("document.getElementById('control').remove()")
+    }
+    await evaluate(`(() => {
+      const row=document.createElement('div');row.id='pane-row';row.style.cssText='display:flex;width:760px;gap:80px';
+      const group=document.createElement('div');group.id='tab-group';group.setAttribute('data-tree-group','test');group.style.width='300px';
+      group.innerHTML='<div data-zone-tabstrip style="display:flex"><div role="tablist" style="display:flex;flex:1;min-width:0;overflow:auto"><button role="tab" id="gap-a" style="width:120px;flex-shrink:0">A</button><button role="tab" id="gap-b" style="width:120px;flex-shrink:0">B</button><span id="add-wrap"><button id="add-tab" style="width:20px;height:20px">+</button></span></div></div>';
+      const peer=document.createElement('div');peer.id='browser-group';peer.setAttribute('data-tree-group','browser');peer.style.width='300px';peer.innerHTML='<div data-zone-tabstrip style="display:flex"><div role="tablist" style="display:flex;flex:1;min-width:0;overflow:auto"><button role="tab" id="browser-tab" style="width:120px;flex-shrink:0">Browser</button></div></div>';
+      row.append(group,peer);document.getElementById('chat').before(row);window.tabClicks=0;window.addClicks=0;window.browserClicks=0;document.getElementById('gap-b').onclick=()=>window.tabClicks++;document.getElementById('add-tab').onclick=()=>window.addClicks++;document.getElementById('browser-tab').onclick=()=>window.browserClicks++;
+    })()`)
+    await settle()
+    const tabLayout=await evaluate("({chat:snapshot().chatTop,a:document.getElementById('gap-a').getBoundingClientRect().toJSON(),b:document.getElementById('gap-b').getBoundingClientRect().toJSON(),add:document.getElementById('add-wrap').getBoundingClientRect().toJSON(),browser:document.getElementById('browser-tab').getBoundingClientRect().toJSON()})")
+    const gapX=(tabLayout.a.right+tabLayout.b.left)/2
+    for (const y of [tabLayout.a.top+1,tabLayout.a.top+14,tabLayout.a.top+25]) {
+      for (const x of [tabLayout.a.left+30,tabLayout.a.right-1,gapX,tabLayout.b.left+1,tabLayout.b.left+30,gapX,tabLayout.a.right-1]) {
+        await move(x,y)
+        assert.equal((await evaluate('snapshot()')).revealed,null,`horizontal crossing ${x},${y}`)
+      }
+      await move(gapX,y);await settle()
+      assert.equal((await evaluate('snapshot()')).revealed,null,'resting in gap stays hidden')
+    }
+    const clickX=tabLayout.b.left+30,clickY=tabLayout.b.top+14
+    await move(clickX,clickY)
+    for (const type of ['mousePressed','mouseReleased']) await call('Input.dispatchMouseEvent',{type,x:clickX,y:clickY,button:'left',clickCount:1})
+    assert.equal(await evaluate('window.tabClicks'),1)
+    await evaluate('document.activeElement.blur()')
+    const addGapX=(tabLayout.b.right+tabLayout.add.left)/2
+    for(const y of [tabLayout.b.top+1,tabLayout.b.top+14,tabLayout.b.bottom-1]){await move(addGapX,y);assert.equal((await evaluate('snapshot()')).revealed,null,`tab-to-plus crossing ${addGapX},${y}`)}
+    const addX=(tabLayout.add.left+tabLayout.add.right)/2,addY=(tabLayout.add.top+tabLayout.add.bottom)/2
+    await move(addX,addY);for(const type of ['mousePressed','mouseReleased'])await call('Input.dispatchMouseEvent',{type,x:addX,y:addY,button:'left',clickCount:1});assert.equal(await evaluate('window.addClicks'),1)
+    await evaluate('document.activeElement.blur()')
+    const crossStripGapX=(tabLayout.add.right+tabLayout.browser.left)/2
+    for(const y of [tabLayout.b.top+1,tabLayout.b.top+14,tabLayout.b.bottom-1]){await move(crossStripGapX,y);assert.equal((await evaluate('snapshot()')).revealed,null,`cross-strip crossing ${crossStripGapX},${y}`)}
+    const browserX=tabLayout.browser.left+30,browserY=tabLayout.browser.top+14
+    await move(browserX,browserY);for(const type of ['mousePressed','mouseReleased'])await call('Input.dispatchMouseEvent',{type,x:browserX,y:browserY,button:'left',clickCount:1});assert.equal(await evaluate('window.browserClicks'),1)
+    await evaluate('document.activeElement.blur()')
+    await move(tabLayout.browser.right+40,clickY);await settle()
+    assert.equal((await evaluate('snapshot()')).revealed,'true','space after rightmost tab still reveals')
+    assert.deepEqual(await evaluate("({chat:snapshot().chatTop,a:document.getElementById('gap-a').getBoundingClientRect().toJSON(),b:document.getElementById('gap-b').getBoundingClientRect().toJSON(),add:document.getElementById('add-wrap').getBoundingClientRect().toJSON(),browser:document.getElementById('browser-tab').getBoundingClientRect().toJSON()})"),tabLayout,'hover never moves tabs, plus, browser or chat')
     await evaluate('dispose()')
     assert.equal(await evaluate('document.querySelectorAll("[data-codex-titlebar-edge-trigger]").length'), 0)
   } finally {
