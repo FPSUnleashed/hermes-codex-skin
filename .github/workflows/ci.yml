@@ -31,7 +31,8 @@ jobs:
         run: node --check codex-chat-look/plugin.js
 
       - name: Run regression tests
-        run: node --test test/*.test.mjs
+        # Browser-backed files each launch Chrome; avoid startup contention.
+        run: node --test --test-concurrency=1 test/*.test.mjs
 
       - name: Verify published checksum
         run: sha256sum -c CHECKSUMS.sha256
