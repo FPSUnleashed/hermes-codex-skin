@@ -11,7 +11,7 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 const execFile = promisify(execFileCallback)
 const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome-stable', '/usr/bin/chromium'].find(p => p && existsSync(p))
 
-test('titlebar autohide is opt-in, overlay-only on hover, and restores on sidebar open', { timeout: 30000 }, async t => {
+test('titlebar autohide is overlay-only on hover and restores on sidebar open', { timeout: 30000 }, async t => {
   if (!chrome) return t.skip('Chrome required')
   const { CSS, readTitlebarAutohideMode } = await loadPluginInternals(['CSS', 'readTitlebarAutohideMode'])
   assert.equal(readTitlebarAutohideMode(), 'off')
