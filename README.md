@@ -90,7 +90,7 @@ Tabs and their controls take priority: moving across tabs, their gaps or neighbo
 
 ### Version 1.5.0
 
-Square image previews and the refined composer in dark mode:
+Square image previews and the refined browser and composer in dark mode:
 
 <img src="https://github.com/FPSUnleashed/hermes-codex-skin/releases/download/v1.5.0/codex-skin-v1.5.0.png" alt="Codex Skin v1.5.0 in dark mode" width="800" />
 
