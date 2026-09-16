@@ -33,7 +33,8 @@ test('MNT-004 keeps lexical runtime cleanup without a behavior ref', () => {
   assert.doesNotMatch(source, /\buseRef\b|\bbehaviorRef\b/)
   assert.match(source, /import \{ useEffect \} from 'react'/)
   assert.match(source, /const uninstallBehavior = installBehaviorRuntime/)
-  assert.match(source, /return \(\) => \{\s*uninstallBehavior\(\)\s*\}/)
+  // Cleanup composition is exercised by sidebar-glass-runtime.test.mjs;
+  // requiring a single-statement body rejects additional reversible effects.
   assert.match(source, /RUNTIME_HANDOFF_KEY/)
 })
 

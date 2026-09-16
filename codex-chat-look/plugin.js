@@ -3710,6 +3710,57 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   return cleanup
 }
 
+// Recover older Hermes builds that start sidebar glass before the rail mounts.
+// Let Hermes own its seam and ResizeObserver; only wake its existing resize
+// handler when a rail appears/disappears or sidebar glass becomes active.
+function installSidebarGlassRecovery() {
+  const root = document.documentElement
+  let rail = null
+  let active = false
+  let frame = 0
+  const glassActive = () => root.hasAttribute('data-hermes-glass')
+    && root.getAttribute('data-hermes-glass-scope') === 'sidebar'
+
+  const reconcile = () => {
+    const nextActive = glassActive()
+    const nextRail = nextActive
+      ? (rail?.isConnected ? rail : document.querySelector('[data-slot="sidebar"]'))
+      : null
+    if (nextActive === active && nextRail === rail) return
+    active = nextActive
+    rail = nextRail
+    if (frame) window.cancelAnimationFrame(frame)
+    frame = 0
+    if (!active) return
+    frame = window.requestAnimationFrame(() => {
+      frame = 0
+      if (!glassActive()) return
+      const current = document.querySelector('[data-slot="sidebar"]')
+      const rect = current?.getBoundingClientRect()
+      const edge = rect
+        ? Math.max(0, Math.round(getComputedStyle(root).direction === 'rtl'
+          ? window.innerWidth - rect.left : rect.right))
+        : 0
+      // Patched Hermes already acquired the rail. Do not duplicate its work.
+      // A zero-width mounted rail still needs acquisition for later resizing.
+      if ((!current || edge > 0) && root.style.getPropertyValue('--glass-rail-edge') === `${edge}px`) return
+      window.dispatchEvent(new Event('resize'))
+    })
+  }
+  const observer = new MutationObserver(reconcile)
+  observer.observe(root, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-hermes-glass', 'data-hermes-glass-scope']
+  })
+  reconcile()
+  return () => {
+    observer.disconnect()
+    if (frame) window.cancelAnimationFrame(frame)
+  }
+}
+
 function CodexChatStyleRuntime() {
   useEffect(() => {
     const root = document.documentElement
@@ -3740,7 +3791,9 @@ function CodexChatStyleRuntime() {
       if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
     root.dataset.codexChatLookRuntime = BUILD_ID
+    const uninstallSidebarGlassRecovery = installSidebarGlassRecovery()
     return () => {
+      uninstallSidebarGlassRecovery()
       uninstallBehavior()
     }
   }, [])

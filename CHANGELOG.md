@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Recover sidebar-scoped glass on Hermes builds that miss a late-mounted sidebar, without toggling appearance or changing translucency settings.
 - Clear the composer's scroll fade when a long draft is shortened or emptied, or a wider composer makes it fit. Long scrolled drafts retain their fade.
 
 ## [1.6.0] - 2026-09-15
