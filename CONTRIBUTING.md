@@ -2,6 +2,18 @@
 
 Contributions are welcome, especially compatibility fixes for newer Hermes Desktop releases.
 
+## Bug-fix scope
+
+Codex Skin fixes bugs caused by Codex Skin. It must not patch or work around bugs originating in Hermes Desktop or other components, even temporarily while an upstream fix is pending.
+
+Before proposing a bug fix, identify which component causes the problem. Compare the same Hermes version and settings with the skin enabled and disabled, and trace the cause when that comparison is inconclusive. Include the evidence in your pull request; appearing while the skin is enabled does not, by itself, make a bug the skin's responsibility.
+
+- Fixes to the skin's own styles, behavior or integration with supported Hermes behavior belong here.
+- Bugs in Hermes belong in the Hermes repository. Bugs in other components belong with their respective maintainers. An upstream issue or pull request does not justify adding a workaround to the skin.
+- Compatibility fixes adapt the skin to changes in Hermes; they must not compensate for defects in Hermes itself.
+
+Pull requests that fix an upstream bug through the skin will be closed without merging. This is a scope decision, not a judgment on the usefulness of the bug report or upstream contribution.
+
 ## Ground rules
 
 - Preserve Hermes' native model and Thinking Level menus.
