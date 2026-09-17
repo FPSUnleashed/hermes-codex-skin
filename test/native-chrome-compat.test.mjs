@@ -19,7 +19,7 @@ const nativeStatus = (id, tasks = false) => `<div data-slot="composer-dock" id="
 
 test('native nested panel headers, browser controls and status scroll wrappers retain the skin', async t => {
   assert.ok(chrome, 'Chromium must be installed for this gate')
-  const internals = await loadPluginInternals(['CSS', 'BROWSER_PALETTE_CSS', 'decorateComposerChrome', 'decorateModelTrigger', 'clearComposerChromeDecorations'])
+  const internals = await loadPluginInternals(['CSS', 'BROWSER_PALETTE_CSS', 'decorateComposerChrome', 'clearComposerChromeDecorations'])
   const temp = await mkdtemp(path.join(os.tmpdir(), 'codex-native-chrome-'))
   const file = path.join(temp, 'fixture.html')
   const nativeCSS = process.env.CODEX_NATIVE_CSS ? await readFile(process.env.CODEX_NATIVE_CSS, 'utf8') : ''
@@ -33,7 +33,6 @@ ${internals.CSS}${internals.BROWSER_PALETTE_CSS}</style></head><body>
 <div data-tree-split="root"><div><div data-tree-group="grp-sessions"><div data-panel-header><div data-zone-tabstrip="grp-sessions"><div role="tablist">${nativeTab('sessions',true)}</div></div></div></div></div><div style="width:700px"><div id="main" data-tree-group="grp-main"><div data-panel-header id="header"><div data-zone-tabstrip="grp-main" id="strip"><div role="tablist">${nativeTab('browser',true)}${nativeTab('second',false)}</div></div></div><aside data-preview-browser="browser"><div><div id="toolbar" class="toolbar"><span><button id="back" disabled>←</button></span><span><button id="reload">↻</button></span><div class="address-wrap"><input id="address" data-slot="input" inputmode="url" aria-label="Address" value="https://example.test"><button id="copy" class="copy">⧉</button></div><span><button id="console" aria-pressed="false">▣</button></span></div><div id="guest" style="background:white;color:rgb(12,34,56)">Guest page stays untouched</div></div></aside></div></div></div>
 ${nativeStatus('one')}${nativeStatus('two',true)}
 <script>
-${internals.decorateModelTrigger.toString()}
 ${internals.decorateComposerChrome.toString()}
 ${internals.clearComposerChromeDecorations.toString()}
 const by=id=>document.getElementById(id), cs=el=>getComputedStyle(el), rect=el=>{let r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};

@@ -4,7 +4,13 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
-No changes yet.
+### Fixed
+
+- Leave model labels entirely to Hermes, preserving its original names, capitalization and Fast indicator. Removed the skin's name rewriting and appended reasoning label; Hermes' native Thinking Level control is unchanged.
+
+### Improved
+
+- Refined sidebar contrast: clearer conversation names, quieter section headings and navigation icons, and subtler neutral hover/selection fills. Layout, typography and native status colors are unchanged.
 
 ## [1.7.0] - 2026-09-17
 

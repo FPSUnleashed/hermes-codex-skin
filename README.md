@@ -21,7 +21,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Native Hermes theme colors and Glass/Clear window translucency, without changing the Codex layout or typography
 - A selectable **Codex Skin** theme in **Settings → Appearance** for the original Codex light and dark palettes
 - Chat typography, spacing, sidebar, composer, Queue, bubbles, menus and loaders
-- Codex-style model name in the composer
+- Native model names in the composer, without renaming or changing capitalization
 - Hermes' native model and Thinking Level menus after clicking the model name
 - Hermes' native auto-speak and wake-word controls inside the composer
 - Cleaner styling for Hermes' native **Voice dictation** and **Reading aloud** surfaces

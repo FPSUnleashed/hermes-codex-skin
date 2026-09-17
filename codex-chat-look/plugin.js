@@ -123,6 +123,10 @@ html[data-codex-chat-look='true'] {
   --codex-color-border-subtle: var(--ui-stroke-tertiary);
   --codex-color-hover: var(--ui-row-hover-background);
   --codex-color-active: var(--ui-row-active-background);
+  --codex-sidebar-label: color-mix(in srgb, var(--codex-color-text) 90%, var(--codex-color-sidebar));
+  --codex-sidebar-muted: color-mix(in srgb, var(--codex-color-text) 65%, var(--codex-color-sidebar));
+  --codex-sidebar-hover: color-mix(in srgb, var(--codex-color-text) 4%, transparent);
+  --codex-sidebar-active: color-mix(in srgb, var(--codex-color-text) 7%, transparent);
   --codex-color-primary: var(--dt-primary);
   --codex-color-primary-foreground: var(--dt-primary-foreground);
   --codex-color-success: var(--ui-green);
@@ -600,7 +604,7 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
   border: 0 !important;
   border-radius: 10px !important;
   outline: 0 !important;
-  background: var(--codex-color-active) !important;
+  background: var(--codex-sidebar-active) !important;
   box-shadow: none !important;
 }
 
@@ -608,6 +612,10 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [aria-current='true'] {
    :hover, Chromium can paint one native 6 px frame before the hover cascade. */
 html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover {
   border-radius: 10px !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover:hover:not([class*='ui-row-active-background']):not([data-active='true']):not([aria-current='true']) {
+  background: var(--codex-sidebar-hover) !important;
 }
 
 /* Native Bots/group rows are full-width buttons, not .row-hover elements.
@@ -620,12 +628,12 @@ html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
 
 html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
   button[aria-label][class~='w-full'][class~='text-left'][class~='hover:bg-(--chrome-action-hover)']:hover {
-  background: var(--codex-color-hover) !important;
+  background: var(--codex-sidebar-hover) !important;
 }
 
 html[data-codex-chat-look='true'] [data-tree-group='grp-sessions']
   button[aria-label][class~='w-full'][class~='text-left'][class~='hover:bg-(--chrome-action-hover)'][class~='bg-(--ui-row-active-background)'] {
-  background: var(--codex-color-active) !important;
+  background: var(--codex-sidebar-active) !important;
 }
 
 /* Round the chat surface beside the visible sessions sidebar, with or without tabs. */
@@ -755,7 +763,7 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-l
 }
 
 html[data-codex-chat-look='true'] [data-slot='sidebar'] [class~='group/section-label'] > span:first-child {
-  color: var(--codex-color-text) !important;
+  color: var(--codex-sidebar-muted) !important;
   font-family: ${SYSTEM_FONT} !important;
   font-size: 14px !important;
   line-height: 21px !important;
@@ -789,6 +797,21 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] span[class*='text-[0.812
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
+}
+
+/* Names carry the hierarchy; section labels and utility icons stay quieter.
+   Never dim a whole row: its native status and project colors must survive. */
+html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover span[class*='text-[0.8125rem]'],
+html[data-codex-chat-look='true'] [data-slot='sidebar-menu-button'] {
+  color: var(--codex-sidebar-label) !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar'] .row-hover:is(:hover, [data-active='true'], [aria-current='true'], [class*='ui-row-active-background']) span[class*='text-[0.8125rem]'] {
+  color: var(--codex-color-text) !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='sidebar-menu-button'] > :is(svg, .codicon):not([style*='color']) {
+  color: var(--codex-sidebar-muted) !important;
 }
 
 /* Pure idle has no information to communicate. Hide only Hermes' uncolored
@@ -1336,14 +1359,6 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button[aria-lab
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria-label^='Model ·'],[aria-label^='Modèle ·'])[data-state='open'] {
   background: var(--codex-color-active) !important;
   color: var(--codex-color-text) !important;
-}
-
-html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-trigger-model] {
-  color: var(--codex-color-text);
-}
-
-html[data-codex-chat-look='true'] [data-codex-model-trigger='true'] [data-codex-trigger-effort] {
-  color: color-mix(in srgb, var(--codex-color-text) 49%, transparent);
 }
 
 /* Match the drawn plus while retaining the native menu button and handler. */
@@ -2357,67 +2372,6 @@ function decorateLongUserMessage(pair) {
   control.title = expanded ? labels.less : labels.more
 }
 
-function prettyModelName(value) {
-  const raw = value.trim()
-  const match = raw.match(/^GPT-(\d+(?:\.\d+)?)-(.+)$/i)
-  if (!match) return raw
-  const suffix = match[2]
-    .split('-')
-    .map(part => part ? part[0].toUpperCase() + part.slice(1) : part)
-    .join(' ')
-  return `${match[1]} ${suffix}`
-}
-
-function currentModelDisplay() {
-  const trigger = document.querySelector('button[aria-label^="Model ·"], button[aria-label^="Modèle ·"]')
-  // Read native accessibility labels, never our own decorated text.
-  const nativeTitle = trigger?.getAttribute('aria-label') || ''
-  const titleModel = nativeTitle.replace(/^(?:Model|Modèle) · [^:]+:\s*/, '').replace(/ — .*$/, '')
-  const label = trigger?.querySelector(':scope > span')
-  const liveText = (label?.textContent || '').trim()
-  const text = trigger?.dataset.codexNativeModelLabel || liveText
-  const [legacyModel = '', rawMeta = ''] = text.split('·').map(part => part.trim())
-  const rawModel = titleModel !== nativeTitle ? titleModel : (label?.querySelector('[data-codex-trigger-model]')?.textContent || legacyModel)
-  const effortTitle = document.querySelector('button[aria-label^="Effort:"]')?.getAttribute('aria-label') || ''
-  const effortRaw = effortTitle.replace(/^Effort:\s*/, '').trim() || rawMeta.replace(/\bFast\b/gi, '').trim() || 'Medium'
-  const effortMap = {
-    Minimal: 'Minimal',
-    Low: 'Low',
-    Med: 'Medium',
-    Medium: 'Medium',
-    High: 'High',
-    'Extra High': 'Extra High',
-    Faible: 'Low',
-    Moyen: 'Medium',
-    'Élevé': 'High',
-    'Très élevé': 'Extra High',
-    Max: 'Max',
-    Ultra: 'Ultra'
-  }
-  return {
-    model: prettyModelName(rawModel),
-    effort: effortMap[effortRaw] || effortRaw
-  }
-}
-
-function decorateModelTrigger() {
-  const trigger = document.querySelector('button[aria-label^="Model ·"], button[aria-label^="Modèle ·"]')
-  const label = trigger?.querySelector(':scope > span')
-  if (!trigger || !label) return
-  const current = currentModelDisplay()
-  const existingModel = label.querySelector('[data-codex-trigger-model]')?.textContent
-  const existingEffort = label.querySelector('[data-codex-trigger-effort]')?.textContent
-  if (existingModel === current.model && existingEffort === current.effort) return
-  const model = document.createElement('span')
-  model.dataset.codexTriggerModel = 'true'
-  model.textContent = current.model
-  const effort = document.createElement('span')
-  effort.dataset.codexTriggerEffort = 'true'
-  effort.textContent = current.effort
-  label.replaceChildren(model, document.createTextNode(' '), effort)
-  trigger.dataset.codexModelTrigger = 'true'
-}
-
 function decorateComposerChrome() {
   const surface = document.querySelector('[data-slot="composer-surface"]')
   const dock = document.querySelector('[data-slot="composer-dock"]') || surface?.closest('[data-slot="composer-root"]')
@@ -2455,7 +2409,6 @@ function decorateComposerChrome() {
     && element.querySelectorAll(':scope > div:last-child > button').length === 2
   )
   editBanner?.setAttribute('data-codex-edit-banner', 'true')
-  decorateModelTrigger()
 
   const contextMenu = [...document.querySelectorAll('[data-slot="dropdown-menu-content"][role="menu"]')].find(menu => {
     const text = menu.textContent || ''
@@ -2474,14 +2427,6 @@ function clearComposerChromeDecorations() {
     element.removeAttribute('data-codex-task-section')
     element.removeAttribute('data-codex-has-task-section')
   }
-
-  for (const trigger of document.querySelectorAll('[data-codex-model-trigger]')) {
-    const label = trigger.querySelector(':scope > span')
-    if (label && trigger.dataset.codexNativeModelLabel) label.textContent = trigger.dataset.codexNativeModelLabel
-    trigger.removeAttribute('data-codex-model-trigger')
-    trigger.removeAttribute('data-codex-native-model-label')
-  }
-
 }
 
 function readComposerWidthMode() {

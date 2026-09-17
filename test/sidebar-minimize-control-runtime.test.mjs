@@ -53,7 +53,7 @@ test('hide only Sessions/Bots minimize, retaining full toggle, tabs, restore and
   try {
     const file = path.join(temp, 'index.html')
     await writeFile(file, fixture(CSS))
-    const { stdout } = await execFile('/usr/bin/google-chrome-stable', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--dump-dom', pathToFileURL(file).href], { maxBuffer: 3 * 1024 * 1024 })
+    const { stdout } = await execFile(process.env.CHROME_BIN || '/usr/bin/google-chrome-stable', ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--dump-dom', pathToFileURL(file).href], { maxBuffer: 3 * 1024 * 1024 })
     const match = stdout.match(/<title>([^<]+)<\/title>/)
     assert.ok(match)
     const r = JSON.parse(Buffer.from(match[1], 'base64').toString())
