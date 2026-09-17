@@ -23,31 +23,3 @@ test('long user controls stay English under a French locale', () => {
   vm.runInNewContext(code, context)
   assert.deepEqual({ ...context.result }, { more: 'Show more', less: 'Show less' })
 })
-
-test('model effort labels stay English', () => {
-  const code = `${extractFunction('prettyModelName', 'decorateModelTrigger')}\nresult = currentModelDisplay()`
-  for (const [nativeEffort, expected] of [
-    ['Low', 'Low'],
-    ['Med', 'Medium'],
-    ['Medium', 'Medium'],
-    ['High', 'High'],
-    ['Extra High', 'Extra High'],
-    ['Faible', 'Low'],
-    ['Moyen', 'Medium'],
-    ['Élevé', 'High'],
-    ['Très élevé', 'Extra High']
-  ]) {
-    const trigger = {
-      dataset: {},
-      getAttribute: () => '',
-      querySelector: () => ({ textContent: `GPT-5.6 · ${nativeEffort}`, querySelector: () => null }),
-      textContent: `GPT-5.6 · ${nativeEffort}`
-    }
-    const context = {
-      document: { querySelector: selector => selector.includes('Effort:') ? null : trigger },
-      result: null
-    }
-    vm.runInNewContext(code, context)
-    assert.equal(context.result.effort, expected, nativeEffort)
-  }
-})

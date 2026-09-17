@@ -37,9 +37,6 @@ test('MNT-004 keeps lexical runtime cleanup without a behavior ref', () => {
   assert.match(source, /RUNTIME_HANDOFF_KEY/)
 })
 
-test('MNT-005 removes dead speed metadata without leaking Fast into effort', () => {
-  assert.doesNotMatch(source, /const fast =|\bspeed:/)
-  assert.match(source, /rawMeta\.replace\(\/\\bFast\\b\/gi, ''\)/)
-  assert.match(source, /model: prettyModelName\(rawModel\)/)
-  assert.match(source, /effort: effortMap\[effortRaw\] \|\| effortRaw/)
+test('model and effort labels remain owned by Hermes', () => {
+  assert.doesNotMatch(source, /prettyModelName|currentModelDisplay|decorateModelTrigger|codex-trigger-model|codex-trigger-effort|codexNativeModelLabel/)
 })
