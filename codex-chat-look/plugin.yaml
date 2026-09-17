@@ -1,0 +1,12 @@
+name: codex-chat-look
+version: "1.7.0"
+description: >-
+  A Codex-inspired look for Hermes Desktop, with refined chat, sidebar and
+  browser styling, native theme support, and optional clean transcript and
+  composer settings. Keeps Hermes' native controls and behavior.
+author: FPSUnleashed
+kind: standalone
+provides_tools: []
+provides_hooks: []
+provides_middleware: []
+requires_env: []
