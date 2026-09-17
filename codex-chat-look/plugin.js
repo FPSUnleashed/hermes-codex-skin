@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.5.0'
+const BUILD_ID = 'v1.7.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -13,8 +13,7 @@ const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
 const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
 const CLEAN_TRANSCRIPT_STORAGE_KEY = 'clean-transcript'
 const CLEAN_TRANSCRIPT_EVENT = `${ID}:clean-transcript`
-const TITLEBAR_AUTOHIDE_STORAGE_KEY = 'titlebar-autohide'
-const TITLEBAR_AUTOHIDE_EVENT = `${ID}:titlebar-autohide`
+
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
 let pluginStorage = null
@@ -92,9 +91,10 @@ const BROWSER_PALETTE_CSS = `
 html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark'] {
   --codex-browser-background: var(--codex-color-chat);
   --codex-browser-tab: #1d1d1d;
-  --codex-browser-address: #222222;
-  --codex-browser-border: #323232;
+  --codex-browser-address: transparent;
+  --codex-browser-border: transparent;
   --codex-browser-divider: #232323;
+  --codex-sidebar-divider: #2c2c2c;
 }
 `
 
@@ -222,7 +222,7 @@ html[data-codex-chat-look='true'] [data-slot='aui_assistant-message-content'] {
    action remains in that turn. */
 html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
   [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
-  > [data-codex-clean-interim='true'],
+  [data-codex-clean-interim='true'],
 html[data-codex-chat-look='true'][data-codex-clean-transcript='on']
   [data-slot='aui_turn-pair'][data-codex-clean-settled='true']
   [data-codex-clean-interim-part='true'],
@@ -651,6 +651,37 @@ html[data-codex-chat-look='true']
   border-top-left-radius: 16px !important;
 }
 
+/* With an integrated panel header, the visible chat starts below that header.
+   Its rounded cutout must reveal sidebar paint, not the chat's own background. */
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main']:has(> [data-panel-header]) {
+  background: var(--ui-sidebar-surface-background) !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main'] > [data-panel-header] + div {
+  border-top-left-radius: 0 !important;
+  background: var(--ui-editor-surface-background) !important;
+}
+
+/* Integrated headers and their content share a square edge. The standalone
+   chat surface above remains rounded only when it has no integrated header. */
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div:has(> [data-tree-group='grp-main'] > [data-panel-header])::before {
+  content: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main']:has(> [data-panel-header]) {
+  border-top-left-radius: 0 !important;
+}
+
 html[data-codex-chat-look='true']
   [data-tree-split]
   > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
@@ -667,11 +698,28 @@ html[data-codex-chat-look='true']
   border-left-color: transparent !important;
 }
 
+/* Drop only the unused center band when the sidebar and browser already
+   carry the window controls. Keep edge/full-width chat headers intact. */
+html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])) > [data-panel-header] {
+  display: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])),
+html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])) > [data-panel-header] + div {
+  border-top-left-radius: 0 !important;
+}
+
 /* Match the shared 44px header row while preserving the original square
    Sessions/Bots tabs, underline and divider behavior. */
 html[data-codex-chat-look='true']
   [data-tree-group='grp-sessions']
-  > [data-zone-tabstrip='grp-sessions'] {
+  [data-zone-tabstrip='grp-sessions'] {
   height: 44px !important;
   min-height: 44px !important;
   box-sizing: border-box !important;
@@ -680,14 +728,14 @@ html[data-codex-chat-look='true']
 
 html[data-codex-chat-look='true']
   [data-tree-group='grp-sessions']
-  > [data-zone-tabstrip='grp-sessions']
+  [data-zone-tabstrip='grp-sessions']
   > [role='tablist'] {
   align-items: center !important;
 }
 
 html[data-codex-chat-look='true']
   [data-tree-group='grp-sessions']
-  > [data-zone-tabstrip='grp-sessions']
+  [data-zone-tabstrip='grp-sessions']
   [role='tab'][data-tree-tab] {
   height: 28px !important;
   min-height: 28px !important;
@@ -697,7 +745,7 @@ html[data-codex-chat-look='true']
    available for layouts saved before this control was hidden. */
 html[data-codex-chat-look='true']
   [data-tree-group='grp-sessions']
-  > [data-zone-tabstrip='grp-sessions']
+  [data-zone-tabstrip='grp-sessions']
   > button:has(> .codicon-chevron-down) {
   display: none !important;
 }
@@ -785,26 +833,41 @@ html[data-codex-chat-look='true'] [data-slot='sidebar'] [role='status'][class~='
 /* Left-edge history index. Native buttons still own message navigation; only
    the hover presentation is replaced. Dimensions follow the 2x reference. */
 html[data-codex-chat-look='true'] [data-codex-history-rail] {
-  left: 16px !important;
+  /* Local units compensate the zoom: 16px left and 36px wide on screen. */
+  left: 11.2px !important;
   right: auto !important;
-  width: 36px !important;
+  width: 25.2px !important;
   align-items: flex-start !important;
+  /* Scale the whole native coordinate space, including its hit targets.
+     The virtualizer still owns unchanged 7px offsets and scrollTop values. */
+  zoom: calc(10 / 7);
+  transform: translateY(-50%) !important;
+  transform-origin: center !important;
+  max-height: calc(min(60vh, 360px, var(--codex-history-rail-height, 360px)) * .7);
+}
+html[data-codex-chat-look='true'] [data-session-anchor]:has([data-slot='thread-timeline']) {
+  container-type: inline-size;
+  container-name: codex-history-pane;
+}
+@container codex-history-pane (max-width: 862px) {
+  html[data-codex-chat-look='true'] [data-codex-history-rail] { display: none !important; }
 }
 html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] {
   align-items: flex-start !important;
-  width: 36px !important;
+  width: 25.2px !important;
   max-height: min(60vh, 360px, var(--codex-history-rail-height, 360px));
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
-  padding: 4px 0 !important;
+  padding: 0 !important;
 }
-html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button {
-  flex: 0 0 10px !important;
-  width: 36px !important;
-  height: 10px !important;
-  min-height: 10px !important;
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > .thread-timeline-track {
+  width: 25.2px !important;
+  position: relative !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > .thread-timeline-track button.thread-timeline-tick {
+  width: 25.2px !important;
   justify-content: flex-start !important;
   padding: 0 !important;
   border: 0 !important;
@@ -812,22 +875,27 @@ html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-t
   background: transparent !important;
   cursor: pointer;
 }
-html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > span {
-  width: var(--codex-history-tick-width, 6px) !important;
-  height: 2px !important;
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > .thread-timeline-track button.thread-timeline-tick > [data-slot='timeline-bar'] {
+  width: calc(var(--codex-history-tick-width, 6px) * .7) !important;
+  height: 1.4px !important;
   flex: none !important;
   border-radius: 0 !important;
-  background: var(--codex-color-text) !important;
+  background: color-mix(in srgb, var(--codex-color-text) 19.148936%, var(--codex-color-chat)) !important;
   background-image: none !important;
-  opacity: .65 !important;
+  opacity: 1 !important;
   transition: width 140ms cubic-bezier(.2,.8,.2,1), opacity 140ms ease !important;
 }
-html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > .dither,
-html[data-codex-chat-look='true'] [data-codex-history-rail][data-codex-history-open] [data-slot='thread-timeline-ticks'] > button > span {
-  opacity: .2 !important;
+/* Pointer motion already updates the continuous wave once per frame. Do not
+   restart a trailing width animation on every sample; animate only its exit. */
+html[data-codex-chat-look='true'] [data-codex-history-rail][data-codex-history-open] [data-slot='thread-timeline-ticks'] > .thread-timeline-track button.thread-timeline-tick > [data-slot='timeline-bar'] {
+  transition: none !important;
 }
-html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button[data-codex-history-hover] > span {
-  opacity: 1 !important;
+/* The hover preview temporarily replaces Hermes' visible-message highlight. */
+html[data-codex-chat-look='true'] [data-codex-history-rail]:not([data-codex-history-open]) [data-slot='thread-timeline-ticks'] > .thread-timeline-track button.thread-timeline-tick[aria-current='location'] > [data-slot='timeline-bar'] {
+  background: color-mix(in srgb, var(--codex-color-text) 60%, var(--codex-color-chat)) !important;
+}
+html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > .thread-timeline-track button.thread-timeline-tick[data-codex-history-hover] > [data-slot='timeline-bar'] {
+  background: var(--codex-color-text) !important;
 }
 html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-popover'] {
   display: none !important;
@@ -869,7 +937,7 @@ html[data-codex-chat-look='true'] [data-codex-history-answer] p { margin: 0 0 8p
 html[data-codex-chat-look='true'] [data-codex-history-answer] p:last-child { margin-bottom: 0; }
 html[data-codex-chat-look='true'] [data-codex-history-answer] strong { font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
-  html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] > button > span { transition: none !important; }
+  html[data-codex-chat-look='true'] [data-codex-history-rail] [data-slot='thread-timeline-ticks'] .thread-timeline-tick > [data-slot='timeline-bar'] { transition: none !important; }
 }
 
 /* Codex sidebar scrollbar: a neutral overlay thumb exists only while the user
@@ -1666,6 +1734,34 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   backdrop-filter: none !important;
 }
 
+/* Current Hermes separates frame, scroll owner and content. Paint the content,
+   clip at the frame's radius, and retain the native scroll owner's constraints. */
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack'] > div:has(> [data-slot='status-stack-scroll']) {
+  margin: 0 26px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 20px 20px 0 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='status-stack-scroll'] {
+  scrollbar-width: thin !important;
+  scrollbar-color: transparent transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='status-stack-scroll']:hover {
+  scrollbar-color: color-mix(in srgb, var(--codex-color-text) 22%, transparent) transparent !important;
+}
+
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack'][data-codex-has-task-section='true'] [data-slot='status-stack-scroll'] {
+  display: flex !important;
+  min-height: 0 !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
 /* The scroll owner wraps the rounded card, so an opaque native gutter paints a
    square outside the top-right radius on long task lists. Keep the native scroll
    behavior, but make its track/buttons transparent and reveal only a quiet thumb. */
@@ -1794,6 +1890,12 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   border-radius: 8px !important;
 }
 
+/* Artifact rows are single-line. Center the native grid's dismiss/icon/text
+   within our taller compact row, without changing multiline status rows. */
+html[data-codex-chat-look='true'] [data-codex-status-card='true'] .status-artifacts > [data-slot='status-row'] {
+  align-items: center !important;
+}
+
 html[data-codex-chat-look='true'] [data-slot='aui_intro'] [aria-label='HERMES AGENT'] {
   color: var(--codex-color-text) !important;
   mix-blend-mode: normal !important;
@@ -1809,7 +1911,21 @@ html[data-codex-chat-look='true'] {
   --codex-browser-divider: var(--ui-stroke-tertiary);
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] {
+/* Native control reservations sit beside the tabstrip in its parent header. */
+html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip]) {
+  min-height: 44px !important;
+}
+
+/* Native cramped headers reserve a separate 34px drag/control row. */
+html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip][class~='absolute']) {
+  min-height: 78px !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-panel-header]:has([data-zone-tabstrip]) {
+  background: var(--codex-browser-background) !important;
+}
+
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] {
   --pane-tab-active-accent: transparent;
   --pane-tab-active-bg: var(--codex-browser-tab);
   height: 44px !important;
@@ -1822,12 +1938,12 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
   box-shadow: none !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] > [role='tablist'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] > [role='tablist'] {
   align-items: center !important;
   gap: 4px !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab'] {
   --tab-bg: var(--codex-browser-background);
   --tab-face: var(--codex-browser-background);
   height: 28px !important;
@@ -1838,7 +1954,7 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
   overflow: hidden !important;
 }
 
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'][data-active='true'] {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab']:is([aria-selected='true'], [data-active='true']) {
   --tab-bg: var(--codex-browser-tab);
   --tab-face: var(--codex-browser-tab);
   background: var(--codex-browser-tab) !important;
@@ -1846,7 +1962,8 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
 }
 
 /* Only PaneTabLabel text: preserve glyphs, dirty dots and close controls. */
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate {
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate,
+html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab'] > .pane-tab-content > :is(span, button) > span.truncate {
   font-size: 12px !important;
   font-weight: 400 !important;
   text-transform: none !important;
@@ -1856,13 +1973,13 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
 /* Keep the close control readable without a dark runway or button block. */
 html[data-codex-chat-look='true']
   [data-tree-group]:not([data-tree-group='grp-sessions'])
-  > [data-zone-tabstrip]
+  [data-zone-tabstrip]
   [role='tab']
   > span:last-child:has(> button[aria-label])
   > [aria-hidden],
 html[data-codex-chat-look='true']
   [data-tree-group]:not([data-tree-group='grp-sessions'])
-  > [data-zone-tabstrip]
+  [data-zone-tabstrip]
   [role='tab']
   > span:last-child:has(> button[aria-label])
   > button[aria-label] {
@@ -1944,62 +2061,56 @@ html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child 
   color: var(--ui-text-primary) !important;
 }
 
-/* Optional titlebar autohide. The bar becomes fixed overlay chrome only while
-   active and the physical left sidebar is closed; hover transitions never
-   remeasure or shift the chat. Electron's native window controls remain untouched. */
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar] {
-  position: fixed !important;
-  z-index: 60 !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
+/* Screenshot reference: 28px tabs, 10px vertical breathing room, then a
+   compact navigation row. Preserve every Hermes action and narrow-pane wrap. */
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-panel-header]:has([data-zone-tabstrip]) {
+  min-height: 48px !important;
+}
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-panel-header]:has([data-zone-tabstrip][class~='absolute']) {
+  min-height: 82px !important;
+}
+html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) [data-zone-tabstrip] {
+  height: 48px !important;
+  min-height: 48px !important;
+  padding-block: 10px !important;
+}
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) {
+  min-height: 39px !important;
+  padding: 5px 10px !important;
+  gap: 5px !important;
 }
 
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar],
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-native-titlebar-cluster] {
-  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease !important;
-  will-change: transform, opacity;
+/* Paint the reference hairlines without narrowing native resize hit targets. */
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [role='separator'][class~='inset-y-0'] {
+  --codex-split-scale: .25;
+  --codex-split-color: var(--codex-sidebar-divider, var(--ui-stroke-secondary));
 }
-
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-native-titlebar] {
-  transform: translateY(-34px) !important;
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group] aside[data-preview-browser]) > [role='separator'][class~='inset-y-0'] {
+  --codex-split-scale: .5;
+  --codex-split-color: var(--codex-browser-divider);
 }
-
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-native-titlebar-cluster] {
-  transform: translateY(-34px) !important;
-  pointer-events: none !important;
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [role='separator'][class~='inset-y-0'] > span:first-child,
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group] aside[data-preview-browser]) > [role='separator'][class~='inset-y-0'] > span:first-child {
+  width: 1px !important;
+  left: 1px !important;
+  transform: scaleX(var(--codex-split-scale)) !important;
+  transform-origin: left center !important;
+  opacity: 1 !important;
+  background: var(--codex-split-color) !important;
 }
-
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed']:not([data-codex-titlebar-revealed='true']) [data-codex-titlebar-edge-trigger] {
-  pointer-events: none;
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
+  + div > [role='separator'][class~='inset-y-0'] > span:nth-child(2),
+html[data-codex-chat-look='true'] [data-tree-split]
+  > div:has(> [data-tree-group] aside[data-preview-browser]) > [role='separator'][class~='inset-y-0'] > span:nth-child(2) {
+  opacity: 0 !important;
 }
-
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'][data-codex-titlebar-revealed='true'] [data-codex-titlebar-edge-trigger] {
-  pointer-events: none;
-}
-
-html[data-codex-chat-look='true'] [data-codex-titlebar-edge-trigger] {
-  position: fixed;
-  z-index: 80;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 34px;
-  pointer-events: none;
-}
-
-html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'][data-codex-left-sidebar='closed'] [data-codex-titlebar-edge-trigger] {
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'] [data-codex-native-titlebar],
-  html[data-codex-chat-look='true'][data-codex-titlebar-autohide='on'] [data-codex-native-titlebar-cluster] {
-    transition: none !important;
-  }
-}
-
 
 `
 
@@ -2259,11 +2370,16 @@ function prettyModelName(value) {
 
 function currentModelDisplay() {
   const trigger = document.querySelector('button[aria-label^="Model ·"], button[aria-label^="Modèle ·"]')
-  const liveText = (trigger?.querySelector(':scope > span')?.textContent || trigger?.textContent || '').trim()
-  if (trigger && liveText.includes('·')) trigger.dataset.codexNativeModelLabel = liveText
+  // Read native accessibility labels, never our own decorated text.
+  const nativeTitle = trigger?.getAttribute('aria-label') || ''
+  const titleModel = nativeTitle.replace(/^(?:Model|Modèle) · [^:]+:\s*/, '').replace(/ — .*$/, '')
+  const label = trigger?.querySelector(':scope > span')
+  const liveText = (label?.textContent || '').trim()
   const text = trigger?.dataset.codexNativeModelLabel || liveText
-  const [rawModel = '', rawMeta = ''] = text.split('·').map(part => part.trim())
-  const effortRaw = rawMeta.replace(/\bFast\b/gi, '').trim() || 'Medium'
+  const [legacyModel = '', rawMeta = ''] = text.split('·').map(part => part.trim())
+  const rawModel = titleModel !== nativeTitle ? titleModel : (label?.querySelector('[data-codex-trigger-model]')?.textContent || legacyModel)
+  const effortTitle = document.querySelector('button[aria-label^="Effort:"]')?.getAttribute('aria-label') || ''
+  const effortRaw = effortTitle.replace(/^Effort:\s*/, '').trim() || rawMeta.replace(/\bFast\b/gi, '').trim() || 'Medium'
   const effortMap = {
     Minimal: 'Minimal',
     Low: 'Low',
@@ -2307,20 +2423,21 @@ function decorateComposerChrome() {
   const dock = document.querySelector('[data-slot="composer-dock"]') || surface?.closest('[data-slot="composer-root"]')
   if (!surface || !dock) return
 
-  const nativeStatusStack = dock.matches('[data-slot="composer-root"]')
-    ? dock.querySelector(':scope > div.absolute.inset-x-0.bottom-full')
-    : dock.matches('[data-slot="composer-dock"]')
-      ? [...dock.children].find(element => {
-          const className = typeof element.className === 'string' ? element.className : ''
-          return className.includes('max-h-') && className.includes('overflow-y-auto')
-        })
-      : null
-  const statusStack = nativeStatusStack || [...dock.querySelectorAll('div')].find(element => {
-    const className = typeof element.className === 'string' ? element.className : ''
-    return className.includes('bottom-full') && className.includes('absolute') && element.getBoundingClientRect().width > 300
-  })
-  if (statusStack) {
-    const statusCard = statusStack.firstElementChild
+  // Decorate every mounted composer independently, including split chat panes.
+  for (const statusDock of document.querySelectorAll('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
+    const nativeStatusStack = statusDock.querySelector(':scope > [data-slot="composer-status-stack"]')
+      || (statusDock.matches('[data-slot="composer-root"]')
+        ? statusDock.querySelector(':scope > div.absolute.inset-x-0.bottom-full')
+        : [...statusDock.children].find(element => {
+            const className = typeof element.className === 'string' ? element.className : ''
+            return className.includes('max-h-') && className.includes('overflow-y-auto')
+          }))
+    const statusStack = nativeStatusStack || [...statusDock.querySelectorAll('div')].find(element => {
+      const className = typeof element.className === 'string' ? element.className : ''
+      return className.includes('bottom-full') && className.includes('absolute') && element.getBoundingClientRect().width > 300
+    })
+    if (!statusStack) continue
+    const statusCard = statusStack.querySelector('[data-slot="status-stack-content"]') || statusStack.firstElementChild
     statusCard?.setAttribute('data-codex-status-card', 'true')
     const taskSection = statusCard
       ? [...statusCard.querySelectorAll(':scope > div')].find(section => section.querySelector('.codicon-checklist'))
@@ -2433,27 +2550,6 @@ function setCleanTranscriptMode(mode) {
   window.dispatchEvent(new window.Event(CLEAN_TRANSCRIPT_EVENT))
 }
 
-function readTitlebarAutohideMode() {
-  try {
-    return pluginStorage?.get(TITLEBAR_AUTOHIDE_STORAGE_KEY, 'on') === 'on' ? 'on' : 'off'
-  } catch {
-    return 'off'
-  }
-}
-
-function syncTitlebarAutohideRoot() {
-  const mode = readTitlebarAutohideMode()
-  document.documentElement.setAttribute('data-codex-titlebar-autohide', mode)
-  return mode
-}
-
-function setTitlebarAutohideMode(mode) {
-  const normalized = mode === 'on' ? 'on' : 'off'
-  pluginStorage?.set(TITLEBAR_AUTOHIDE_STORAGE_KEY, normalized)
-  syncTitlebarAutohideRoot()
-  window.dispatchEvent(new window.Event(TITLEBAR_AUTOHIDE_EVENT))
-}
-
 function clearCleanTranscriptDecorations(scope = document) {
   const pairs = scope?.matches?.('[data-slot="aui_turn-pair"]')
     ? [scope]
@@ -2529,7 +2625,8 @@ function reconcileCleanTranscript(pair) {
   if (document.documentElement.getAttribute('data-codex-clean-transcript') !== 'on') return
   if (cleanPairActive(pair)) return
 
-  const roots = [...pair.querySelectorAll(':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+  const roots = [...pair.querySelectorAll('[data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+    .filter(root => root.closest('[data-slot="aui_turn-pair"]') === pair)
   const finalIndex = roots.findLastIndex(root => Boolean(root.querySelector('[data-slot="aui_msg-actions"]')))
   if (finalIndex < 0) return
 
@@ -2685,6 +2782,7 @@ function installHistoryRailRuntime() {
     let labels = ''
     let waveFrame = 0
     let waveY = 0
+    let waveGeometry = null
     const cancelClose = () => window.clearTimeout(closeTimer)
     const queueWave = y => {
       waveY = y
@@ -2694,12 +2792,16 @@ function installHistoryRailRuntime() {
         if (!hovered || !buttons.length) return
         // All hit targets have the same fixed height. Read the track geometry
         // before any writes; changing a line's width never moves its neighbors.
-        const first = buttons[0].getBoundingClientRect()
-        if (!first.height) return
-        const pitch = buttons.length > 1 ? buttons[1].getBoundingClientRect().top - first.top : first.height
-        const radius = Math.max(first.height, pitch) * 3.2
+        if (!waveGeometry) {
+          const first = buttons[0].getBoundingClientRect()
+          if (!first.height) return
+          const pitch = buttons.length > 1 ? buttons[1].getBoundingClientRect().top - first.top : first.height
+          waveGeometry = { top: first.top, height: first.height, pitch }
+        }
+        const { top, height, pitch } = waveGeometry
+        const radius = Math.max(height, pitch) * 3.2
         buttons.forEach((tick, index) => {
-          const distance = Math.abs(first.top + first.height / 2 + index * pitch - waveY)
+          const distance = Math.abs(top + height / 2 + index * pitch - waveY)
           const phase = Math.min(1, distance / radius)
           const width = 6 + 10 * (1 + Math.cos(Math.PI * phase))
           tick.style.setProperty('--codex-history-tick-width', `${width}px`)
@@ -2708,6 +2810,7 @@ function installHistoryRailRuntime() {
     }
     const close = (resetWave = true) => {
       revision += 1
+      waveGeometry = null
       cancelClose()
       window.cancelAnimationFrame(waveFrame)
       waveFrame = 0
@@ -2726,11 +2829,22 @@ function installHistoryRailRuntime() {
       }
     }
     const refresh = () => {
-      const next = [...strip.querySelectorAll(':scope > button')]
+      const next = [...strip.querySelectorAll('.thread-timeline-tick')]
+        .filter(button => button.closest('[data-slot="thread-timeline-ticks"]') === strip)
       const nextLabels = JSON.stringify(next.map(button => button.getAttribute('aria-label')))
-      if (nextLabels !== labels || next.length !== buttons.length || next.some((b, i) => b !== buttons[i])) close()
+      if (nextLabels !== labels || next.length !== buttons.length || next.some((b, i) => b !== buttons[i])) {
+        waveGeometry = null
+        close()
+      }
       labels = nextLabels
       buttons = next
+      if (!waveGeometry && buttons.length) {
+        const first = buttons[0].getBoundingClientRect()
+        if (first.height) {
+          const pitch = buttons.length > 1 ? buttons[1].getBoundingClientRect().top - first.top : first.height
+          waveGeometry = { top: first.top, height: first.height, pitch }
+        }
+      }
     }
     const position = () => {
       if (!hovered || card.hidden) return
@@ -2800,7 +2914,8 @@ function installHistoryRailRuntime() {
       const pair = row?.user?.closest('[data-slot="aui_turn-pair"]')
       if (pair) {
         question.textContent = row.text
-        const roots = [...pair.querySelectorAll(':scope > [data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+        const roots = [...pair.querySelectorAll('[data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+          .filter(root => root.closest('[data-slot="aui_turn-pair"]') === pair)
         const final = roots.findLast(node => node.querySelector('[data-slot="aui_msg-actions"]')) || roots.at(-1)
         const parts = final?.querySelectorAll('[data-slot="aui_assistant-message-content"] > .aui-md')
         const text = parts?.[parts.length - 1]
@@ -2816,16 +2931,21 @@ function installHistoryRailRuntime() {
       // the original buttons and never goes through reconstructed message IDs.
       event.stopPropagation()
       const button = event.target.closest?.('button')
-      if (button?.parentElement === strip) show(button, event.clientY)
+      if (buttons.includes(button)) show(button, event.clientY)
     }
-    const onMove = event => { if (hovered && strip.contains(event.target)) queueWave(event.clientY) }
+    const onMove = event => {
+      // Tip's asChild trigger handles pointermove at React's root. Suppress
+      // only native hover here; clicks and keyboard navigation still bubble.
+      event.stopPropagation()
+      if (hovered && strip.contains(event.target)) queueWave(event.clientY)
+    }
     const onOut = event => {
       event.stopPropagation()
       if (root.contains(event.relatedTarget) || card.contains(event.relatedTarget)) return
       cancelClose()
       closeTimer = window.setTimeout(close, 120)
     }
-    const onFocus = event => { if (event.target.parentElement === strip) show(event.target) }
+    const onFocus = event => { if (buttons.includes(event.target)) show(event.target) }
     const onKey = event => { if (event.key === 'Escape') { close(); event.stopPropagation() } }
     root.addEventListener('mouseover', onOver, true)
     root.addEventListener('pointermove', onMove, { passive: true })
@@ -2833,11 +2953,13 @@ function installHistoryRailRuntime() {
     root.addEventListener('focusin', onFocus)
     root.addEventListener('focusout', onOut)
     root.addEventListener('keydown', onKey)
-    strip.addEventListener('scroll', close, { passive: true })
+    const onScroll = () => { waveGeometry = null; close() }
+    strip.addEventListener('scroll', onScroll, { passive: true })
     card.addEventListener('mouseover', cancelClose)
     card.addEventListener('mouseout', onOut)
     const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
       root.style.setProperty('--codex-history-rail-height', `${Math.max(10, entries[0].contentRect.height - 32)}px`)
+      waveGeometry = null
       close()
     }) : null
     resize?.observe(surface)
@@ -2851,7 +2973,7 @@ function installHistoryRailRuntime() {
       root.removeEventListener('focusin', onFocus)
       root.removeEventListener('focusout', onOut)
       root.removeEventListener('keydown', onKey)
-      strip.removeEventListener('scroll', close)
+      strip.removeEventListener('scroll', onScroll)
       root.removeAttribute('data-codex-history-rail')
       root.style.removeProperty('--codex-history-rail-height')
       card.remove()
@@ -2946,7 +3068,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let pairWorkHandle = 0
   let pairWorkUsesIdleCallback = false
   let composerDirty = true
-  let titlebarDirty = true
   let destroyed = false
   const dirtyPairs = new Set()
   const animatedPlaybackNodes = new WeakSet()
@@ -2959,166 +3080,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let threadScrollTimer = 0
   let threadScrollbarTimer = 0
   let liveTailAtBottom = true
-  let titlebarEdgeTrigger = null
-  let titlebarRevealTimer = 0
-  let titlebarChrome = []
-
-  function titlebarClusterFor(button) {
-    let node = button?.parentElement
-    while (node && node !== document.body) {
-      const classes = typeof node.className === 'string' ? node.className : ''
-      if (classes.includes('fixed') && classes.includes('z-70')) return node
-      node = node.parentElement
-    }
-    return null
-  }
-
-  function titlebarBarFor() {
-    return document.querySelector('[data-contrib-shell] > div[class~="h-[34px]"]')
-      || [...document.querySelectorAll('div')].find(element => {
-        const classes = typeof element.className === 'string' ? element.className : ''
-        return classes.includes('relative') && classes.includes('flex') && classes.includes('h-[34px]')
-          && element.querySelector(':scope > [aria-hidden="true"][class*="app-region"]')
-      }) || null
-  }
-
-  function setTitlebarRevealed(revealed) {
-    if (destroyed) return
-    const root = document.documentElement
-    if (revealed) {
-      root.setAttribute('data-codex-titlebar-revealed', 'true')
-      return
-    }
-    root.removeAttribute('data-codex-titlebar-revealed')
-  }
-
-  function scheduleTitlebarHide() {
-    window.clearTimeout(titlebarRevealTimer)
-    titlebarRevealTimer = window.setTimeout(() => {
-      titlebarRevealTimer = 0
-      const focused = titlebarChrome.some(element => element.matches?.(':focus-within'))
-      const menuOpen = titlebarChrome.some(element => element.querySelector?.('[aria-expanded="true"]'))
-      const hovered = titlebarChrome.some(element => element.matches?.(':hover'))
-      if (destroyed || (!focused && !menuOpen && !hovered)) setTitlebarRevealed(false)
-    }, 220)
-  }
-
-  function clearTitlebarChrome() {
-    window.clearTimeout(titlebarRevealTimer)
-    titlebarRevealTimer = 0
-    titlebarChrome.forEach(element => {
-      element.removeAttribute('data-codex-native-titlebar')
-      element.removeAttribute('data-codex-native-titlebar-cluster')
-      element.removeEventListener('pointerenter', onTitlebarPointerEnter)
-      element.removeEventListener('pointerleave', onTitlebarPointerLeave)
-    })
-    titlebarChrome = []
-    titlebarEdgeTrigger?.remove()
-    titlebarEdgeTrigger = null
-    document.documentElement.removeAttribute('data-codex-titlebar-revealed')
-    document.documentElement.removeAttribute('data-codex-left-sidebar')
-  }
-
-  function onTitlebarPointerEnter(event) {
-    // Underlying controls win over hover-to-reveal. No layout or hit-zone changes.
-    if (!document.documentElement.hasAttribute('data-codex-titlebar-revealed') && event?.target instanceof Element) {
-      const target = event.target
-      if (target.closest('button, a[href], input, select, textarea, summary, label, [role="button"], [role="tab"], [role="link"], [role="menuitem"], [role="checkbox"], [role="switch"], [role="radio"], [role="slider"], [role="combobox"], [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])')
-        || window.getComputedStyle(target).cursor === 'pointer') return
-      // Protect horizontal travel across every visible tab group on the row,
-      // including rounded corners, inline add controls and pane separators.
-      // Empty space after the rightmost visible control still reveals the bar.
-      const row = []
-      for (const list of document.querySelectorAll('[data-zone-tabstrip] > [role="tablist"]')) {
-        const listStyle = window.getComputedStyle(list)
-        if (listStyle.display === 'none' || listStyle.visibility === 'hidden') continue
-        const listRect = list.getBoundingClientRect()
-        const visibleRect = element => {
-          const style = window.getComputedStyle(element)
-          const rect = element.getBoundingClientRect()
-          if (style.display === 'none' || style.visibility === 'hidden' || rect.width <= 0 || rect.height <= 0
-            || rect.right <= listRect.left || rect.left >= listRect.right) return null
-          return { ...rect.toJSON(), left: Math.max(rect.left, listRect.left), right: Math.min(rect.right, listRect.right) }
-        }
-        const tabs = [...list.querySelectorAll('[role="tab"]')].map(visibleRect).filter(Boolean)
-        if (!tabs.length) continue
-        const rowTop = Math.min(...tabs.map(rect => rect.top))
-        const rowBottom = Math.max(...tabs.map(rect => rect.bottom))
-        if (event.clientY < rowTop || event.clientY >= rowBottom) continue
-        row.push(...tabs, ...[...list.children]
-          .filter(child => !child.matches('[role="tab"]') && (child.matches('button') || child.querySelector('button')))
-          .map(visibleRect).filter(Boolean))
-      }
-      if (row.length && row.some(rect => event.clientX >= rect.left)
-        && row.some(rect => event.clientX < rect.right)) return
-    }
-    window.clearTimeout(titlebarRevealTimer)
-    titlebarRevealTimer = 0
-    if (document.documentElement.getAttribute('data-codex-left-sidebar') === 'closed') setTitlebarRevealed(true)
-  }
-
-  function onTitlebarPointerLeave() {
-    scheduleTitlebarHide()
-  }
-
-  function refreshTitlebarChrome() {
-    if (destroyed) return
-    const root = document.documentElement
-    const sidebarToggle = document.querySelector('button:has(.codicon-layout-sidebar-left)')
-    const sidebar = document.querySelector('[data-slot="sidebar"]')
-    const bar = titlebarBarFor()
-    const leftCluster = titlebarClusterFor(sidebarToggle)
-    const rightCluster = titlebarClusterFor(document.querySelector('button:has(.codicon-layout-sidebar-right)'))
-    const label = sidebarToggle?.getAttribute('aria-label') || ''
-    const closed = Boolean(sidebarToggle && sidebar && /show|afficher|montrer/i.test(label))
-    const nextChrome = bar && leftCluster && rightCluster && sidebarToggle && sidebar ? [bar, leftCluster, rightCluster] : []
-    const sameChrome = nextChrome.length === titlebarChrome.length && nextChrome.every((element, index) => element === titlebarChrome[index])
-
-    if (!sameChrome) clearTitlebarChrome()
-    if (!nextChrome.length) return
-    root.setAttribute('data-codex-left-sidebar', closed ? 'closed' : 'open')
-    if (readTitlebarAutohideMode() !== 'on' || !closed) setTitlebarRevealed(false)
-    if (sameChrome) return
-
-    bar.setAttribute('data-codex-native-titlebar', 'true')
-    leftCluster.setAttribute('data-codex-native-titlebar-cluster', 'true')
-    rightCluster.setAttribute('data-codex-native-titlebar-cluster', 'true')
-    titlebarChrome = nextChrome
-    for (const element of titlebarChrome) {
-      element.addEventListener('pointerenter', onTitlebarPointerEnter)
-      element.addEventListener('pointerleave', onTitlebarPointerLeave)
-    }
-    titlebarEdgeTrigger = document.createElement('div')
-    titlebarEdgeTrigger.setAttribute('data-codex-titlebar-edge-trigger', 'true')
-    titlebarEdgeTrigger.addEventListener('pointerenter', onTitlebarPointerEnter)
-    titlebarEdgeTrigger.addEventListener('pointerleave', onTitlebarPointerLeave)
-    document.body.appendChild(titlebarEdgeTrigger)
-  }
-
-  const onTitlebarFocus = event => {
-    if (titlebarChrome.some(element => element.contains(event.target))) onTitlebarPointerEnter()
-  }
-  const onTitlebarFocusOut = event => {
-    if (!titlebarChrome.some(element => element.contains(event.relatedTarget))) scheduleTitlebarHide()
-  }
-  // Switching the trigger to pointer-events:none can skip an element-level
-  // leave during the slide. Track the same fixed band on real pointer motion
-  // too, without adding a hit target over the native controls.
-  const onTitlebarPointerMove = event => {
-    const root = document.documentElement
-    if (destroyed || root.getAttribute('data-codex-titlebar-autohide') !== 'on'
-      || root.getAttribute('data-codex-left-sidebar') !== 'closed') return
-    const height = titlebarEdgeTrigger?.getBoundingClientRect().height || 0
-    if (event.clientY >= 0 && event.clientY < height) {
-      onTitlebarPointerEnter(event)
-    } else if (root.hasAttribute('data-codex-titlebar-revealed') && !titlebarRevealTimer) {
-      scheduleTitlebarHide()
-    }
-  }
-  document.addEventListener('pointermove', onTitlebarPointerMove, true)
-  document.addEventListener('focusin', onTitlebarFocus)
-  document.addEventListener('focusout', onTitlebarFocusOut)
-  refreshTitlebarChrome()
 
   function composerFadeForDock(dock) {
     const composer = dock?.querySelector?.(':scope > [data-slot="composer-root"]')
@@ -3506,11 +3467,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
     refreshLiveTail()
 
-    if (titlebarDirty) {
-      titlebarDirty = false
-      refreshTitlebarChrome()
-    }
-
     if (composerDirty) {
       composerDirty = false
       decorateComposerChrome()
@@ -3558,24 +3514,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
-      const directSidebarChanged = record.type === 'childList'
-        && [...record.addedNodes, ...record.removedNodes].some(node => node instanceof Element && node.matches('[data-slot="sidebar"]'))
-      if (directSidebarChanged) {
-        titlebarDirty = true
-        relevant = true
-      }
       if (target?.closest?.('[data-codex-user-expand]')) continue
       if (target?.closest?.('[data-slot="sidebar"]')) continue
 
       const pair = target?.closest?.('[data-slot="aui_turn-pair"]')
       if (record.type === 'attributes') {
-        if (
-          record.attributeName === 'aria-label'
-          && target?.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right)')
-        ) {
-          titlebarDirty = true
-          relevant = true
-        }
         if (record.attributeName === 'data-clamped' && target?.closest?.('[data-role="user"]')) {
           if (pair) markPair(pair)
           relevant = true
@@ -3596,13 +3539,6 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       const addedElements = [...record.addedNodes].filter(node => node instanceof Element)
       const removedElements = [...record.removedNodes].filter(node => node instanceof Element)
       const changedElements = [...addedElements, ...removedElements]
-      if (changedElements.some(node =>
-        node.matches?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"], [data-slot="sidebar"]')
-        || node.querySelector?.('button:has(.codicon-layout-sidebar-left), button:has(.codicon-layout-sidebar-right), [class*="h-[34px]"], [data-slot="sidebar"]')
-      )) {
-        titlebarDirty = true
-        relevant = true
-      }
       if (target?.closest?.('[data-slot="composer-surface"]')) {
         for (const node of addedElements) {
           for (const status of playbackStatusesIn(node)) animatePlaybackEntry(status)
@@ -3656,11 +3592,9 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   }
   const onHashChange = () => reconcileSession()
   const onCleanTranscriptChange = () => reconcileSession()
-  const onTitlebarAutohideChange = () => refreshTitlebarChrome()
   window.addEventListener('resize', onResize)
   window.addEventListener('hashchange', onHashChange)
   window.addEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
-  window.addEventListener(TITLEBAR_AUTOHIDE_EVENT, onTitlebarAutohideChange)
   reconcileSession()
 
   const cleanup = () => {
@@ -3684,11 +3618,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     window.removeEventListener('resize', onResize)
     window.removeEventListener('hashchange', onHashChange)
     window.removeEventListener(CLEAN_TRANSCRIPT_EVENT, onCleanTranscriptChange)
-    window.removeEventListener(TITLEBAR_AUTOHIDE_EVENT, onTitlebarAutohideChange)
-    document.removeEventListener('pointermove', onTitlebarPointerMove, true)
-    document.removeEventListener('focusin', onTitlebarFocus)
-    document.removeEventListener('focusout', onTitlebarFocusOut)
-    clearTitlebarChrome()
+
     offProfileState?.()
     offGatewayState?.()
     offActiveSession?.()
@@ -3726,20 +3656,21 @@ function CodexChatStyleRuntime() {
     syncComposerWidthRoot()
     syncPinnedUserMessagesRoot()
     syncCleanTranscriptRoot()
-    syncTitlebarAutohideRoot()
     const uninstallBehavior = installBehaviorRuntime(() => {
       style?.remove()
       delete root.dataset.codexChatLook
       root.removeAttribute('data-codex-composer-width')
       root.removeAttribute('data-codex-pinned-user-messages')
       root.removeAttribute('data-codex-clean-transcript')
-      root.removeAttribute('data-codex-titlebar-autohide')
-      root.removeAttribute('data-codex-titlebar-revealed')
-      root.removeAttribute('data-codex-left-sidebar')
       if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
       if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
     })
     root.dataset.codexChatLookRuntime = BUILD_ID
+    console.info(`[codex-chat-look] activated ${BUILD_ID}`, JSON.stringify({
+      panelHeaders: document.querySelectorAll('[data-window-top] > [data-panel-header]').length,
+      browserBars: document.querySelectorAll('aside[data-preview-browser] input[data-slot="input"]').length,
+      cornerTargets: document.querySelectorAll('[data-tree-split] > div:has(> [data-tree-group="grp-sessions"]):not([style*="display: none"]) + div > [data-tree-group="grp-main"]').length
+    }))
     return () => {
       uninstallBehavior()
     }
@@ -3791,19 +3722,6 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'clean', 'transcript', 'tool', 'calls', 'interim', 'messages'],
         run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
-      }
-    })
-    ctx.register({
-      id: 'toggle-titlebar-autohide',
-      area: PALETTE_AREA,
-      data: {
-        id: 'codex-chat-look.toggle-titlebar-autohide',
-        label: 'Codex Skin: Titlebar autohide',
-        detail: () => (readTitlebarAutohideMode() === 'on' ? 'On' : 'Off'),
-        detailVariant: 'state',
-        keepOpen: true,
-        keywords: ['codex', 'skin', 'titlebar', 'title bar', 'autohide', 'sidebar', 'hover'],
-        run: () => setTitlebarAutohideMode(readTitlebarAutohideMode() === 'on' ? 'off' : 'on')
       }
     })
     ctx.register({

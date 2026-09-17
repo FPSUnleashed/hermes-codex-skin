@@ -11,25 +11,29 @@ const surface = (id, count = 6) => `<section data-session-anchor="session-tile:$
     <div data-role="assistant" data-slot="aui_assistant-message-root"><div data-slot="aui_assistant-message-content"><div class="aui-md">Interim must not win</div></div></div>
     <div data-role="assistant" data-slot="aui_assistant-message-root"><div data-slot="aui_assistant-message-content"><div class="aui-md"><p>Answer <strong>${id}-${i}</strong></p><p>Second paragraph, with details.</p></div></div><div data-slot="aui_msg-actions"></div></div>
   </div>`).join('')}</div></div>
-  <div data-slot="thread-timeline" data-suppress-pane-reveal role="navigation" aria-label="Conversation timeline"><div data-slot="thread-timeline-ticks">${Array.from({ length: count }, (_, i) => `<button aria-label="Question ${i}" type="button"><span class="${i === count - 1 ? 'active' : 'dither'}"></span></button>`).join('')}</div><div data-slot="thread-timeline-popover"></div></div></section>`
+  <div data-slot="thread-timeline" data-suppress-pane-reveal role="navigation" aria-label="Conversation timeline"><div data-slot="thread-timeline-ticks"><div class="thread-timeline-track" style="height:${count * 7}px">${Array.from({ length: count }, (_, i) => `<div data-slot="tooltip-wrapper" style="display:contents"><button class="thread-timeline-tick" data-timeline-index="${i}" aria-label="Question ${i}" type="button" style="top:${i * 7}px;height:7px"><span data-slot="timeline-bar" class="${i === count - 1 ? 'active' : 'dither'}"></span></button></div>`).join('')}</div></div><div data-slot="thread-timeline-popover"></div></div></section>`
 
-async function setup() {
+async function setup(count = 6) {
   const browser = await chromium()
   const { call, evaluate } = browser
   try {
-    await call('Emulation.setDeviceMetricsOverride', { width: 1000, height: 700, deviceScaleFactor: 1, mobile: false })
+    await call('Emulation.setDeviceMetricsOverride', { width: 2000, height: 700, deviceScaleFactor: 1, mobile: false })
     const { frameTree } = await call('Page.getFrameTree')
     await call('Page.setDocumentContent', { frameId: frameTree.frame.id, html: `<!doctype html><html data-codex-chat-look="true"><head><style>
     :root{--ui-text-primary:#202020;--ui-text-secondary:#5e5e5e;--ui-chat-surface-background:#fff;--ui-widget-surface-background:#fff;--ui-stroke-secondary:#e2e2e2}
     *{box-sizing:border-box}body{margin:0;display:flex;font-family:Arial}button{font:inherit;border:0;background:none}
-    [data-chat-surface]{position:relative;width:500px;height:700px;overflow:hidden;isolation:isolate}
+    [data-chat-surface]{position:relative;flex:0 0 auto;width:900px;height:700px;overflow:hidden;isolation:isolate}
     [data-slot=aui_thread-viewport]{height:600px;overflow:auto}[data-slot=aui_turn-pair]{height:180px;padding:30px 60px}
     [data-slot=thread-timeline]{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:40}
-    [data-slot=thread-timeline-ticks]{display:flex;flex-direction:column;align-items:flex-end;padding:4px 0}
-    [data-slot=thread-timeline-ticks]>button{display:flex;align-items:center;justify-content:flex-end;width:28px;height:8px;padding:0 4px 0 0}
-    [data-slot=thread-timeline-ticks]>button>span{width:12px;height:1px;background:#777}
+    [data-slot=thread-timeline-ticks]{width:48px;height:100%;overflow:hidden auto;display:block}
+    [data-slot=thread-timeline-track]{position:relative;width:100%}
+    [data-slot=tooltip-wrapper]{display:contents}
+    .thread-timeline-tick{display:flex;position:absolute;align-items:center;justify-content:flex-end;width:100%;padding:0 4px 0 0}
+    .thread-timeline-tick>[data-slot=timeline-bar]{width:12px;height:1px;background:#777}
     [data-slot=thread-timeline-popover]{position:absolute;right:100%;width:320px;max-height:300px;overflow:auto}
-    </style></head><body>${surface('a')}${surface('b')}</body></html>` })
+    </style></head><body>${surface('a', count)}${surface('b', count)}</body></html>` })
+    // Native Tip uses asChild: the React tooltip component creates no wrapper.
+    await evaluate(`document.querySelectorAll('[data-slot="tooltip-wrapper"]').forEach(wrapper=>wrapper.replaceWith(...wrapper.childNodes))`)
     const source = (await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')).replace(/^import .*$/gm, '').replace(/export default\s*\{/, 'globalThis.fixturePlugin = {')
     await evaluate(`(() => {
       const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'},useEffect=()=>{},jsx=()=>null;
@@ -38,14 +42,17 @@ async function setup() {
       host.state.activeSessionId.subscribe=callback=>{stateListeners.push(callback);callback();return ()=>{stateListeners=stateListeners.filter(item=>item!==callback)}};
       ${source}
       const style=document.createElement('style');style.textContent=CSS;document.head.appendChild(style);
-      window.nativeOpens=0;window.jumps=[];
+      window.nativeOpens=0;window.jumps=[];window.nativeKeys=0;
       for(const rail of document.querySelectorAll('[data-slot="thread-timeline"]')) {
         rail.addEventListener('mouseover',()=>{window.nativeOpens++;rail.querySelector('[data-slot="thread-timeline-popover"]').textContent='ALL MESSAGES'});
-        [...rail.querySelectorAll('button')].forEach((b,i)=>b.onclick=()=>window.jumps.push(rail.closest('[data-session-anchor]').dataset.sessionAnchor+':'+i));
+        // Radix's trigger opens on pointer movement, not just mouseover.
+        document.addEventListener('pointermove',event=>{if(rail.contains(event.target))window.nativeOpens++});
+        [...rail.querySelectorAll('.thread-timeline-tick')].forEach((b,i)=>b.onclick=()=>window.jumps.push(rail.closest('[data-session-anchor]').dataset.sessionAnchor+':'+i));
+        rail.addEventListener('keydown',event=>{if(event.key==='ArrowDown'){window.nativeKeys++;const b=event.target.closest('.thread-timeline-tick');const all=[...rail.querySelectorAll('.thread-timeline-tick')];all[Math.min(all.length-1,all.indexOf(b)+1)]?.focus()}});
       }
       window.dispose=installBehaviorRuntime();
       window.rail=(id='a')=>document.querySelector('[data-session-anchor="session-tile:'+id+'"] [data-slot="thread-timeline"]');
-      window.ticks=(id='a')=>[...rail(id).querySelectorAll('[data-slot="thread-timeline-ticks"] > button')];
+      window.ticks=(id='a')=>[...rail(id).querySelectorAll('.thread-timeline-track button.thread-timeline-tick')];
       window.tickPoint=(i,id='a')=>{const r=ticks(id)[i].getBoundingClientRect();return {x:r.left+3,y:r.top+r.height/2}};
       window.preview=()=>document.querySelector('[data-codex-history-preview]:not([hidden])');
     })()`)
@@ -59,8 +66,8 @@ test('left history rail: proximity hover, one question/reply card, native clicks
   const moveTick = async (i, id = 'a') => { const p = await evaluate(`tickPoint(${i},${JSON.stringify(id)})`); await call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...p }); await settle(); return p }
   try {
     await settle()
-    const idle = await evaluate(`({left:rail().getBoundingClientRect().left,width:ticks()[0].firstElementChild.getBoundingClientRect().width,height:ticks()[0].firstElementChild.getBoundingClientRect().height})`)
-    assert.deepEqual(idle, { left: 16, width: 6, height: 2 })
+    const idle = await evaluate(`(()=>{const track=rail().querySelector('.thread-timeline-track');const tick=ticks()[0];return {left:rail().getBoundingClientRect().left,width:tick.firstElementChild.getBoundingClientRect().width,height:tick.firstElementChild.getBoundingClientRect().height,trackHeight:track.style.height,offsets:ticks().map(t=>t.style.top)}})()`)
+    assert.deepEqual(idle, { left: 16, width: 6, height: 2, trackHeight: '42px', offsets: ['0px','7px','14px','21px','28px','35px'] })
     const p = await moveTick(3)
     const widths = await evaluate('ticks().map(b=>b.firstElementChild.getBoundingClientRect().width)')
     assert.ok(widths[0] < widths[1] && widths[1] < widths[2] && widths[2] < widths[3])
@@ -81,6 +88,10 @@ test('left history rail: proximity hover, one question/reply card, native clicks
     assert.deepEqual(await evaluate('jumps'), ['session-tile:a:3'])
     await moveTick(1)
     assert.match(await evaluate('preview().textContent'), /Answer a-1/)
+    await evaluate('ticks()[2].focus()'); await settle()
+    await call('Input.dispatchKeyEvent', {type:'keyDown',key:'ArrowDown',code:'ArrowDown',windowsVirtualKeyCode:40})
+    assert.equal(await evaluate('document.activeElement===ticks()[3]'), true, 'native keyboard focus navigation remains owned by the button rail')
+    assert.equal(await evaluate('nativeKeys'), 1)
     await moveTick(3, 'b')
     assert.match(await evaluate('preview().textContent'), /Answer b-3/)
     assert.equal(await evaluate('document.querySelectorAll("[data-codex-history-preview]:not([hidden])").length'), 1)
@@ -92,7 +103,7 @@ test('left history rail: proximity hover, one question/reply card, native clicks
     assert.equal(await evaluate('preview()'), null)
     await evaluate('document.activeElement.blur();dispose()'); await settle()
     assert.equal(await evaluate('document.querySelectorAll("[data-codex-history-preview], [data-codex-history-rail]").length'), 0)
-    assert.equal(await evaluate('rail().getBoundingClientRect().left'), 472, 'native right-hand rail restored on disable')
+    assert.equal(await evaluate('rail().getBoundingClientRect().left'), 852, 'native right-hand rail restored on disable')
   } finally { close() }
 })
 
@@ -122,11 +133,62 @@ test('history wave follows sub-tick pointer motion without steps at button bound
   } finally { close() }
 })
 
+test('history wave invalidates screen coordinates between hover visits', async () => {
+  const { call, evaluate, close } = await setup()
+  const settle = () => evaluate('new Promise(r=>setTimeout(r,200))')
+  const hover = async () => {
+    const point = await evaluate('tickPoint(3)')
+    await call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point })
+    await settle()
+  }
+  try {
+    await settle(); await hover()
+    await call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 850, y: 650 })
+    await settle()
+    await evaluate("rail().closest('section').style.top='40px'")
+    await hover()
+    const width = await evaluate('ticks()[3].firstElementChild.getBoundingClientRect().width')
+    assert.ok(Math.abs(width-26)<.1, `re-entered hovered bar must use its new screen position, got ${width}`)
+  } finally { close() }
+})
+
+test('history wave reuses stable rail geometry while pointer motion is animated', { timeout: 40000 }, async () => {
+  const { call, evaluate, close } = await setup(240)
+  const settle = () => evaluate('new Promise(r=>setTimeout(r,220))')
+  try {
+    await settle()
+    const point = await evaluate('tickPoint(2)')
+    await call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point })
+    await settle()
+    await evaluate(`(() => {
+      window.geometryReads = 0
+      const original = Element.prototype.getBoundingClientRect
+      window.__codexOriginalRect = original
+      Element.prototype.getBoundingClientRect = function (...args) {
+        if (this.matches?.('[data-slot="thread-timeline-ticks"] .thread-timeline-tick, [data-slot="thread-timeline-ticks"] .thread-timeline-track')) window.geometryReads++
+        return original.apply(this, args)
+      }
+    })()`)
+    await evaluate(`window.pointY = ${point.y}`)
+    await evaluate(`(async () => {
+      for (const offset of [-1, -0.5, 0, 0.5, 1, 0.2, -0.2]) {
+        ticks()[2].dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientY: pointY + offset }))
+        await new Promise(resolve => setTimeout(resolve, 24))
+      }
+    })()`)
+    await settle()
+    const reads = await evaluate('geometryReads')
+    assert.equal(reads, 0, `stable geometry must not be reread during pointer animation; got ${reads}`)
+    assert.ok((await evaluate('ticks().map(b=>b.firstElementChild.getBoundingClientRect().width)')).some(width => width > 6))
+    await evaluate('Element.prototype.getBoundingClientRect = __codexOriginalRect; dispose()')
+  } finally { close() }
+})
+
 test('unmounted primary history: lazy runtime RPC, final prose, cache, exact alignment and stale-response isolation', { timeout: 40000 }, async () => {
   const { call, evaluate, close } = await setup()
   const settle = () => evaluate('new Promise(r=>setTimeout(r,200))')
   const move = async index => {
-    const point = await evaluate(`(()=>{const r=primary.querySelectorAll('[data-slot="thread-timeline-ticks"]>button')[${index}].getBoundingClientRect();return {x:r.left+3,y:r.top+r.height/2}})()`)
+    const point = await evaluate(`(()=>{const r=primary.querySelectorAll('[data-slot="thread-timeline-ticks"] .thread-timeline-tick')[${index}].getBoundingClientRect();return {x:r.left+3,y:r.top+r.height/2}})()`)
     await call('Input.dispatchMouseEvent',{type:'mouseMoved',...point}); await settle()
   }
   try {
@@ -183,13 +245,15 @@ test('history remounts, duplicate questions, inert formatting and bounded long/n
     await evaluate("rail().remove()")
     await settle()
     assert.equal(await evaluate('document.querySelectorAll("[data-codex-history-preview]").length'),1,'detached rail leaves no preview behind')
-    await evaluate(`(()=>{const root=rail('b').cloneNode(true);root.removeAttribute('data-codex-history-rail');for(const i of [0,3])root.querySelectorAll('[data-slot="thread-timeline-ticks"]>button')[i].setAttribute('aria-label','Repeated');document.querySelector('[data-session-anchor="session-tile:a"]').appendChild(root)})()`)
+    await evaluate(`(()=>{const root=rail('b').cloneNode(true);root.removeAttribute('data-codex-history-rail');for(const i of [0,3])root.querySelectorAll('[data-slot="thread-timeline-ticks"] .thread-timeline-tick')[i].setAttribute('aria-label','Repeated');document.querySelector('[data-session-anchor="session-tile:a"]').appendChild(root)})()`)
     await settle(); await hover(1)
     assert.match(await evaluate('preview().textContent'),/Answer a-1/)
     await evaluate(`(()=>{const s=rail().closest('section');s.style.width='230px';s.style.height='200px';const strip=rail().querySelector('[data-slot="thread-timeline-ticks"]');for(let i=0;i<100;i++)strip.appendChild(ticks()[0].cloneNode(true))})()`)
     await settle()
     const bounds=await evaluate(`(()=>{const s=rail().closest('section').getBoundingClientRect(),r=rail().getBoundingClientRect();return {top:r.top,bottom:r.bottom,sBottom:s.bottom}})()`)
     assert.ok(bounds.top>=0 && bounds.bottom<=bounds.sBottom,JSON.stringify(bounds))
+    assert.equal(await evaluate('getComputedStyle(rail()).display'),'none')
+    assert.equal(await evaluate('preview()'),null,'shrinking the pane closes the history card')
     await evaluate('dispose()'); await settle()
   } finally { close() }
 })

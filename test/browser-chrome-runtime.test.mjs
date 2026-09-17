@@ -59,8 +59,8 @@ window.addEventListener('load',()=>{const doc=by('guest').contentDocument;docume
       assert.ok(size.address.width>=80)
       for(const b of size.buttons){assert.ok(b.visible && b.hit,`${size.width}px ${b.id} reachable`);assert.ok(b.left>=size.bar.left && b.right<=size.bar.right,`${size.width}px ${b.id} inside bar`);assert.ok(b.bottom<=size.bar.bottom,`${size.width}px ${b.id} inside height`)}
     }
-    assert.equal(r.dark.tab,'rgb(29, 29, 29)');assert.equal(r.dark.address,'rgb(34, 34, 34)');assert.equal(r.dark.border,'rgb(50, 50, 50)');assert.equal(r.dark.divider,'rgb(35, 35, 35)')
-    assert.equal(r.dark.tabRadius,'10px');assert.equal(r.dark.tabHeight,28);assert.equal(r.dark.stripHeight,44);assert.equal(r.dark.labelCase,'none');assert.equal(r.dark.unrelatedRadius,'0px')
+    assert.equal(r.dark.tab,'rgb(29, 29, 29)');assert.equal(r.dark.address,'rgba(0, 0, 0, 0)');assert.equal(r.dark.border,'rgba(0, 0, 0, 0)');assert.equal(r.dark.divider,'rgb(35, 35, 35)')
+    assert.equal(r.dark.tabRadius,'10px');assert.equal(r.dark.tabHeight,28);assert.equal(r.dark.stripHeight,48);assert.equal(r.dark.labelCase,'none');assert.equal(r.dark.unrelatedRadius,'0px')
     assert.equal(r.dark.closeShadow,'none');assert.equal(r.dark.closeRunway,'none');assert.equal(r.dark.closeRunwayColor,'rgba(0, 0, 0, 0)');assert.equal(r.dark.closeButtonColor,'rgba(0, 0, 0, 0)')
     for(const id of ['reload','copy','external','console','devtools','minimize','Close Browser'])assert.equal(r.count[id],1,id)
     assert.equal(r.count.back,undefined);assert.equal(r.count.forward,undefined)
