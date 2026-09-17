@@ -9,7 +9,10 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-**Stable.** Version 1.5.0 adds square image previews, Codex-style browser chrome, a refined composer and optional titlebar autohide. It uses Hermes' supported desktop plugin entry point, but some styling depends on internal DOM attributes that may change in future Hermes releases.
+**Stable.** Version 1.7.0 restores compatibility with Hermes' updated Desktop layout, refines tabs and browser styling, and improves history-rail responsiveness. Titlebar autohide has been removed. The plugin uses Hermes' supported desktop entry point, but some styling depends on internal DOM attributes that can change between Hermes releases.
+
+> [!IMPORTANT]
+> This version targets the updated Hermes Desktop layout. If you are keeping the previous layout, use [Codex Skin v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) instead. Use a pinned download for that version, not `main`. See [Compatibility](#compatibility).
 
 `main` can receive tested improvements between tagged releases. Merging changes does not create a new release or replace existing release assets. This README describes the current source, which may include changes not yet included in a tagged release.
 
@@ -30,9 +33,10 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 - Styling for Tasks, Background activity, Clarify, Approval and media surfaces
 - Compact Attach and `/` completion menus, smoother Patched file cards and cleaner sidebar/chat chrome
 - Square image previews, right-aligned sent attachments and Codex-style browser controls
-- Optional titlebar autohide while the left sidebar is closed, without moving the conversation
 - Hidden Sessions/Bots minimize button: use the full sidebar toggle instead. Restore remains available for previously minimized layouts.
 - Left-side history ticks with a proximity hover effect and one question/reply preview at a time. Clicking a tick keeps Hermes' native jump behavior.
+
+History ticks use quieter theme-aware colors and more vertical spacing. The current-message marker gives way to the hovered marker without dimming ordinary idle ticks. The pointer-driven wave responds without a trailing width animation, and the rail hides when its own chat pane is 862 CSS pixels wide or narrower. Native click targets, keyboard navigation and virtualized scrolling remain intact.
 
 History previews use the rendered exchange when available. Older turns in the main chat can use a read-only history request; if the plugin cannot safely match an exchange, it shows the question only. Split panes never borrow another pane's response. Disabling the plugin restores the native timeline.
 
@@ -45,7 +49,6 @@ History previews use the rendered exchange when available. Older turns in the ma
 | Composer width | Codex / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
 | Clean transcript | On / Off | Off | Command palette |
-| Titlebar autohide | On / Off | On | Command palette |
 
 ### Recommended settings
 
@@ -54,7 +57,6 @@ For the recommended Codex-style setup, choose these values through the command p
 - **Composer width:** Codex
 - **Pinned user messages:** Off
 - **Clean transcript:** On
-- **Titlebar autohide:** On
 
 Turning **Codex Skin** off restores Hermes' normal appearance.
 
@@ -83,13 +85,9 @@ Open the command palette and run **Codex Skin: Clean transcript**. The row shows
 
 Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. The plugin leaves uncertain content visible rather than risk hiding a real final answer.
 
-### Titlebar autohide
-
-Open the command palette and run **Codex Skin: Titlebar autohide**. It is **On by default** starting in v1.6.0 (previously Off). Existing saved On or Off choices are preserved; the new default applies only when no choice has been saved. You can turn it off at any time. When enabled, the top bar hides only while the left sidebar is closed. Hover unused space in the top bar's full-height band to reveal it; the same band keeps it open.
-
-Tabs and their controls take priority: moving across tabs, their gaps or neighboring tab groups does not reveal the bar over them. Tab close buttons and the `+` button remain clickable; the unused space after `+` still reveals the bar. Keyboard focus and open menus remain usable, and the conversation does not move.
-
 ## Screenshots
+
+These captures document earlier releases. Some details, including the former Titlebar autohide option, differ from v1.7.0.
 
 ### Version 1.5.0
 
@@ -127,7 +125,7 @@ A light theme with the top bar hidden:
 - It preserves Hermes' native assistant-turn rendering.
 - It does not own, persist, replay, remove or migrate queued prompts; Queue behavior remains Hermes-native.
 - It does not modify Hermes source files.
-- It does not use a backend, network requests or external assets.
+- It does not run a separate backend or fetch third-party assets. History previews can use Hermes' native read-only session API.
 
 ## Requirements
 
@@ -174,14 +172,14 @@ Invoke-WebRequest `
   -OutFile (Join-Path $pluginDir "plugin.js")
 ```
 
-Hermes watches the plugin folder and should load the file automatically. If it does not, open the command palette and run **Reload desktop plugins**. You can enable or disable it live under **Settings → Plugins**.
+Hermes watches the plugin folder and should load the file automatically. You can enable or disable it under **Settings → Plugins**. If the old appearance remains, use **Reload desktop plugins** where supported; some Hermes builds do not reevaluate an already-loaded plugin through that action, so a full app restart may be needed.
 
 > [!IMPORTANT]
 > Installing or enabling the plugin and selecting its theme are separate steps. After installation, open **Settings → Appearance** and select **Codex Skin** for the original Codex light/dark palette, or keep any other Hermes theme to use its colors with the Codex layout and typography.
 
 ## Update
 
-Run the relevant install command again. Hermes hot-reloads the replaced file. Compare its SHA-256 against [`CHECKSUMS.sha256`](CHECKSUMS.sha256) when you want byte-level verification.
+For the updated Desktop layout, run the relevant install command again. If you are staying on the previous layout, keep the pinned v1.6.0 download instead of updating from `main`. Hermes normally reloads replaced plugin files automatically; a completed download alone does not prove that the new build is active. Compare its SHA-256 against [`CHECKSUMS.sha256`](CHECKSUMS.sha256) when you want byte-level verification.
 
 The manual install commands above download from `main`, so running them can fetch improvements before the next tagged release. A merge alone does not replace a manually installed local file.
 
@@ -207,9 +205,44 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 Desktop plugins execute inside the Hermes renderer and therefore carry the same local authority as the app. Review local plugins before installing them.
 
-This plugin performs no network requests and stores no message text, prompt hashes or content fingerprints. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width**, **Pinned user messages**, **Clean transcript** and **Titlebar autohide** preferences.
+This plugin uses no third-party services or remote assets and stores no message text, prompt hashes or content fingerprints. History previews can make a read-only request through Hermes' own session API when a turn is not rendered. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width**, **Pinned user messages** and **Clean transcript** preferences.
 
 ## Compatibility
+
+| Hermes Desktop layout | Codex Skin version |
+| --- | --- |
+| Desktop builds with the September 16, 2026 panel-header and virtualized-timeline changes ([Hermes commit 2efbbef](https://github.com/NousResearch/hermes-agent/commit/2efbbef981cc75ed6df6214ee6975a0ae0f418d3)) | v1.7.0 |
+| Older Desktop builds, including code from Hermes Agent 0.21.3 / v2026.9.14 or earlier | [v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) |
+
+Titlebar autohide is not available in v1.7.0. Old saved values are ignored; the remaining skin settings and native Hermes window controls are preserved.
+
+The updated header layout no longer needs a separate hide-and-reveal mechanism. Tabs and window controls now remain accessible directly, without the old hover-triggered transitions.
+
+The v1.7.0 compatibility target is the Desktop build containing the September 16, 2026 layout and timeline changes, not a blanket remote Agent-version threshold. Hermes Agent and Hermes Desktop can update independently. This release has been tested against that updated layout only; it does not guarantee compatibility with all future builds.
+
+### Staying on v1.6.0
+
+Do not use the `main` install commands above on an older layout. Use the pinned file instead.
+
+macOS / Linux:
+
+```sh
+PLUGIN_DIR="${HERMES_HOME:-$HOME/.hermes}/desktop-plugins/codex-chat-look"
+mkdir -p "$PLUGIN_DIR"
+curl -fsSL \
+  https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.6.0/codex-chat-look/plugin.js \
+  -o "$PLUGIN_DIR/plugin.js"
+```
+
+Windows PowerShell:
+
+```powershell
+$pluginDir = Join-Path $HOME ".hermes\desktop-plugins\codex-chat-look"
+New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
+Invoke-WebRequest `
+  -Uri "https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.6.0/codex-chat-look/plugin.js" `
+  -OutFile (Join-Path $pluginDir "plugin.js")
+```
 
 The plugin is scoped behind `html[data-codex-chat-look='true']` and cleans up its runtime markers when disabled. It is self-contained, but it styles internal Hermes surfaces. A future Hermes UI update can require selector maintenance even when the official plugin loader remains compatible.
 

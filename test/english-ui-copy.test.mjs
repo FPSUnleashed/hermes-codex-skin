@@ -39,11 +39,12 @@ test('model effort labels stay English', () => {
   ]) {
     const trigger = {
       dataset: {},
-      querySelector: () => ({ textContent: `GPT-5.6 · ${nativeEffort}` }),
+      getAttribute: () => '',
+      querySelector: () => ({ textContent: `GPT-5.6 · ${nativeEffort}`, querySelector: () => null }),
       textContent: `GPT-5.6 · ${nativeEffort}`
     }
     const context = {
-      document: { querySelector: () => trigger },
+      document: { querySelector: selector => selector.includes('Effort:') ? null : trigger },
       result: null
     }
     vm.runInNewContext(code, context)

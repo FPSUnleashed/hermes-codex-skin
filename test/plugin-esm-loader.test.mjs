@@ -4,7 +4,7 @@ import test from 'node:test'
 
 const moduleUrl = text => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64')
 
-test('runtime ESM import registers autohide On by default and preserves saved choices', async () => {
+test('runtime ESM import registers the current plugin without titlebar autohide', async () => {
   const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
   const shims = {
     '@hermes/plugin-sdk': moduleUrl("export const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'};"),
@@ -17,13 +17,11 @@ test('runtime ESM import registers autohide On by default and preserves saved ch
   })
   const { default: plugin } = await import(moduleUrl(rewritten))
   assert.equal(plugin.id, 'codex-chat-look')
-  for (const saved of [undefined, 'off', 'on']) {
-    const registrations = []
-    plugin.register({
-      storage: { get: (_key, fallback) => saved === undefined ? fallback : saved },
-      register: entry => registrations.push(entry)
-    })
-    const command = registrations.find(entry => entry.id === 'toggle-titlebar-autohide').data
-    assert.equal(command.detail(), saved === 'off' ? 'Off' : 'On')
-  }
+  const registrations = []
+  plugin.register({
+    storage: { get: (_key, fallback) => fallback },
+    register: entry => registrations.push(entry)
+  })
+  assert.ok(registrations.some(entry => entry.id === 'style-runtime'))
+  assert.ok(!registrations.some(entry => entry.id === 'toggle-titlebar-autohide'))
 })

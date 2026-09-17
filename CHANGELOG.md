@@ -4,9 +4,46 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+No changes yet.
+
+## [1.7.0] - 2026-09-17
+
 ### Fixed
 
-- Clear the composer's scroll fade when a long draft is shortened or emptied, or a wider composer makes it fit. Long scrolled drafts retain their fade.
+- Restored Codex styling for chat, browser and other panel tabs, including selected-tab backgrounds, labels and close controls.
+- Restored Sessions/Bots header styling and the hidden minimize control with Hermes' updated panel structure.
+- Corrected browser header colors, tab-row height and equal spacing above and below the tabs.
+- Refined the browser navigation row and address-bar spacing. The Codex dark theme now uses a cleaner, borderless address field.
+- Removed the unused header band above the chat when there are no chat tabs and the sidebar and browser already carry the window controls.
+- Removed the unwanted rounded chat corners above and below integrated tab headers. The tabs themselves keep their rounded shape.
+- Made the vertical sidebar/chat and chat/browser separators finer without shrinking their resize handles.
+- Restored the rounded Codex appearance of the Tasks, Queue and Background panels above the composer, including in split chats.
+- Adapted task-list scrolling and scrollbar styling to the updated status-panel structure, keeping the rounded edges clean.
+- Centered the icon, filename and close button in single-line artifact rows, including HTML previews.
+- Restored **Clean transcript** behavior with Hermes' updated response grouping, while preserving final replies and the existing safety checks.
+- Corrected model-name and reasoning-effort display in the composer by reading Hermes' native labels rather than the skin's own reformatted text.
+- Fixed the composer's scroll-edge fade remaining active after a long draft becomes short enough to fit again. Long scrolled drafts retain their fade.
+
+### Improved
+
+- Fixed reversed-looking history markers: the ticks now align on the left and expand to the right.
+- Restored question-and-answer previews with Hermes' updated message structure and prevented the native tooltip from competing with the skin's preview.
+- Gave the ticks more vertical spacing and quieter, theme-aware colors.
+- Added a clearer current-message marker. Hover temporarily transfers emphasis to the previewed message; ordinary idle ticks no longer darken together.
+- The rail now hides when its own chat pane is too narrow, independently of the overall window width.
+- Removed the trailing width animation during pointer movement and repeated geometry measurements from stable hover frames. The exit animation remains.
+- Refreshes cached positions when needed so moving, resizing or scrolling the pane does not leave the hover effect using stale coordinates.
+- Preserved native message jumps, keyboard navigation and virtualized scrolling, with the visible ticks aligned to their click targets.
+
+### Removed
+
+- **Titlebar autohide.** The command-palette option and its behavior have been removed. The updated header layout no longer needs a separate hide-and-reveal mechanism. Tabs and window controls now remain accessible directly, without the old hover-triggered transitions. Old saved values no longer activate it; native Hermes window controls remain untouched.
+
+### Maintenance
+
+- Clarified contribution rules: fixes for Hermes-native bugs belong upstream, not as workarounds inside Codex Skin.
+- Expanded automated regression coverage for the updated Hermes layout, split panes, history navigation, hover behavior, narrow panes, themes and cleanup.
+- Added a developer-console activation message with the loaded skin build and UI component counts to help diagnose loading issues.
 
 ## [1.6.0] - 2026-09-15
 

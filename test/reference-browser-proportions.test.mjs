@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import {writeFile} from 'node:fs/promises'
+import {chromium} from './helpers/chromium.mjs'
+import {loadPluginInternals} from './helpers/load-plugin.mjs'
+test('reference browser proportions and half-width dividers preserve native grab areas at DPR 1 and 2',async()=>{
+ const b=await chromium()
+ try{
+ const {CSS,BROWSER_PALETTE_CSS}=await loadPluginInternals(['CSS','BROWSER_PALETTE_CSS']);const {frameTree}=await b.call('Page.getFrameTree')
+ await b.call('Emulation.setDeviceMetricsOverride',{width:1600,height:900,deviceScaleFactor:2,mobile:false})
+ const sash=id=>`<div id="${id}" role="separator" class="inset-y-0" style="position:absolute;top:0;bottom:0;left:0;width:8px;transform:translateX(-1px);cursor:col-resize;z-index:20"><span style="position:absolute;top:0;bottom:0;left:1px;width:1px;transform:translateX(-50%);opacity:.1;background:#888"></span><span style="position:absolute;opacity:0;width:4px"></span></div>`
+ const btn=id=>`<button id="${id}">${id[0]}</button>`
+ await b.call('Page.setDocumentContent',{frameId:frameTree.frame.id,html:`<html data-codex-chat-look="true" data-hermes-theme="codex-chat" data-hermes-mode="dark"><head><style>
+:root{--theme-background-seed:#111;--theme-sidebar-seed:#1c1c1c;--theme-card-seed:#212121;--theme-foreground:#fcfcfc;--ui-chat-surface-background:#111;--ui-editor-surface-background:#111;--ui-sidebar-surface-background:#1c1c1c;--ui-text-primary:#fcfcfc;--ui-stroke-secondary:#444;--ui-stroke-tertiary:#444}*{box-sizing:border-box}body{margin:0;background:#111}[data-tree-split]{display:flex;height:600px}[data-tree-split]>div{position:relative;display:flex;min-width:0}[data-tree-group]{display:flex;flex:1;min-width:0;flex-direction:column;overflow:hidden}[data-panel-header]{position:relative;display:flex;height:34px;flex-shrink:0}[data-zone-tabstrip]{display:flex;flex:1;min-width:0;height:28px}[role=tablist]{display:flex;flex:1;min-width:0}[role=tab]{display:flex;align-items:center;height:100%;flex-shrink:0}aside,aside>div{display:flex;min-height:0;flex-direction:column}.toolbar{display:flex;align-items:center;gap:4px;padding:4px 6px;flex-shrink:0}.toolbar>button{width:20px;height:20px}.address{position:relative;flex:1;min-width:0}.address>input{width:100%;height:24px}button{background:transparent;border:0;color:white}input{border:1px solid gray}.copy{position:absolute;right:4px;top:50%;transform:translateY(-50%)}${CSS}${BROWSER_PALETTE_CSS}</style></head><body>
+<div data-tree-split><div style="width:275px"><div data-tree-group="grp-sessions">Sidebar</div></div><div style="width:862px">${sash('left-sash')}<div data-tree-group="grp-main"><div data-panel-header></div><div>Chat</div></div></div><div style="width:333px">${sash('right-sash')}<div data-tree-group="browser"><div data-panel-header id="header"><div data-zone-tabstrip="browser" id="strip"><div role="tablist"><div role="tab" id="tab">Browser</div><button>+</button></div></div></div><aside data-preview-browser><div><div class="toolbar" id="toolbar">${btn('back')}${btn('forward')}${btn('reload')}<div class="address"><input id="url" data-slot="input" aria-label="Address" placeholder="Search or enter address"><button class="copy">c</button></div>${btn('external')}${btn('console')}${btn('devtools')}</div><div>Page</div></div></aside></div></div></div>
+</body></html>`})
+ const r=await b.evaluate(`(()=>{const by=id=>document.getElementById(id),rect=id=>by(id).getBoundingClientRect(),h=rect('header'),s=rect('strip'),t=rect('tab'),bar=rect('toolbar'),input=getComputedStyle(by('url'));return {dpr:devicePixelRatio,header:h.height,tab:t.height,above:t.top-s.top,below:h.bottom-t.bottom,toolbar:bar.height,centers:['back','forward','reload'].map(id=>{const r=rect(id);return (r.left+r.right)/2-bar.left}),address:input.backgroundColor,border:input.borderTopColor,lines:['left-sash','right-sash'].map(id=>{const el=by(id),s=getComputedStyle(el.firstElementChild),r=el.firstElementChild.getBoundingClientRect();return{width:s.width,rendered:r.width,physical:r.width*devicePixelRatio,color:s.backgroundColor,opacity:s.opacity,grab:el.getBoundingClientRect().width,cursor:getComputedStyle(el).cursor}})}})()`)
+ assert.equal(r.header,48);assert.equal(r.tab,28);assert.equal(r.above,10);assert.equal(r.below,10);assert.equal(r.toolbar,39)
+ assert.deepEqual(r.centers,[22,51,80]);assert.equal(r.address,'rgba(0, 0, 0, 0)');assert.equal(r.border,'rgba(0, 0, 0, 0)')
+ assert.equal(r.dpr,2)
+ assert.deepEqual(r.lines,[{width:'1px',rendered:.25,physical:.5,color:'rgb(44, 44, 44)',opacity:'1',grab:8,cursor:'col-resize'},{width:'1px',rendered:.5,physical:1,color:'rgb(35, 35, 35)',opacity:'1',grab:8,cursor:'col-resize'}])
+ await b.call('Emulation.setDeviceMetricsOverride',{width:1600,height:900,deviceScaleFactor:1,mobile:false})
+ const dprOne=await b.evaluate(`(()=>({dpr:devicePixelRatio,lines:['left-sash','right-sash'].map(id=>{const el=document.getElementById(id),r=el.firstElementChild.getBoundingClientRect();return{rendered:r.width,physical:r.width*devicePixelRatio,grab:el.getBoundingClientRect().width}})}))()`)
+ assert.deepEqual(dprOne,{dpr:1,lines:[{rendered:.25,physical:.25,grab:8},{rendered:.5,physical:.5,grab:8}]})
+ if(process.env.CODEX_REFERENCE_SCREENSHOT){const {data}=await b.call('Page.captureScreenshot',{format:'png'});await writeFile(process.env.CODEX_REFERENCE_SCREENSHOT,Buffer.from(data,'base64'))}
+ }finally{b.close()}
+})

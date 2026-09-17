@@ -102,6 +102,19 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
       const hiddenBackdrop = getComputedStyle(mainTrack, '::before').content
       mainTabs.style.display = 'flex'
       const restored = getComputedStyle(main).borderTopLeftRadius
+      const integratedHeader = document.createElement('div')
+      integratedHeader.setAttribute('data-panel-header', '')
+      const integratedContent = document.createElement('div')
+      integratedContent.id = 'integrated-content'
+      main.insertBefore(integratedHeader, mainTabs)
+      main.insertBefore(integratedContent, mainTabs)
+      const integrated = getComputedStyle(main).borderTopLeftRadius
+      const integratedBackdropStyle = getComputedStyle(mainTrack, '::before')
+      const integratedBackdrop = integratedBackdropStyle.content
+      const integratedBackdropWidth = integratedBackdropStyle.width
+      const integratedContentRadius = getComputedStyle(integratedContent).borderTopLeftRadius
+      integratedHeader.remove()
+      integratedContent.remove()
       sessionsTrack.style.display = 'none'
       const noSessions = getComputedStyle(main).borderTopLeftRadius
       sessionsTrack.style.display = 'flex'
@@ -113,6 +126,10 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
         visible,
         hidden,
         restored,
+        integrated,
+        integratedBackdrop,
+        integratedBackdropWidth,
+        integratedContentRadius,
         noSessions,
         removed,
         flipped,
@@ -140,6 +157,10 @@ test('the chat top-left corner rounds only beside a visible sessions sidebar', a
       visible: '16px',
       hidden: '16px',
       restored: '16px',
+      integrated: '0px',
+      integratedBackdrop: 'none',
+      integratedBackdropWidth: '0px',
+      integratedContentRadius: '0px',
       flipped: '0px',
       visibleBackdrop: { content: '""', width: '16px', height: '16px', backgroundColor: 'rgb(23, 23, 23)' },
       hiddenBackdrop: '""',
