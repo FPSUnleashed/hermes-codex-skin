@@ -706,21 +706,22 @@ html[data-codex-chat-look='true']
   border-left-color: transparent !important;
 }
 
-/* Drop only the unused center band when the sidebar and browser already
-   carry the window controls. Keep edge/full-width chat headers intact. */
-html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
-  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
-  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])) > [data-panel-header] {
-  display: none !important;
+/* Transparent tabless main overlay: the scroller reaches the pane's top while
+   the native drag handle and separate window controls stay in a 48px band. */
+html[data-codex-chat-look='true'] [data-tree-group='grp-main'] > [data-panel-header]:not(:has([data-zone-tabstrip])) {
+  position: absolute !important;
+  inset: 0 0 auto !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  z-index: 30;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  pointer-events: none;
 }
 
-html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
-  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
-  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])),
-html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='display: none']) [data-preview-browser])
-  > div:has(> [data-tree-group='grp-sessions']):not([style*='display: none'])
-  + div > [data-tree-group='grp-main']:not(:has([data-zone-tabstrip])) > [data-panel-header] + div {
-  border-top-left-radius: 0 !important;
+html[data-codex-chat-look='true'] [data-tree-group='grp-main'] > [data-panel-header]:not(:has([data-zone-tabstrip])) > [data-window-drag-handle] {
+  pointer-events: auto;
 }
 
 /* Match the shared 48px header row while preserving the original square
@@ -1993,13 +1994,36 @@ html[data-codex-chat-look='true'] [data-titlebar-cluster][data-codex-titlebar-al
   top: calc(var(--titlebar-controls-top, 5px) + var(--codex-titlebar-offset, 0px)) !important;
 }
 
+/* A soft theme-colored shadow separates the glyphs from scrolling text without
+   repainting the transparent header or adding a background to native buttons. */
+html[data-codex-chat-look='true'] [data-titlebar-cluster='right'] > button {
+  filter: drop-shadow(0 1px 2px var(--theme-background-seed, var(--codex-color-chat)));
+}
+
+html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header],
 html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip]) {
+  height: 48px !important;
   min-height: 48px !important;
 }
 
-/* Native cramped headers reserve a separate 34px drag/control row. */
-html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip][class~='absolute']) {
-  min-height: 82px !important;
+/* Keep a single band even when the host chooses a second row. Its measured
+   control gutters still reserve the buttons; overflowing tabs scroll natively. */
+html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] [data-zone-tabstrip][class~='absolute'] {
+  top: 0 !important;
+  bottom: auto !important;
+  left: var(--panel-titlebar-left, 0px) !important;
+  right: var(--panel-titlebar-right, 0px) !important;
+  -webkit-app-region: drag !important;
+}
+
+html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] > [data-window-drag-handle] {
+  height: 48px !important;
+}
+
+html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header]:has([data-zone-tabstrip]) > [data-window-drag-handle] {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none;
 }
 
 html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-panel-header]:has([data-zone-tabstrip]) {
@@ -2564,7 +2588,7 @@ function setPinnedUserMessagesMode(mode) {
 
 function readCleanTranscriptMode() {
   try {
-    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'off')
+    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'on') ?? 'on'
     return mode === 'on' ? 'on' : 'off'
   } catch {
     return 'off'
@@ -3698,10 +3722,9 @@ function installTitlebarAlignment() {
         const r = element.getBoundingClientRect()
         return r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && getComputedStyle(element).visibility !== 'hidden'
       })
-      const tabs = header?.querySelector('[data-zone-tabstrip]')
-      // Cramped panes have a separate native control row above their tabs.
-      // Keep that row, empty headers and non-chat routes at native positions.
-      if (document.documentElement.dataset.codexChatLook !== 'true' || !box.width || !box.height || !tabs || getComputedStyle(tabs).position === 'absolute') { clear(cluster); continue }
+      // Visible top-edge headers always use the same band, including empty
+      // and cramped strips. Routes without a panel header remain native.
+      if (document.documentElement.dataset.codexChatLook !== 'true' || !box.width || !box.height || !header) { clear(cluster); continue }
       const band = header.getBoundingClientRect(), scale = box.height / cluster.offsetHeight
       const previous = parseFloat(cluster.style.getPropertyValue('--codex-titlebar-offset')) || 0
       const next = Math.round((previous + (band.top + band.height / 2 - box.top - box.height / 2) / scale) * 100) / 100

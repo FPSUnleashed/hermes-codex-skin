@@ -51,7 +51,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 | Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
-| Clean transcript | On / Off | Off | Command palette |
+| Clean transcript | On / Off | On | Command palette |
 
 ### Recommended settings
 
@@ -82,6 +82,8 @@ Open the command palette and run **Codex Skin: Pinned user messages**. The row s
 ### Clean transcript
 
 Open the command palette and run **Codex Skin: Clean transcript**. The row shows the active mode and the choice persists locally.
+
+Current `main` defaults to **On** only when no choice has been saved. An existing **Off** or **On** choice is preserved. The tagged v1.8.1 release still defaults to Off; this change is not yet in a tagged release.
 
 - **Off** preserves Hermes' complete native transcript presentation.
 - **On** keeps all live progress visible, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices and interim replies after the final response mounts. User messages, final answers, generated images, artifacts and alerts stay visible.

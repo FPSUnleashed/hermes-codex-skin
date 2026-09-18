@@ -27,7 +27,7 @@ test('chat, sidebar and preview tabs share a vertical baseline and balanced marg
         assert.ok(Math.abs(row.tab - 28 * zoom) < 0.1)
         assert.ok(Math.abs(row.above - 10 * zoom) < 0.1)
         assert.ok(Math.abs(row.above - row.below) < 0.1)
-        assert.ok(Math.abs(row.header - (cramped ? 82 : 48) * zoom) < 0.1)
+        assert.ok(Math.abs(row.header - 48 * zoom) < 0.1, 'all control bands keep their height even when the native strip is absolute')
       }
     }
     await browser.evaluate(`document.documentElement.style.zoom='1';document.querySelectorAll('[data-zone-tabstrip]').forEach(el=>el.classList.remove('absolute'));document.querySelectorAll('[data-panel-header]').forEach(el=>el.style.height='34px');document.documentElement.removeAttribute('data-codex-chat-look')`)
