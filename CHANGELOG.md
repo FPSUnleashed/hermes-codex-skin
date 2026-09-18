@@ -20,6 +20,7 @@ All notable changes to this project are documented here.
 
 ### Improved
 
+- Match the composer's plus icon to the native send/stop button color instead of the theme accent, preserving its shape and menu behavior.
 - Give session-control error notices a rounded, theme-aware Codex card with readable wrapping on narrow panes. Preserve their native error icon, alert semantics and dismiss action.
 - Update plugin-management instructions to Capabilities → Plugins.
 

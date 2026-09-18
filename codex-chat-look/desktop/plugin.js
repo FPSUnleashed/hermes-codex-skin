@@ -1362,6 +1362,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:is([aria
 }
 
 /* Odd-length, unrotated strokes keep the small plus visually symmetric.
+   Match the native send/stop circle's foreground, not the theme accent.
    Retain the native menu button and handler. */
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .codicon-add) {
   position: relative;
@@ -1369,7 +1370,7 @@ html[data-codex-chat-look='true'] [data-slot='composer-surface'] button:has(> .c
   height: 28px !important;
   min-width: 28px !important;
   padding: 0 !important;
-  color: var(--codex-color-primary) !important;
+  color: var(--dt-foreground, var(--codex-color-text)) !important;
 }
 html[data-codex-chat-look='true'] [data-slot='composer-surface'] button > .codicon-add {
   visibility: hidden;
