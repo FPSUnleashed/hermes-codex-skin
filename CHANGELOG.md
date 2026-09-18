@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Enable Clean transcript by default when no preference has been saved, without overwriting an existing On or Off choice.
+
+### Improved
+
+- Add a subtle theme-aware shadow to the upper-right control icons so they remain readable over scrolling chat, without restoring an opaque bar.
+
 ### Fixed
 
 - Keep the top control band at a constant height when showing or hiding tabs and the browser pane, without shifting the native window controls.

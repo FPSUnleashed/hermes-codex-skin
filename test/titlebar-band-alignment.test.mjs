@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+
 import test from 'node:test'
 import { chromium } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
@@ -7,11 +7,11 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 // Native TitlebarControls + TreeGroup structure, confirmed by read-only geometry
 // on the installed v1.8.0: 24px tools at top 5px, 44px left / 48px browser strips.
 const group=(id,browser=false)=>`<section data-tree-group="${id}" data-window-top><div data-panel-header style="height:34px"><div data-zone-tabstrip="${id}"><div role="tablist"><div role="tab">${browser?'Browser':'Sessions'}</div></div></div></div>${browser?'<aside data-preview-browser></aside>':''}</section>`
-test('window controls center on their actual tab band and retain native placement for split rows',async()=>{
+test('window controls keep their shared band center when tabs, panes or zoom change',async()=>{
  const b=await chromium()
  try{
-  const {CSS}=await loadPluginInternals(['CSS'])
-  const code=(await readFile(new URL('../codex-chat-look/plugin.js',import.meta.url),'utf8')).replace(/^import .*$/gm,'').replace(/export default\s*\{/,'globalThis.plugin = {')
+  const {CSS,installTitlebarAlignment}=await loadPluginInternals(['CSS','installTitlebarAlignment'])
+  const code=installTitlebarAlignment.toString()
   await b.call('Emulation.setDeviceMetricsOverride',{width:1000,height:600,deviceScaleFactor:1,mobile:false})
   await b.call('Page.setDocumentContent',{frameId:(await b.call('Page.getFrameTree')).frameTree.frame.id,html:`<!doctype html><html data-codex-chat-look="true"><style>
   :root{--titlebar-controls-top:5px;--titlebar-controls-y-nudge:0px;--ui-editor-surface-background:white;--ui-sidebar-surface-background:#eee}*{box-sizing:border-box}body{margin:0}#layout{display:flex;width:100%}section{position:relative;width:50%;height:500px}[data-panel-header]{position:relative;display:flex;flex-shrink:0}[data-zone-tabstrip]{display:flex;flex:1}[role=tablist]{display:flex}[role=tab]{height:28px}.absolute{position:absolute;bottom:0;left:0;right:0}[data-titlebar-cluster]{position:fixed;top:var(--titlebar-controls-top);display:flex;z-index:70}[data-titlebar-cluster=left]{left:14px;translate:0 var(--titlebar-controls-y-nudge)}[data-titlebar-cluster=right]{right:14px}button{display:grid;place-items:center;padding:0;border:0;width:24px;height:24px}svg{width:14px;height:14px}${CSS}</style><body><div id="layout">${group('grp-sessions')}${group('browser',true)}</div><div data-titlebar-cluster="left"><button id="left"><svg></svg></button></div><div data-titlebar-cluster="right"><button id="right"><svg></svg></button></div></body></html>`})

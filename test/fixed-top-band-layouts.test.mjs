@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+
 import test from 'node:test'
 import { chromium } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
@@ -9,8 +9,8 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 test('top band and five controls stay stable across browser, tabs, cramped strips and zoom', async () => {
   const b = await chromium()
   try {
-    const { CSS } = await loadPluginInternals(['CSS'])
-    const source = (await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')).replace(/^import .*$/gm,'').replace(/export default\s*\{/,'globalThis.plugin = {')
+    const { CSS, installTitlebarAlignment } = await loadPluginInternals(['CSS', 'installTitlebarAlignment'])
+    const source = installTitlebarAlignment.toString()
     const pane = id => `<section data-tree-group="${id}" data-window-top><div data-panel-header style="height:34px"><div aria-hidden="true" style="width:var(--panel-titlebar-left)"></div><div data-window-drag-handle></div><div aria-hidden="true" style="width:var(--panel-titlebar-right)"></div></div><div class="body">${id === 'preview' ? '<aside data-preview-browser></aside>' : '<div data-slot="aui_thread-viewport"></div>'}</div></section>`
     await b.call('Page.setDocumentContent', { frameId:(await b.call('Page.getFrameTree')).frameTree.frame.id, html:`<html data-codex-chat-look="true"><style>
       :root{--titlebar-controls-top:5px;--ui-chat-surface-background:white;--ui-editor-surface-background:white;--ui-sidebar-surface-background:#eee}

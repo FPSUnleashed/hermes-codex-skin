@@ -1994,6 +1994,12 @@ html[data-codex-chat-look='true'] [data-titlebar-cluster][data-codex-titlebar-al
   top: calc(var(--titlebar-controls-top, 5px) + var(--codex-titlebar-offset, 0px)) !important;
 }
 
+/* A soft theme-colored shadow separates the glyphs from scrolling text without
+   repainting the transparent header or adding a background to native buttons. */
+html[data-codex-chat-look='true'] [data-titlebar-cluster='right'] > button {
+  filter: drop-shadow(0 1px 2px var(--theme-background-seed, var(--codex-color-chat)));
+}
+
 html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header],
 html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip]) {
   height: 48px !important;
@@ -2007,6 +2013,7 @@ html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] [data-
   bottom: auto !important;
   left: var(--panel-titlebar-left, 0px) !important;
   right: var(--panel-titlebar-right, 0px) !important;
+  -webkit-app-region: drag !important;
 }
 
 html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] > [data-window-drag-handle] {
@@ -2014,7 +2021,9 @@ html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] > [dat
 }
 
 html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header]:has([data-zone-tabstrip]) > [data-window-drag-handle] {
-  display: none !important;
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none;
 }
 
 html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-panel-header]:has([data-zone-tabstrip]) {
@@ -2579,7 +2588,7 @@ function setPinnedUserMessagesMode(mode) {
 
 function readCleanTranscriptMode() {
   try {
-    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'off')
+    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'on') ?? 'on'
     return mode === 'on' ? 'on' : 'off'
   } catch {
     return 'off'
