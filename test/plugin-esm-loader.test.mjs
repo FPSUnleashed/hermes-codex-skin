@@ -7,8 +7,8 @@ const moduleUrl = text => 'data:text/javascript;base64,' + Buffer.from(text).toS
 test('runtime ESM import registers the current plugin without titlebar autohide', async () => {
   const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
   const shims = {
-    '@hermes/plugin-sdk': moduleUrl("export const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'};"),
-    react: moduleUrl('export const useEffect=()=>{};'),
+    '@hermes/plugin-sdk': moduleUrl("export const useQuery=()=>({});export const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'};"),
+    react: moduleUrl('export const useEffect=()=>{},useRef=()=>({current:null});'),
     'react/jsx-runtime': moduleUrl('export const jsx=()=>null;')
   }
   const rewritten = source.replace(/from '([^']+)'/g, (match, name) => {

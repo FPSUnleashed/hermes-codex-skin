@@ -7,8 +7,8 @@ test('installed plugin parses as an actual ESM module after SDK import rewriting
   const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url),'utf8')
   assert.ok(!source.includes('\u0000'),'no literal NUL in runtime module')
   const modules = {
-    '@hermes/plugin-sdk': asModule('export const host={};export const PALETTE_AREA="palette", THEMES_AREA="themes", TITLEBAR_AREAS={center:"center"};'),
-    react: asModule('export function useEffect(){}'),
+    '@hermes/plugin-sdk': asModule('export const host={};export const useQuery=()=>({});export const PALETTE_AREA="palette", THEMES_AREA="themes", TITLEBAR_AREAS={center:"center"};'),
+    react: asModule('export function useEffect(){};export const useRef=()=>({current:null});'),
     'react/jsx-runtime': asModule('export function jsx(){return null}')
   }
   const rewritten = source.replace(/from\s+(['"])([^'"]+)\1/g, (all,quote,name) => {

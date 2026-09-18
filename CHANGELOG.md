@@ -4,13 +4,30 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-18
+
+### Added
+
+- In-app update notifications beside the composer's plus button, with hourly stable-release checks and stale refresh on app focus/reconnection.
+- Scrollable release notes fetched directly from GitHub, including older releases on demand.
+- One-click verified download and local plugin replacement, hot-reload confirmation, and a green success animation that disappears when complete. Skin settings are retained.
+- Plugin manifest and desktop bundle for Hermes' plugin catalog, preserving the standalone manual-install path.
+
 ### Fixed
 
 - Leave model labels entirely to Hermes, preserving its original names, capitalization and Fast indicator. Removed the skin's name rewriting and appended reasoning label; Hermes' native Thinking Level control is unchanged.
+- Give tab close controls a circular background, balanced insets and a separate title area.
+- Center queued-message edit/send actions across the complete row, including attachment and editing metadata, without changing Queue behavior.
 
 ### Improved
 
 - Refined sidebar contrast: clearer conversation names, quieter section headings and navigation icons, and subtler neutral hover/selection fills. Layout, typography and native status colors are unchanged.
+- Redraw the composer's plus icon with symmetric, unrotated strokes while retaining its original button and action.
+
+### Maintenance
+
+- Document GitHub update requests, local update state and the initial manual update needed to install the updater.
+- Add regression coverage for update integrity, local replacement/recovery, activation receipts, hover behavior and composer control alignment.
 
 ## [1.7.0] - 2026-09-17
 

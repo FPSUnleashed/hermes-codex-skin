@@ -57,7 +57,7 @@ ${CSS}\n${BROWSER_PALETTE_CSS}
     assert.equal(empty.inputY, 12)
     assert.equal(empty.plusX, 22)
     assert.equal(empty.plusBottom, 22)
-    assert.equal(empty.plusWidth, '12px')
+    assert.equal(empty.plusWidth, '13px')
     assert.equal(empty.plusStroke, '1.5px')
     assert.equal(empty.weight, '400')
     assert.equal(empty.editMax, '192px')
