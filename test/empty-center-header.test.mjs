@@ -10,7 +10,7 @@ test('empty center-chat header disappears only between visible sidebar and brows
  await b.evaluate(`window.snap=()=>({display:getComputedStyle(document.getElementById('header')).display,top:document.getElementById('content').getBoundingClientRect().top,radius:getComputedStyle(document.getElementById('content')).borderTopLeftRadius,groupRadius:getComputedStyle(document.getElementById('main')).borderTopLeftRadius})`)
  let r=await b.evaluate('snap()');assert.equal(r.display,'none');assert.equal(r.top,0);assert.equal(r.radius,'0px');assert.equal(r.groupRadius,'0px')
  await b.evaluate(`document.getElementById('header').innerHTML='<div data-zone-tabstrip="grp-main"><div role="tablist"><div role="tab">Chat</div></div></div>'`)
- r=await b.evaluate('snap()');assert.notEqual(r.display,'none');assert.equal(r.top,44);assert.equal(r.radius,'0px')
+ r=await b.evaluate('snap()');assert.notEqual(r.display,'none');assert.equal(r.top,48);assert.equal(r.radius,'0px')
  await b.evaluate(`document.getElementById('header').innerHTML='';document.getElementById('right').style.display='none'`)
  r=await b.evaluate('snap()');assert.notEqual(r.display,'none');assert.equal(r.top,34)
  await b.evaluate(`document.getElementById('right').style.display='flex';document.getElementById('side').style.display='none'`)

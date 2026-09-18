@@ -27,7 +27,7 @@ export async function loadPluginInternals(names = [], overrides = {}) {
     useQuery: () => ({}),
     AbortController,
     THEMES_AREA: 'themes',
-    TITLEBAR_AREAS: { center: 'center' },
+    TITLEBAR_AREAS: { center: 'titleBar.center', left: 'titleBar.left', right: 'titleBar.right' },
     PALETTE_AREA: 'palette',
     window: { location: { hash: '#/theme-test' } },
     console,

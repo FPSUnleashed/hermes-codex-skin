@@ -1,10 +1,10 @@
-import { host, PALETTE_AREA, THEMES_AREA, TITLEBAR_AREAS, useQuery } from '@hermes/plugin-sdk'
+import { host, PALETTE_AREA, THEMES_AREA, useQuery } from '@hermes/plugin-sdk'
 import { useEffect, useRef } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.8.0'
+const BUILD_ID = 'v1.8.1'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -723,15 +723,15 @@ html[data-codex-chat-look='true'] [data-tree-split]:has(> div:not([style*='displ
   border-top-left-radius: 0 !important;
 }
 
-/* Match the shared 44px header row while preserving the original square
+/* Match the shared 48px header row while preserving the original square
    Sessions/Bots tabs, underline and divider behavior. */
 html[data-codex-chat-look='true']
   [data-tree-group='grp-sessions']
   [data-zone-tabstrip='grp-sessions'] {
-  height: 44px !important;
-  min-height: 44px !important;
+  height: 48px !important;
+  min-height: 48px !important;
   box-sizing: border-box !important;
-  padding-block: 8px !important;
+  padding-block: 10px !important;
 }
 
 html[data-codex-chat-look='true']
@@ -1751,6 +1751,54 @@ html[data-codex-chat-look='true'] [data-slot='composer-dock'] > div[class~='over
   backdrop-filter: none !important;
 }
 
+/* Session-control notices keep their native alert, text, icon and dismiss
+   handler. Only the direct error row gets a Codex card; nested validation
+   errors and notifications outside the composer retain their native style. */
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert']:has(> div > .codicon-error) {
+  min-width: 0 !important;
+  margin: 8px !important;
+  padding: 8px 10px !important;
+  gap: 10px !important;
+  align-items: flex-start !important;
+  border: 1px solid color-mix(in srgb, var(--codex-color-destructive) 18%, var(--codex-color-border-subtle)) !important;
+  border-radius: 12px !important;
+  background: var(--codex-color-card) !important;
+  color: var(--codex-color-text) !important;
+  font-size: 12px !important;
+  line-height: 20px !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert']:has(> div > .codicon-error) > div {
+  flex: 1 !important;
+  min-width: 0 !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert']:has(> div > .codicon-error) > div > span {
+  min-width: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert'] > div > .codicon-error {
+  color: var(--codex-color-destructive) !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert']:has(> div > .codicon-error) > button {
+  border-radius: 999px !important;
+  color: var(--codex-color-text-secondary) !important;
+}
+html[data-codex-chat-look='true'] [data-slot='composer-status-stack']
+  [data-slot='status-stack-section'] > [role='alert']:has(> div > .codicon-error) > button:hover {
+  background: var(--codex-color-hover) !important;
+}
+
 /* Current Hermes separates frame, scroll owner and content. Paint the content,
    clip at the frame's radius, and retain the native scroll owner's constraints. */
 html[data-codex-chat-look='true'] [data-slot='composer-status-stack'] > div:has(> [data-slot='status-stack-scroll']) {
@@ -1940,13 +1988,17 @@ html[data-codex-chat-look='true'] {
 }
 
 /* Native control reservations sit beside the tabstrip in its parent header. */
+html[data-codex-chat-look='true'] [data-titlebar-cluster][data-codex-titlebar-aligned] {
+  top: calc(var(--titlebar-controls-top, 5px) + var(--codex-titlebar-offset, 0px)) !important;
+}
+
 html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip]) {
-  min-height: 44px !important;
+  min-height: 48px !important;
 }
 
 /* Native cramped headers reserve a separate 34px drag/control row. */
 html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip][class~='absolute']) {
-  min-height: 78px !important;
+  min-height: 82px !important;
 }
 
 html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-panel-header]:has([data-zone-tabstrip]) {
@@ -1956,10 +2008,10 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
 html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] {
   --pane-tab-active-accent: transparent;
   --pane-tab-active-bg: var(--codex-browser-tab);
-  height: 44px !important;
-  min-height: 44px !important;
+  height: 48px !important;
+  min-height: 48px !important;
   box-sizing: border-box !important;
-  padding: 8px !important;
+  padding: 10px 8px !important;
   gap: 4px !important;
   border: 0 !important;
   background: var(--codex-browser-background) !important;
@@ -2123,19 +2175,8 @@ html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child 
   color: var(--ui-text-primary) !important;
 }
 
-/* Screenshot reference: 28px tabs, 10px vertical breathing room, then a
-   compact navigation row. Preserve every Hermes action and narrow-pane wrap. */
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-panel-header]:has([data-zone-tabstrip]) {
-  min-height: 48px !important;
-}
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) > [data-panel-header]:has([data-zone-tabstrip][class~='absolute']) {
-  min-height: 82px !important;
-}
-html[data-codex-chat-look='true'] [data-tree-group]:has(aside[data-preview-browser]) [data-zone-tabstrip] {
-  height: 48px !important;
-  min-height: 48px !important;
-  padding-block: 10px !important;
-}
+/* Shared tabs retain the screenshot's 28px pills and 10px vertical margins.
+   Keep the browser navigation row compact without changing native actions. */
 html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) {
   min-height: 39px !important;
   padding: 5px 10px !important;
@@ -3632,43 +3673,98 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   return cleanup
 }
 
-function CodexChatStyleRuntime() {
-  useEffect(() => {
-    const root = document.documentElement
-    let style = document.getElementById(STYLE_ID)
-    if (!style) {
-      style = document.createElement('style')
-      style.id = STYLE_ID
-      document.head.appendChild(style)
+function installTitlebarAlignment() {
+  const observed = new Set(), marked = new Set()
+  const selector = '[data-titlebar-cluster], [data-window-top], [data-panel-header]'
+  let frame = 0, disposed = false
+  const clear = element => {
+    element.style.removeProperty('--codex-titlebar-offset')
+    element.removeAttribute('data-codex-titlebar-aligned')
+    marked.delete(element)
+  }
+  const sync = () => {
+    frame = 0
+    if (disposed) return
+    const clusters = [...document.querySelectorAll('[data-titlebar-cluster]')]
+    const headers = [...document.querySelectorAll('[data-window-top] > [data-panel-header]')]
+    const current = new Set([...clusters, ...headers])
+    for (const element of observed) if (!current.has(element)) { resize.unobserve(element); observed.delete(element) }
+    for (const element of current) if (!observed.has(element)) { resize.observe(element); observed.add(element) }
+    for (const element of marked) if (!clusters.includes(element)) clear(element)
+    for (const cluster of clusters) {
+      const box = cluster.getBoundingClientRect(), x = box.left + box.width / 2
+      const header = headers.find(element => {
+        const r = element.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && getComputedStyle(element).visibility !== 'hidden'
+      })
+      const tabs = header?.querySelector('[data-zone-tabstrip]')
+      // Cramped panes have a separate native control row above their tabs.
+      // Keep that row, empty headers and non-chat routes at native positions.
+      if (document.documentElement.dataset.codexChatLook !== 'true' || !box.width || !box.height || !tabs || getComputedStyle(tabs).position === 'absolute') { clear(cluster); continue }
+      const band = header.getBoundingClientRect(), scale = box.height / cluster.offsetHeight
+      const previous = parseFloat(cluster.style.getPropertyValue('--codex-titlebar-offset')) || 0
+      const next = Math.round((previous + (band.top + band.height / 2 - box.top - box.height / 2) / scale) * 100) / 100
+      if (Math.abs(next) < .02) { clear(cluster); continue }
+      if (Math.abs(next - previous) > .02 || !marked.has(cluster)) {
+        cluster.style.setProperty('--codex-titlebar-offset', `${next}px`)
+        cluster.setAttribute('data-codex-titlebar-aligned', '')
+        marked.add(cluster)
+      }
     }
-    style.textContent = CSS + BROWSER_PALETTE_CSS + UPDATE_CSS
-    style.dataset.codexChatLookBuild = BUILD_ID
-    root.dataset.codexChatLook = 'true'
-    root.dataset.codexChatLookBuild = BUILD_ID
-    syncComposerWidthRoot()
-    syncPinnedUserMessagesRoot()
-    syncCleanTranscriptRoot()
-    const uninstallBehavior = installBehaviorRuntime(() => {
-      style?.remove()
-      delete root.dataset.codexChatLook
-      root.removeAttribute('data-codex-composer-width')
-      root.removeAttribute('data-codex-pinned-user-messages')
-      root.removeAttribute('data-codex-clean-transcript')
-      if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
-      if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
-    })
-    root.dataset.codexChatLookRuntime = BUILD_ID
-    console.info(`[codex-chat-look] activated ${BUILD_ID}`, JSON.stringify({
-      panelHeaders: document.querySelectorAll('[data-window-top] > [data-panel-header]').length,
-      browserBars: document.querySelectorAll('aside[data-preview-browser] input[data-slot="input"]').length,
-      cornerTargets: document.querySelectorAll('[data-tree-split] > div:has(> [data-tree-group="grp-sessions"]):not([style*="display: none"]) + div > [data-tree-group="grp-main"]').length
-    }))
-    return () => {
-      uninstallBehavior()
-    }
-  }, [])
+  }
+  const schedule = () => { if (!disposed && !frame) frame = window.requestAnimationFrame(sync) }
+  const resize = new ResizeObserver(schedule)
+  const relevant = node => node.nodeType === 1 && (node.matches(selector) || node.querySelector(selector))
+  const mutations = new MutationObserver(records => {
+    if (records.some(record => record.type === 'attributes' || record.target.closest?.('[data-panel-header]') || [...record.addedNodes, ...record.removedNodes].some(relevant))) schedule()
+  })
+  mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-window-top'] })
+  window.addEventListener('resize', schedule)
+  sync()
+  return () => {
+    disposed = true
+    window.cancelAnimationFrame(frame)
+    resize.disconnect(); mutations.disconnect()
+    window.removeEventListener('resize', schedule)
+    for (const element of marked) clear(element)
+  }
+}
 
-  return null
+function installChatStyleRuntime() {
+  const root = document.documentElement
+  let style = document.getElementById(STYLE_ID)
+  if (!style) {
+    style = document.createElement('style')
+    style.id = STYLE_ID
+    document.head.appendChild(style)
+  }
+  style.textContent = CSS + BROWSER_PALETTE_CSS + UPDATE_CSS
+  style.dataset.codexChatLookBuild = BUILD_ID
+  root.dataset.codexChatLook = 'true'
+  root.dataset.codexChatLookBuild = BUILD_ID
+  syncComposerWidthRoot()
+  syncPinnedUserMessagesRoot()
+  syncCleanTranscriptRoot()
+  const uninstallTitlebarAlignment = installTitlebarAlignment()
+  const uninstallBehavior = installBehaviorRuntime(() => {
+    style?.remove()
+    delete root.dataset.codexChatLook
+    root.removeAttribute('data-codex-composer-width')
+    root.removeAttribute('data-codex-pinned-user-messages')
+    root.removeAttribute('data-codex-clean-transcript')
+    if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
+    if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
+  })
+  root.dataset.codexChatLookRuntime = BUILD_ID
+  console.info(`[codex-chat-look] activated ${BUILD_ID}`, JSON.stringify({
+    panelHeaders: document.querySelectorAll('[data-window-top] > [data-panel-header]').length,
+    browserBars: document.querySelectorAll('aside[data-preview-browser] input[data-slot="input"]').length,
+    cornerTargets: document.querySelectorAll('[data-tree-split] > div:has(> [data-tree-group="grp-sessions"]):not([style*="display: none"]) + div > [data-tree-group="grp-main"]').length
+  }))
+  return () => {
+    uninstallTitlebarAlignment()
+    uninstallBehavior()
+  }
 }
 
 export default {
@@ -3677,7 +3773,20 @@ export default {
   register(ctx) {
     pluginStorage = ctx.storage
     const updater = createSkinUpdater(ctx.storage)
-    ctx.register({ id: 'update-runtime', area: TITLEBAR_AREAS.center, order: 9998, render: () => jsx(CodexUpdateRuntime, { updater }) })
+    // The controller belongs to the plugin, not to a route-mounted UI slot.
+    ctx.onDispose(() => updater.dispose())
+    let uninstallStyle
+    let disposed = false
+    ctx.onDispose(() => {
+      disposed = true
+      uninstallStyle?.()
+    })
+    // Let host contribution removals settle before taking over a hot-reloaded
+    // style node. Styles then outlive route slots and never claim page chrome.
+    if (globalThis.document?.body) queueMicrotask(() => {
+      if (!disposed) uninstallStyle = installChatStyleRuntime()
+    })
+    ctx.register({ id: 'update-runtime', area: 'composer.leading', order: 19, render: () => jsx(CodexUpdateRuntime, { updater }) })
     ctx.register({ id: 'update-button', area: 'composer.leading', order: 20, render: () => jsx(CodexUpdateButton, { updater }) })
     ctx.register({ id: 'theme', area: THEMES_AREA, data: CODEX_THEME })
     ctx.register({
@@ -3719,12 +3828,6 @@ export default {
         run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
       }
     })
-    ctx.register({
-      id: 'style-runtime',
-      area: TITLEBAR_AREAS.center,
-      order: 9999,
-      render: () => jsx(CodexChatStyleRuntime, {})
-    })
   }
 }
 
@@ -3764,6 +3867,9 @@ const UPDATE_CSS = `
 .codex-update-release p{margin:5px 0;color:var(--ui-text-secondary,#666);overflow-wrap:anywhere;white-space:pre-wrap}
 .codex-update-release ul{margin:5px 0;padding-left:16px;color:var(--ui-text-secondary,#666)}
 .codex-update-release li{margin:3px 0;overflow-wrap:anywhere}
+.codex-update-release figure{margin:10px 0}
+.codex-update-release img{display:block;width:auto;height:auto;max-width:100%;max-height:180px;margin-inline:auto;object-fit:contain;border-radius:8px}
+.codex-update-image-fallback{color:var(--ui-text-tertiary,#737373);font-size:11px}
 .codex-update-tag{border-radius:99px;padding:1px 6px;background:var(--ui-row-hover-background,#f3f3f3);font-size:9px}
 .codex-update-error{padding:16px 0;white-space:pre-wrap;color:var(--ui-text-primary,#171717)}
 @keyframes codex-update-download{0%,100%{transform:translateY(-1px)}50%{transform:translateY(2px)}}
@@ -3803,12 +3909,54 @@ function updateAssetFor(release, repo = UPDATE_REPO) {
   if (!/^sha256:[a-f0-9]{64}$/.test(asset.digest || '') || asset.size <= 0 || asset.size > UPDATE_MAX_BYTES) return null
   return asset
 }
+function updateImageURL(value) {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null
+    const path = url.pathname.toLowerCase(), repo = '/fpsunleashed/hermes-codex-skin/'
+    const allowed = (url.hostname === 'github.com' && (path.startsWith(repo + 'releases/download/') || path.startsWith('/user-attachments/assets/')))
+      || (url.hostname === 'raw.githubusercontent.com' && path.startsWith(repo))
+      || url.hostname === 'user-images.githubusercontent.com'
+    return allowed ? url.href : null
+  } catch { return null }
+}
+function decodeUpdateImageText(value) {
+  const named = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
+  return String(value || '').replace(/&(#x[0-9a-f]+|#\d+|amp|quot|apos|lt|gt);/gi, (entity, name) => {
+    if (name[0] !== '#') return named[name.toLowerCase()]
+    const point = /^#x/i.test(name) ? parseInt(name.slice(2), 16) : Number(name.slice(1))
+    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '\ufffd'
+  })
+}
+function appendUpdateImage(parent, source, alt) {
+  const url = updateImageURL(decodeUpdateImageText(source))
+  const fallback = document.createElement('p')
+  fallback.className = 'codex-update-image-fallback'
+  fallback.textContent = decodeUpdateImageText(alt) || 'Image unavailable'
+  if (!url) { parent.appendChild(fallback); return }
+  const frame = document.createElement('figure'), image = document.createElement('img')
+  image.alt = decodeUpdateImageText(alt)
+  // GitHub release redirects support image display, not CORS pixel access.
+  // No fetch/token bridge is used; keep the image's referrer empty.
+  image.loading = 'lazy'; image.decoding = 'async'; image.referrerPolicy = 'no-referrer'
+  image.dataset.updateImageSrc = url
+  image.addEventListener('error', () => frame.replaceWith(fallback), { once: true })
+  frame.appendChild(image); parent.appendChild(frame)
+}
+function activateUpdateImages(parent) {
+  for (const image of parent.querySelectorAll('img[data-update-image-src]')) {
+    const source = image.dataset.updateImageSrc
+    delete image.dataset.updateImageSrc
+    image.src = source
+  }
+}
 function appendUpdateNotes(parent, raw) {
-  // Release notes are untrusted data: create text nodes, never inject HTML.
+  // Parse only image tokens. No release HTML, attributes or event handlers enter
+  // the DOM; the remainder continues to use plain text nodes.
   let list = null
-  for (const line of String(raw || '').split('\n')) {
+  const appendText = line => {
     const text = line.trim().replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1')
-    if (!text) { list = null; continue }
+    if (!text) { list = null; return }
     const bullet = /^[-*] (.+)/.exec(text)
     if (bullet) {
       if (!list) { list = document.createElement('ul'); parent.appendChild(list) }
@@ -3818,6 +3966,25 @@ function appendUpdateNotes(parent, raw) {
       const heading = /^#{1,6}\s+(.+)/.exec(text)
       const node = document.createElement(heading ? 'h4' : 'p'); node.textContent = heading ? heading[1] : text; parent.appendChild(node)
     }
+  }
+  const tokens = /!\[([^\]\n]*)\]\(\s*(<[^>\n]+>|[^\s)]+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\s*\)|<img\b(?:[^"'<>]|"[^"]*"|'[^']*')*\/?>/gi
+  for (const line of String(raw || '').split('\n')) {
+    let cursor = 0
+    for (const match of line.matchAll(tokens)) {
+      const before = line.slice(cursor, match.index)
+      if (!/^\s*[-*]\s*$/.test(before)) appendText(before)
+      if (match[0].startsWith('![')) appendUpdateImage(parent, match[2].replace(/^<|>$/g, ''), match[1])
+      else {
+        const attributes = new Map()
+        for (const field of match[0].slice(4, -1).matchAll(/([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)) {
+          const name = field[1].toLowerCase()
+          if (!attributes.has(name)) attributes.set(name, field[2] ?? field[3] ?? field[4] ?? '')
+        }
+        appendUpdateImage(parent, attributes.get('src'), attributes.get('alt'))
+      }
+      list = null; cursor = match.index + match[0].length
+    }
+    appendText(line.slice(cursor))
   }
 }
 
@@ -4009,7 +4176,7 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
       Object.assign(bridge.style, { left: `${Math.min(popup.left, rect.left)}px`, top: `${popup.bottom}px`, width: `${Math.max(popup.right, rect.right) - Math.min(popup.left, rect.left)}px`, height: `${Math.max(0, rect.top - popup.bottom + 1)}px` })
     }
     const close = () => { clearTimeout(closedTimer); open = false; panel.hidden = true; bridge.hidden = true; button.setAttribute('aria-expanded', 'false') }
-    const show = () => { if (!['available', 'error'].includes(state.phase)) return; clearTimeout(closedTimer); open = true; panel.hidden = false; bridge.hidden = false; button.setAttribute('aria-expanded', 'true'); position() }
+    const show = () => { if (!['available', 'error'].includes(state.phase)) return; clearTimeout(closedTimer); open = true; panel.hidden = false; bridge.hidden = false; button.setAttribute('aria-expanded', 'true'); activateUpdateImages(panel); position() }
     const leave = event => { if ([panel, bridge, button].some(node => node.contains(event.relatedTarget))) return; closedTimer = setTimeout(() => { if (!panel.contains(document.activeElement)) close() }, 180) }
     button.addEventListener('pointerenter', show); button.addEventListener('pointerleave', leave); button.addEventListener('focus', show)
     panel.addEventListener('pointerenter', () => clearTimeout(closedTimer)); panel.addEventListener('pointerleave', leave)
@@ -4025,6 +4192,8 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
       else if (event.animationName === 'codex-update-exit' && state.phase === 'vanishing') phase('idle')
     })
     window.addEventListener('resize', position); document.addEventListener('scroll', position, true); document.addEventListener('pointerdown', outside); document.addEventListener('keydown', key)
+    const panelResize = new ResizeObserver(position)
+    panelResize.observe(panel)
     const view = { paint() {
       const visible = state.phase !== 'idle'
       anchor.style.display = visible ? 'inline-flex' : 'none'
@@ -4051,11 +4220,12 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
           if (release.name && release.name !== release.tag_name) { const title = document.createElement('h3'); title.textContent = release.name; article.appendChild(title) }
           appendUpdateNotes(article, release.body); panel.appendChild(article)
         }
+        if (open) activateUpdateImages(panel)
         panel.scrollTop = scroll; position()
       }
     } }
     views.add(view); view.paint()
-    return () => { views.delete(view); close(); panel.remove(); bridge.remove(); button.remove(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', key) }
+    return () => { views.delete(view); close(); panelResize.disconnect(); panel.remove(); bridge.remove(); button.remove(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', key) }
   }
   return {
     capable, state, cache, initialize, firstPage, accept, install, mount,
@@ -4071,7 +4241,7 @@ function CodexUpdateRuntime({ updater }) {
     refetchIntervalInBackground: true, refetchOnWindowFocus: true, refetchOnReconnect: true, retry: false,
     initialData: updater.cache || undefined, initialDataUpdatedAt: updater.cache?.checkedAt || 0
   })
-  useEffect(() => { void updater.initialize().catch(error => updater.queryError(error)); return () => updater.dispose() }, [])
+  useEffect(() => { void updater.initialize().catch(error => updater.queryError(error)) }, [updater])
   useEffect(() => { if (query.data) updater.accept(query.data) }, [query.data])
   useEffect(() => { if (query.error) updater.queryError(query.error) }, [query.error])
   return null

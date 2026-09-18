@@ -33,6 +33,9 @@ const UPDATE_CSS = `
 .codex-update-release p{margin:5px 0;color:var(--ui-text-secondary,#666);overflow-wrap:anywhere;white-space:pre-wrap}
 .codex-update-release ul{margin:5px 0;padding-left:16px;color:var(--ui-text-secondary,#666)}
 .codex-update-release li{margin:3px 0;overflow-wrap:anywhere}
+.codex-update-release figure{margin:10px 0}
+.codex-update-release img{display:block;width:auto;height:auto;max-width:100%;max-height:180px;margin-inline:auto;object-fit:contain;border-radius:8px}
+.codex-update-image-fallback{color:var(--ui-text-tertiary,#737373);font-size:11px}
 .codex-update-tag{border-radius:99px;padding:1px 6px;background:var(--ui-row-hover-background,#f3f3f3);font-size:9px}
 .codex-update-error{padding:16px 0;white-space:pre-wrap;color:var(--ui-text-primary,#171717)}
 @keyframes codex-update-download{0%,100%{transform:translateY(-1px)}50%{transform:translateY(2px)}}
@@ -72,12 +75,54 @@ function updateAssetFor(release, repo = UPDATE_REPO) {
   if (!/^sha256:[a-f0-9]{64}$/.test(asset.digest || '') || asset.size <= 0 || asset.size > UPDATE_MAX_BYTES) return null
   return asset
 }
+function updateImageURL(value) {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return null
+    const path = url.pathname.toLowerCase(), repo = '/fpsunleashed/hermes-codex-skin/'
+    const allowed = (url.hostname === 'github.com' && (path.startsWith(repo + 'releases/download/') || path.startsWith('/user-attachments/assets/')))
+      || (url.hostname === 'raw.githubusercontent.com' && path.startsWith(repo))
+      || url.hostname === 'user-images.githubusercontent.com'
+    return allowed ? url.href : null
+  } catch { return null }
+}
+function decodeUpdateImageText(value) {
+  const named = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
+  return String(value || '').replace(/&(#x[0-9a-f]+|#\d+|amp|quot|apos|lt|gt);/gi, (entity, name) => {
+    if (name[0] !== '#') return named[name.toLowerCase()]
+    const point = /^#x/i.test(name) ? parseInt(name.slice(2), 16) : Number(name.slice(1))
+    return point > 0 && point <= 0x10ffff ? String.fromCodePoint(point) : '\ufffd'
+  })
+}
+function appendUpdateImage(parent, source, alt) {
+  const url = updateImageURL(decodeUpdateImageText(source))
+  const fallback = document.createElement('p')
+  fallback.className = 'codex-update-image-fallback'
+  fallback.textContent = decodeUpdateImageText(alt) || 'Image unavailable'
+  if (!url) { parent.appendChild(fallback); return }
+  const frame = document.createElement('figure'), image = document.createElement('img')
+  image.alt = decodeUpdateImageText(alt)
+  // GitHub release redirects support image display, not CORS pixel access.
+  // No fetch/token bridge is used; keep the image's referrer empty.
+  image.loading = 'lazy'; image.decoding = 'async'; image.referrerPolicy = 'no-referrer'
+  image.dataset.updateImageSrc = url
+  image.addEventListener('error', () => frame.replaceWith(fallback), { once: true })
+  frame.appendChild(image); parent.appendChild(frame)
+}
+function activateUpdateImages(parent) {
+  for (const image of parent.querySelectorAll('img[data-update-image-src]')) {
+    const source = image.dataset.updateImageSrc
+    delete image.dataset.updateImageSrc
+    image.src = source
+  }
+}
 function appendUpdateNotes(parent, raw) {
-  // Release notes are untrusted data: create text nodes, never inject HTML.
+  // Parse only image tokens. No release HTML, attributes or event handlers enter
+  // the DOM; the remainder continues to use plain text nodes.
   let list = null
-  for (const line of String(raw || '').split('\n')) {
+  const appendText = line => {
     const text = line.trim().replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1')
-    if (!text) { list = null; continue }
+    if (!text) { list = null; return }
     const bullet = /^[-*] (.+)/.exec(text)
     if (bullet) {
       if (!list) { list = document.createElement('ul'); parent.appendChild(list) }
@@ -87,6 +132,25 @@ function appendUpdateNotes(parent, raw) {
       const heading = /^#{1,6}\s+(.+)/.exec(text)
       const node = document.createElement(heading ? 'h4' : 'p'); node.textContent = heading ? heading[1] : text; parent.appendChild(node)
     }
+  }
+  const tokens = /!\[([^\]\n]*)\]\(\s*(<[^>\n]+>|[^\s)]+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'))?\s*\)|<img\b(?:[^"'<>]|"[^"]*"|'[^']*')*\/?>/gi
+  for (const line of String(raw || '').split('\n')) {
+    let cursor = 0
+    for (const match of line.matchAll(tokens)) {
+      const before = line.slice(cursor, match.index)
+      if (!/^\s*[-*]\s*$/.test(before)) appendText(before)
+      if (match[0].startsWith('![')) appendUpdateImage(parent, match[2].replace(/^<|>$/g, ''), match[1])
+      else {
+        const attributes = new Map()
+        for (const field of match[0].slice(4, -1).matchAll(/([^\s"'<>\/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)) {
+          const name = field[1].toLowerCase()
+          if (!attributes.has(name)) attributes.set(name, field[2] ?? field[3] ?? field[4] ?? '')
+        }
+        appendUpdateImage(parent, attributes.get('src'), attributes.get('alt'))
+      }
+      list = null; cursor = match.index + match[0].length
+    }
+    appendText(line.slice(cursor))
   }
 }
 
@@ -278,7 +342,7 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
       Object.assign(bridge.style, { left: `${Math.min(popup.left, rect.left)}px`, top: `${popup.bottom}px`, width: `${Math.max(popup.right, rect.right) - Math.min(popup.left, rect.left)}px`, height: `${Math.max(0, rect.top - popup.bottom + 1)}px` })
     }
     const close = () => { clearTimeout(closedTimer); open = false; panel.hidden = true; bridge.hidden = true; button.setAttribute('aria-expanded', 'false') }
-    const show = () => { if (!['available', 'error'].includes(state.phase)) return; clearTimeout(closedTimer); open = true; panel.hidden = false; bridge.hidden = false; button.setAttribute('aria-expanded', 'true'); position() }
+    const show = () => { if (!['available', 'error'].includes(state.phase)) return; clearTimeout(closedTimer); open = true; panel.hidden = false; bridge.hidden = false; button.setAttribute('aria-expanded', 'true'); activateUpdateImages(panel); position() }
     const leave = event => { if ([panel, bridge, button].some(node => node.contains(event.relatedTarget))) return; closedTimer = setTimeout(() => { if (!panel.contains(document.activeElement)) close() }, 180) }
     button.addEventListener('pointerenter', show); button.addEventListener('pointerleave', leave); button.addEventListener('focus', show)
     panel.addEventListener('pointerenter', () => clearTimeout(closedTimer)); panel.addEventListener('pointerleave', leave)
@@ -294,6 +358,8 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
       else if (event.animationName === 'codex-update-exit' && state.phase === 'vanishing') phase('idle')
     })
     window.addEventListener('resize', position); document.addEventListener('scroll', position, true); document.addEventListener('pointerdown', outside); document.addEventListener('keydown', key)
+    const panelResize = new ResizeObserver(position)
+    panelResize.observe(panel)
     const view = { paint() {
       const visible = state.phase !== 'idle'
       anchor.style.display = visible ? 'inline-flex' : 'none'
@@ -320,11 +386,12 @@ function createSkinUpdater(storage, native = globalThis.window?.hermesDesktop, r
           if (release.name && release.name !== release.tag_name) { const title = document.createElement('h3'); title.textContent = release.name; article.appendChild(title) }
           appendUpdateNotes(article, release.body); panel.appendChild(article)
         }
+        if (open) activateUpdateImages(panel)
         panel.scrollTop = scroll; position()
       }
     } }
     views.add(view); view.paint()
-    return () => { views.delete(view); close(); panel.remove(); bridge.remove(); button.remove(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', key) }
+    return () => { views.delete(view); close(); panelResize.disconnect(); panel.remove(); bridge.remove(); button.remove(); window.removeEventListener('resize', position); document.removeEventListener('scroll', position, true); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', key) }
   }
   return {
     capable, state, cache, initialize, firstPage, accept, install, mount,
@@ -340,7 +407,7 @@ function CodexUpdateRuntime({ updater }) {
     refetchIntervalInBackground: true, refetchOnWindowFocus: true, refetchOnReconnect: true, retry: false,
     initialData: updater.cache || undefined, initialDataUpdatedAt: updater.cache?.checkedAt || 0
   })
-  useEffect(() => { void updater.initialize().catch(error => updater.queryError(error)); return () => updater.dispose() }, [])
+  useEffect(() => { void updater.initialize().catch(error => updater.queryError(error)) }, [updater])
   useEffect(() => { if (query.data) updater.accept(query.data) }, [query.data])
   useEffect(() => { if (query.error) updater.queryError(query.error) }, [query.error])
   return null

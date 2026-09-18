@@ -154,8 +154,8 @@ test('Sessions and Bots keep their tab geometry without a visible divider', asyn
     assert.equal(result.botsBorderWidth, '1px')
     assert.equal(result.botsBorderColor, 'rgba(0, 0, 0, 0)')
     assert.equal(result.botsPointerEvents, 'auto')
-    assert.equal(result.sessionsStripHeight, 44)
-    assert.equal(result.otherStripHeight, 44)
+    assert.equal(result.sessionsStripHeight, 48)
+    assert.equal(result.otherStripHeight, 48)
     assert.equal(result.sessionsHeight, 28)
     assert.equal(result.botsHeight, 28)
     assert.equal(result.otherHeight, 28)
@@ -169,7 +169,7 @@ test('Sessions and Bots keep their tab geometry without a visible divider', asyn
       assert.equal(state.clickable, true)
       assert.equal(state.restored, true)
       assert.equal(state.restoredHeight, 28)
-      assert.equal(state.restoredStripHeight, 44)
+      assert.equal(state.restoredStripHeight, 48)
     }
   } finally {
     await rm(tempDir, { force: true, recursive: true })

@@ -7,7 +7,7 @@ test('installed plugin parses as an actual ESM module after SDK import rewriting
   const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url),'utf8')
   assert.ok(!source.includes('\u0000'),'no literal NUL in runtime module')
   const modules = {
-    '@hermes/plugin-sdk': asModule('export const host={};export const useQuery=()=>({});export const PALETTE_AREA="palette", THEMES_AREA="themes", TITLEBAR_AREAS={center:"center"};'),
+    '@hermes/plugin-sdk': asModule('export const host={};export const useQuery=()=>({});export const PALETTE_AREA="palette", THEMES_AREA="themes", TITLEBAR_AREAS={center:"titleBar.center",left:"titleBar.left",right:"titleBar.right"};'),
     react: asModule('export function useEffect(){};export const useRef=()=>({current:null});'),
     'react/jsx-runtime': asModule('export function jsx(){return null}')
   }
@@ -19,8 +19,9 @@ test('installed plugin parses as an actual ESM module after SDK import rewriting
   assert.equal(loaded.default.id,'codex-chat-look')
   assert.equal(typeof loaded.default.register,'function')
   const contributions=[]
-  loaded.default.register({storage:{get:(key,fallback)=>fallback,set:()=>{}},register:item=>contributions.push(item)})
+  loaded.default.register({onDispose:()=>{},storage:{get:(key,fallback)=>fallback,set:()=>{}},register:item=>contributions.push(item)})
   assert.ok(contributions.some(item=>item.id==='theme'))
-  assert.ok(contributions.some(item=>item.id==='style-runtime'))
+  assert.ok(contributions.some(item=>item.id==='update-runtime'))
+  assert.ok(contributions.every(item=>!item.area.startsWith('titleBar.')))
   assert.ok(!contributions.some(item=>item.id==='toggle-titlebar-autohide'))
 })
