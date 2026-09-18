@@ -16,7 +16,7 @@ test('native update control uses composer seam, escaped release content and an u
   assert.ok(Math.abs(rect.width-25.2)<.05)
   await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:rect.x,y:rect.y})
   const state=await b.evaluate(`(()=>{const p=document.querySelector('.codex-update-panel'),r=p.getBoundingClientRect(),c=document.getElementById('composer').getBoundingClientRect();return{open:!p.hidden,above:r.top<c.top,parent:p.parentElement.tagName,buttons:p.querySelectorAll('button').length,images:p.querySelectorAll('img').length,text:p.textContent,scroll:p.scrollHeight>p.clientHeight}})()`)
-  assert.equal(state.open,true);assert.equal(state.above,true);assert.equal(state.parent,'BODY');assert.equal(state.buttons,0);assert.equal(state.images,0);assert.equal(state.scroll,true);assert.match(state.text,/<img/)
+  assert.equal(state.open,true);assert.equal(state.above,true);assert.equal(state.parent,'BODY');assert.equal(state.buttons,0);assert.equal(state.images,0);assert.equal(state.scroll,true);assert.doesNotMatch(state.text,/<img/);assert.match(state.text,/Image unavailable/)
   const bridge = await b.evaluate(`(()=>{const r=document.querySelector('.codex-update-hover-bridge').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2}})()`)
   await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',...bridge})
   await b.evaluate(`new Promise(resolve=>setTimeout(resolve,350))`)

@@ -36,6 +36,7 @@ async function pluginFixture(initialStorage = {}) {
   )
 
   internals.__pluginDefault.register({
+    onDispose: () => {},
     storage: {
       get: (key, fallback) => values.has(key) ? values.get(key) : fallback,
       set: (key, value) => values.set(key, value)

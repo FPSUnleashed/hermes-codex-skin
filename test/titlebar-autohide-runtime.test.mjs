@@ -9,10 +9,11 @@ test('legacy titlebar autohide state is inert and no palette option is registere
 
   const contributions = []
   plugin.register({
+    onDispose: () => {},
     storage: { get: () => 'on', set: () => {} },
     register: item => contributions.push(item)
   })
-  assert.ok(contributions.some(item => item.id === 'style-runtime'))
+  assert.ok(contributions.some(item => item.id === 'update-runtime'))
   assert.ok(!contributions.some(item => item.id === 'toggle-titlebar-autohide'))
 
   const html = `<!doctype html><html data-codex-chat-look="true" data-codex-titlebar-autohide="on" data-codex-left-sidebar="closed"><head><style>${CSS}</style></head><body><div data-codex-native-titlebar id="bar"></div><div data-codex-native-titlebar-cluster id="cluster"></div></body></html>`
@@ -30,11 +31,11 @@ test('legacy titlebar autohide state is inert and no palette option is registere
         registeredListeners.push({type,name:callback?.name||''});return add.call(this,type,callback,...rest)
       };
       const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},
-        PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'},
-        useEffect=f=>{window.dispose=f()},jsx=()=>null;
+        PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'titleBar.center',left:'titleBar.left',right:'titleBar.right'},
+        useEffect=()=>{},jsx=()=>null;
       ${source}
-      fixturePlugin.register({storage:{get:(key,fallback)=>{storageReads.push(key);return key==='titlebar-autohide'?'on':fallback},set:()=>{}},register:()=>{}});
-      CodexChatStyleRuntime();
+      window.pluginDisposers=[];
+      fixturePlugin.register({onDispose:f=>pluginDisposers.push(f),storage:{get:(key,fallback)=>{storageReads.push(key);return key==='titlebar-autohide'?'on':fallback},set:()=>{}},register:()=>{}});
     })()`)
     const state = await browser.evaluate(`(() => {
       const bar = document.getElementById('bar'), cluster = document.getElementById('cluster')
@@ -53,7 +54,7 @@ test('legacy titlebar autohide state is inert and no palette option is registere
     assert.equal(state.edgeTriggers, 0)
     assert.equal(state.listeners, 0)
     assert.equal(state.legacyRead, false)
-    await browser.evaluate('dispose()')
+    await browser.evaluate('pluginDisposers.forEach(f=>f())')
   } finally {
     browser.close()
   }

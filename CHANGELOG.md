@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-09-18
+
+### Added
+
+- GitHub-hosted images in release-history previews, supporting Markdown and HTML image syntax without executing release HTML or event handlers. Images load on opening the menu and stay within its bounds.
+
+### Fixed
+
+- Center left and right window controls against their actual extended tab bands, including after pane rearrangement or resizing. Preserve native placement when controls and tabs use separate rows.
+- Align chat, sidebar and preview tab bands vertically with equal top/bottom spacing, keeping the existing preview tab size and native vertical-tab behavior.
+- Keep the hover menu above the composer as images finish loading; show readable descriptions when an image cannot load instead of raw image markup.
+- Keep the skin active when opening Capabilities, Messaging, Artifacts or Settings and returning to chat. Styles now follow plugin lifetime rather than a titlebar slot, preserving native controls on extension pages.
+- Keep update detection working after navigation and view remounts. Stop its controller only when the plugin is disabled or unloaded.
+
+### Improved
+
+- Match the composer's plus icon to the native send/stop button color instead of the theme accent, preserving its shape and menu behavior.
+- Give session-control error notices a rounded, theme-aware Codex card with readable wrapping on narrow panes. Preserve their native error icon, alert semantics and dismiss action.
+- Update plugin-management instructions to Capabilities → Plugins.
+
 ## [1.8.0] - 2026-09-18
 
 ### Added

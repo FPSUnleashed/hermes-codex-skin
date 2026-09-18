@@ -30,11 +30,12 @@ test('MNT-003 keeps the four-line 110px clamp aligned with its runtime threshold
 })
 
 test('MNT-004 keeps lexical runtime cleanup without a behavior ref', () => {
-  const styleRuntime = source.slice(source.indexOf('function CodexChatStyleRuntime'), source.indexOf('export default'))
-  assert.doesNotMatch(styleRuntime, /\buseRef\b|\bbehaviorRef\b/)
+  const styleRuntime = source.slice(source.indexOf('function installChatStyleRuntime'), source.indexOf('export default'))
+  assert.doesNotMatch(styleRuntime, /\buseEffect\b|\buseRef\b|\bbehaviorRef\b/)
   assert.match(source, /import \{[^}]*\buseEffect\b[^}]*\} from 'react'/)
   assert.match(source, /const uninstallBehavior = installBehaviorRuntime/)
-  assert.match(source, /return \(\) => \{\s*uninstallBehavior\(\)\s*\}/)
+  assert.match(styleRuntime, /const uninstallTitlebarAlignment = installTitlebarAlignment\(\)/)
+  assert.match(styleRuntime, /return \(\) => \{\s*uninstallTitlebarAlignment\(\)\s*uninstallBehavior\(\)\s*\}/)
   assert.match(source, /RUNTIME_HANDOFF_KEY/)
 })
 
