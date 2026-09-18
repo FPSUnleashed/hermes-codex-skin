@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-**Stable.** Version 1.7.0 restores compatibility with Hermes' updated Desktop layout, refines tabs and browser styling, and improves history-rail responsiveness. Titlebar autohide has been removed. The plugin uses Hermes' supported desktop entry point, but some styling depends on internal DOM attributes that can change between Hermes releases.
+Version 1.8.0 adds in-app update notifications, GitHub release notes and one-click skin updates, alongside sidebar, tab and composer refinements. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
 
 > [!IMPORTANT]
 > This version targets the updated Hermes Desktop layout. If you are keeping the previous layout, use [Codex Skin v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) instead. Use a pinned download for that version, not `main`. See [Compatibility](#compatibility).
@@ -18,6 +18,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## What it changes
 
+- A small blue update button beside the composer's `+` menu when a newer stable release is available. Hover to browse GitHub release notes; click to update and hot-reload the skin.
 - Native Hermes theme colors and Glass/Clear window translucency, without changing the Codex layout or typography
 - A selectable **Codex Skin** theme in **Settings → Appearance** for the original Codex light and dark palettes
 - Chat typography, spacing, sidebar, composer, Queue, bubbles, menus and loaders
@@ -87,7 +88,7 @@ Older content loaded through **Show previous messages** can remain visible when 
 
 ## Screenshots
 
-These captures document earlier releases. Some details, including the former Titlebar autohide option, differ from v1.7.0.
+These captures document earlier releases. Some details, including the former Titlebar autohide option, differ from v1.8.0.
 
 ### Version 1.5.0
 
@@ -125,12 +126,14 @@ A light theme with the top bar hidden:
 - It preserves Hermes' native assistant-turn rendering.
 - It does not own, persist, replay, remove or migrate queued prompts; Queue behavior remains Hermes-native.
 - It does not modify Hermes source files.
-- It does not run a separate backend or fetch third-party assets. History previews can use Hermes' native read-only session API.
+- It does not run a separate backend. Update checks contact GitHub, and clicking the update button downloads the plugin's published release asset. History previews can use Hermes' native read-only session API.
 
 ## Requirements
 
 - Hermes Desktop with the [Desktop Plugin SDK](https://hermes-agent.nousresearch.com/docs/developer-guide/desktop-plugin-sdk)
 - A local Hermes profile directory
+
+In-app updates require the Desktop shell's local plugin-folder, complete file-read and file-write capabilities, plus its plugin hot reload. The updater checks local file capabilities and verifies each hot reload before reporting success. Updating a remote Agent alone does not add them to an older Desktop shell.
 
 Current Hermes Desktop releases can install Git repositories directly. Older releases can still use the manual disk install below.
 
@@ -156,11 +159,7 @@ curl -fsSL \
   -o "$PLUGIN_DIR/plugin.js"
 ```
 
-For a named profile, use:
-
-```text
-~/.hermes/profiles/<profile>/desktop-plugins/codex-chat-look/plugin.js
-```
+Desktop plugins are app-level on current Hermes builds. Use the plugin folder on the computer running Hermes Desktop, even when the agent is remote; do not install the UI plugin only on the backend machine.
 
 ### Manual install on Windows PowerShell
 
@@ -179,7 +178,13 @@ Hermes watches the plugin folder and should load the file automatically. You can
 
 ## Update
 
-For the updated Desktop layout, run the relevant install command again. If you are staying on the previous layout, keep the pinned v1.6.0 download instead of updating from `main`. Hermes normally reloads replaced plugin files automatically; a completed download alone does not prove that the new build is active. Compare its SHA-256 against [`CHECKSUMS.sha256`](CHECKSUMS.sha256) when you want byte-level verification.
+**Install v1.8.0 once using your existing installation method to receive the updater.** Earlier versions cannot display the new button by themselves.
+
+After that, the plugin checks the public GitHub release feed hourly and refreshes stale information when the app becomes active or reconnects. A small blue button appears beside `+` only when a newer stable release with a valid plugin asset is available. Hover to read the release history; click to download, verify and install it. The green check appears only after the new plugin has loaded, then the button disappears. Your skin settings remain unchanged.
+
+The updater resolves the local Desktop plugin folder, verifies the download's size, SHA-256 digest and build identity, and saves a rollback copy before replacing `plugin.js`. It does not execute release-note HTML. An update failure is shown on the control instead of claiming success.
+
+The manual install commands remain available. If you are staying on the previous Desktop layout, keep the pinned v1.6.0 download instead of updating from `main`. Compare a source installation against [`CHECKSUMS.sha256`](CHECKSUMS.sha256) when you want byte-level verification.
 
 The manual install commands above download from `main`, so running them can fetch improvements before the next tagged release. A merge alone does not replace a manually installed local file.
 
@@ -205,20 +210,22 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 Desktop plugins execute inside the Hermes renderer and therefore carry the same local authority as the app. Review local plugins before installing them.
 
-This plugin uses no third-party services or remote assets and stores no message text, prompt hashes or content fingerprints. History previews can make a read-only request through Hermes' own session API when a turn is not rendered. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width**, **Pinned user messages** and **Clean transcript** preferences.
+The public updater contacts GitHub for release metadata and, on your click, the selected plugin asset. No GitHub account is needed. GitHub receives normal network request information; no chat content is sent to it, and the plugin adds no analytics.
+
+Locally, the plugin caches release notes/check times and update verification receipts, and saves staged/rollback plugin files. It stores no message text, prompt hashes or content fingerprints. History previews can make a read-only request through Hermes' own session API when a turn is not rendered. It keeps a bounded local list of profile/session/message IDs for user messages that were manually expanded, capped at 250 entries, plus the **Composer width**, **Pinned user messages** and **Clean transcript** preferences.
 
 ## Compatibility
 
 | Hermes Desktop layout | Codex Skin version |
 | --- | --- |
-| Desktop builds with the September 16, 2026 panel-header and virtualized-timeline changes ([Hermes commit 2efbbef](https://github.com/NousResearch/hermes-agent/commit/2efbbef981cc75ed6df6214ee6975a0ae0f418d3)) | v1.7.0 |
+| Desktop builds with the September 16, 2026 panel-header and virtualized-timeline changes ([Hermes commit 2efbbef](https://github.com/NousResearch/hermes-agent/commit/2efbbef981cc75ed6df6214ee6975a0ae0f418d3)) | v1.8.0; in-app updates additionally require the local capabilities described above |
 | Older Desktop builds, including code from Hermes Agent 0.21.3 / v2026.9.14 or earlier | [v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) |
 
-Titlebar autohide is not available in v1.7.0. Old saved values are ignored; the remaining skin settings and native Hermes window controls are preserved.
+Titlebar autohide is not available in v1.8.0. Old saved values are ignored; the remaining skin settings and native Hermes window controls are preserved.
 
 The updated header layout no longer needs a separate hide-and-reveal mechanism. Tabs and window controls now remain accessible directly, without the old hover-triggered transitions.
 
-The v1.7.0 compatibility target is the Desktop build containing the September 16, 2026 layout and timeline changes, not a blanket remote Agent-version threshold. Hermes Agent and Hermes Desktop can update independently. This release has been tested against that updated layout only; it does not guarantee compatibility with all future builds.
+The v1.8.0 compatibility target is the Desktop build containing the September 16, 2026 layout and timeline changes, not a blanket remote Agent-version threshold. Hermes Agent and Hermes Desktop can update independently. This release has been tested against that updated layout only; it does not guarantee compatibility with all future builds.
 
 ### Staying on v1.6.0
 
