@@ -2,7 +2,15 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [1.8.2] - 2026-09-29
+
+
+### Fixed
+
+- Restore the themed Tasks and Queue card after Hermes added collapsible status drawers, while preserving native drawer controls, task scrolling and split-chat isolation.
+- Keep the top control band at a constant height when showing or hiding tabs and the browser pane, without shifting the native window controls.
+- Make the main chat header genuinely transparent when its tabs are hidden, letting the conversation scroll behind it instead of clipping below an empty row.
+- Keep cramped tab strips in the same band, preserving native control reservations, horizontal tab scrolling and the window drag area.
 
 ## [1.8.1] - 2026-09-18
 

@@ -13,7 +13,7 @@ ${CSS}</style></head><body><div data-tree-split="root"><div id="side" style="wid
   await browser.evaluate(`window.measure=()=>{const h=document.getElementById('header').getBoundingClientRect(),s=document.getElementById('strip').getBoundingClientRect(),t=document.getElementById('tab').getBoundingClientRect(),c=document.getElementById('chat-content'),g=document.getElementById('chat');return {headerHeight:h.height,top:t.top-s.top,bottom:h.bottom-t.bottom,stripTop:s.top,contentTop:document.getElementById('browser-content').getBoundingClientRect().top,corner:getComputedStyle(c).borderTopLeftRadius,chatColor:getComputedStyle(c).backgroundColor,backdrop:getComputedStyle(g).backgroundColor}}`)
   let r=await browser.evaluate('measure()');assert.equal(r.headerHeight,48);assert.equal(r.top,10);assert.equal(r.bottom,10);assert.equal(r.contentTop,48);assert.equal(r.corner,'0px');assert.equal(r.chatColor,'rgb(17, 17, 17)');assert.equal(r.backdrop,'rgb(28, 28, 28)')
   await browser.evaluate(`document.getElementById('header').style.height='62px';document.getElementById('strip').classList.add('absolute')`)
-  r=await browser.evaluate('measure()');assert.equal(r.headerHeight,82);assert.equal(r.stripTop,34);assert.equal(r.top,10);assert.equal(r.bottom,10);assert.equal(r.contentTop,82)
+  r=await browser.evaluate('measure()');assert.equal(r.headerHeight,48);assert.equal(r.stripTop,0);assert.equal(r.top,10);assert.equal(r.bottom,10);assert.equal(r.contentTop,48)
   await browser.evaluate(`document.getElementById('side').style.display='none'`)
   assert.equal((await browser.evaluate('measure()')).corner,'0px')
   await browser.evaluate(`document.documentElement.removeAttribute('data-codex-chat-look')`)
