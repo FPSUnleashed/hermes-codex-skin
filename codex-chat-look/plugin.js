@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.8.1'
+const BUILD_ID = 'v1.8.2'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -1994,11 +1994,6 @@ html[data-codex-chat-look='true'] [data-titlebar-cluster][data-codex-titlebar-al
   top: calc(var(--titlebar-controls-top, 5px) + var(--codex-titlebar-offset, 0px)) !important;
 }
 
-/* A soft theme-colored shadow separates the glyphs from scrolling text without
-   repainting the transparent header or adding a background to native buttons. */
-html[data-codex-chat-look='true'] [data-titlebar-cluster='right'] > button {
-  filter: drop-shadow(0 1px 2px var(--theme-background-seed, var(--codex-color-chat)));
-}
 
 html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header],
 html[data-codex-chat-look='true'] [data-tree-group] > [data-panel-header]:has([data-zone-tabstrip]) {
@@ -2492,7 +2487,9 @@ function decorateComposerChrome() {
 
   // Decorate every mounted composer independently, including split chat panes.
   for (const statusDock of document.querySelectorAll('[data-slot="composer-dock"], [data-slot="composer-root"]')) {
-    const nativeStatusStack = statusDock.querySelector(':scope > [data-slot="composer-status-stack"]')
+    // Native drawers may wrap the stack; keep discovery owned by this composer.
+    const nativeStatusStack = [...statusDock.querySelectorAll('[data-slot="composer-status-stack"]')]
+      .find(stack => stack.closest('[data-slot="composer-dock"], [data-slot="composer-root"]') === statusDock)
       || (statusDock.matches('[data-slot="composer-root"]')
         ? statusDock.querySelector(':scope > div.absolute.inset-x-0.bottom-full')
         : [...statusDock.children].find(element => {
@@ -2588,7 +2585,7 @@ function setPinnedUserMessagesMode(mode) {
 
 function readCleanTranscriptMode() {
   try {
-    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'on') ?? 'on'
+    const mode = pluginStorage?.get(CLEAN_TRANSCRIPT_STORAGE_KEY, 'off')
     return mode === 'on' ? 'on' : 'off'
   } catch {
     return 'off'

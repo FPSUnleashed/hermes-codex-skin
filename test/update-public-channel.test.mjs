@@ -5,7 +5,7 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 
 test('public release channel uses no private credentials or diagnostic files', async () => {
  const { createSkinUpdater, BUILD_ID, UPDATE_REPO, UPDATE_IS_TEST } = await loadPluginInternals(['createSkinUpdater','BUILD_ID','UPDATE_REPO','UPDATE_IS_TEST'], { crypto:webcrypto,TextEncoder,TextDecoder,Uint8Array,AbortSignal,setTimeout,clearTimeout })
- assert.equal(BUILD_ID,'v1.8.1');assert.equal(UPDATE_REPO,'FPSUnleashed/hermes-codex-skin');assert.equal(UPDATE_IS_TEST,false)
+ assert.match(BUILD_ID,/^v\d+\.\d+\.\d+$/);assert.equal(UPDATE_REPO,'FPSUnleashed/hermes-codex-skin');assert.equal(UPDATE_IS_TEST,false)
  const root='/local/desktop-plugins',path=root+'/codex-chat-look/plugin.js'
  const next="const ID = 'codex-chat-look'\nconst BUILD_ID = 'v1.9.0'\n"
  const files=new Map([[path,"const ID = 'codex-chat-look'\nconst BUILD_ID = 'v1.8.1'\n"]]),values=new Map(),reads=[],writes=[],requests=[]

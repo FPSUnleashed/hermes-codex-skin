@@ -47,12 +47,12 @@ async function pluginFixture(initialStorage = {}) {
   return { events, internals, registrations, root, values }
 }
 
-test('Clean transcript defaults On without persisting an implicit choice', async () => {
+test('Clean transcript defaults Off without persisting an implicit choice', async () => {
   const fixture = await pluginFixture()
 
-  assert.equal(fixture.internals.readCleanTranscriptMode(), 'on')
-  assert.equal(fixture.internals.syncCleanTranscriptRoot(), 'on')
-  assert.equal(fixture.root.attributes.get('data-codex-clean-transcript'), 'on')
+  assert.equal(fixture.internals.readCleanTranscriptMode(), 'off')
+  assert.equal(fixture.internals.syncCleanTranscriptRoot(), 'off')
+  assert.equal(fixture.root.attributes.get('data-codex-clean-transcript'), 'off')
   assert.equal(fixture.values.has('clean-transcript'), false)
 })
 
@@ -88,8 +88,8 @@ test('an explicit Off remains Off through initialization and reload', async () =
   }
 })
 
-test('the default On can be explicitly switched Off and survives reload', async () => {
-  const fixture = await pluginFixture()
+test('an explicit On is preserved and can be switched Off across reload', async () => {
+  const fixture = await pluginFixture({ 'clean-transcript': 'on' })
   const command = fixture.registrations.find(item => item.id === 'toggle-clean-transcript')
   assert.equal(command.data.detail(), 'On')
   command.data.run()

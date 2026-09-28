@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-Version 1.8.1 adds images to the release-history hover menu, aligns chat and preview tabs, and centers the window controls on their taller tab bands. It retains v1.8.0's in-app update notifications and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
+Version 1.8.2 fixes transparent Tasks and Queue panels after the latest Hermes Desktop update and keeps the top bar stable when toggling tabs or the browser. It retains release-history images, in-app update notifications and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
 
 > [!IMPORTANT]
 > This version targets the updated Hermes Desktop layout. If you are keeping the previous layout, use [Codex Skin v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) instead. Use a pinned download for that version, not `main`. See [Compatibility](#compatibility).
@@ -51,7 +51,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 | Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
 | Composer width | Codex / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
-| Clean transcript | On / Off | On | Command palette |
+| Clean transcript | On / Off | Off | Command palette |
 
 ### Recommended settings
 
@@ -83,7 +83,7 @@ Open the command palette and run **Codex Skin: Pinned user messages**. The row s
 
 Open the command palette and run **Codex Skin: Clean transcript**. The row shows the active mode and the choice persists locally.
 
-Current `main` defaults to **On** only when no choice has been saved. An existing **Off** or **On** choice is preserved. The tagged v1.8.1 release still defaults to Off; this change is not yet in a tagged release.
+Clean transcript defaults to **Off**. An existing **Off** or **On** choice is preserved.
 
 - **Off** preserves Hermes' complete native transcript presentation.
 - **On** keeps all live progress visible, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices and interim replies after the final response mounts. User messages, final answers, generated images, artifacts and alerts stay visible.

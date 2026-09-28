@@ -2,18 +2,12 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [1.8.2] - 2026-09-29
 
-### Changed
-
-- Enable Clean transcript by default when no preference has been saved, without overwriting an existing On or Off choice.
-
-### Improved
-
-- Add a subtle theme-aware shadow to the upper-right control icons so they remain readable over scrolling chat, without restoring an opaque bar.
 
 ### Fixed
 
+- Restore the themed Tasks and Queue card after Hermes added collapsible status drawers, while preserving native drawer controls, task scrolling and split-chat isolation.
 - Keep the top control band at a constant height when showing or hiding tabs and the browser pane, without shifting the native window controls.
 - Make the main chat header genuinely transparent when its tabs are hidden, letting the conversation scroll behind it instead of clipping below an empty row.
 - Keep cramped tab strips in the same band, preserving native control reservations, horizontal tab scrolling and the window drag area.

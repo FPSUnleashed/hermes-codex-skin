@@ -34,7 +34,7 @@ test('cramped native drag handle remains visible and strip gaps drag without swa
   } finally { b.close() }
 })
 
-test('right-side controls get a theme-aware soft shadow without changing their native geometry', async () => {
+test('right-side controls keep native filters and geometry without added shadows', async () => {
   const b = await chromium()
   try {
     await fixture(b)
@@ -43,7 +43,7 @@ test('right-side controls get a theme-aware soft shadow without changing their n
     for (const background of ['#111111','#ffffff','#fdf6e3']) {
       await b.evaluate(`document.documentElement.style.setProperty('--theme-background-seed',${JSON.stringify(background)});document.documentElement.setAttribute('data-codex-chat-look','true')`)
       const result = await b.evaluate(`({filters:window.buttons.map(b=>getComputedStyle(b).filter),left:getComputedStyle(document.querySelector('[data-titlebar-cluster=left] button')).filter,boxes:window.boxes(),reachable:window.buttons.every(b=>{const r=b.getBoundingClientRect();return b.contains(document.elementFromPoint(r.x+12,r.y+12))})})`)
-      assert.ok(result.filters.every(f=>f.includes('drop-shadow(')), 'all five icons must have the subtle shadow')
+      assert.ok(result.filters.every(f=>f === 'none'), 'the skin must not add icon shadows')
       assert.equal(result.left,'none')
       assert.deepEqual(result.boxes,before)
       assert.equal(result.reachable,true)
