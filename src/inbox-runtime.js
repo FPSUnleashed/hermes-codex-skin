@@ -266,7 +266,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
   };
 }
 
-// REST list/detail metadata retains source and immutable created_source.
+// Current routing and immutable creation surfaces may differ after a resume.
 // Unknown/new source kinds require an explicit compatibility review, not a guess.
 function codexInboxSource(session) {
   if (!session || typeof session !== 'object') return 'unknown';
@@ -277,7 +277,7 @@ function codexInboxSource(session) {
     'homeassistant', 'email', 'sms', 'dingtalk', 'webhook', 'msgraph_webhook', 'feishu', 'wecom',
     'wecom_callback', 'weixin', 'bluebubbles', 'qqbot', 'yuanbao', 'relay',
     'line', 'teams', 'ntfy', 'simplex', 'irc', 'a2a', 'raft', 'buzz', 'photon', 'google_chat'];
-  if (!known.includes(source) || created != null && (!known.includes(created) || created !== source)) return 'unknown';
+  if (!known.includes(source) || created != null && !known.includes(created)) return 'unknown';
   return 'noncron';
 }
 

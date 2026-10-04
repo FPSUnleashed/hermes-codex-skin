@@ -60,10 +60,22 @@ test('same ID across connections and profiles never borrows admission or cron pr
   assert.equal(f.admission.isEligible(A, s), true); assert.equal(f.admission.isEligible(B, s), false); assert.equal(f.admission.isEligible(P, row('old', { profile: 'other' })), false);
 });
 
-test('missing, unknown and conflicting provenance fail closed even with work', () => {
-  for (const extra of [{ source: undefined }, { source: 'unknown' }, { source: 'unrecognized-source' }, { source: 'desktop', created_source: 'unknown' }, { source: 'desktop', created_source: 'telegram' }]) {
+test('missing and unknown provenance fail closed even with work', () => {
+  for (const extra of [{ source: undefined }, { source: 'unknown' }, { source: 'unrecognized-source' }, { source: 'desktop', created_source: 'unknown' }, { source: 'desktop', created_source: 'unrecognized-source' }]) {
     const f = fixture(), s = row('unknown', extra); f.admission.observe(A, [s], { workingSessions: [s] });
     assert.equal(f.admission.isEligible(A, s), false, JSON.stringify(extra));
+  }
+});
+
+test('known current and immutable creation surfaces may differ without admitting history', () => {
+  for (const created_source of ['tui', 'cli', 'telegram']) {
+    const f = fixture(), s = row('migrated', { pinned: true, created_source });
+    f.admission.observe(A, [s]);
+    assert.equal(f.admission.isEligible(A, s), false, 'surface migration itself is not work');
+    f.admission.observe(A, [s], { workingSessions: [s] });
+    assert.equal(f.admission.isEligible(A, s), true, created_source);
+    f.admission.observe(A, [s]);
+    assert.equal(createCodexInboxAdmission(f.storage, f.model).isEligible(A, s), true, 'verified work survives idle and reload');
   }
 });
 
