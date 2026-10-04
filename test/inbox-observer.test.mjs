@@ -184,25 +184,27 @@ test('load-more changes options on one observer and reads the complete paginated
   assert.equal(f.last().sessions.length, 100)
 })
 
-test('duplicate scope/mode notifications and busy/focused projections never add observers or refetch', options, async t => {
+test('duplicate projections keep one observer; a coalesced new busy edge refreshes once', options, async t => {
   const f = await fixture(t)
   const observer = scopedQueries(f)[0].observers[0]
   const before = f.calls.length
   for (let i = 0; i < 10; i++) {
     f.state.profile.notify(); f.state.connectionId.notify()
     f.window.dispatchEvent({ type: 'codex-chat-look:inbox-mode', detail: 'on' })
-    f.state.busyBySession.set({ one: i % 2 === 0 })
     f.state.focusedStoredSessionId.set(`focus-${i}`)
   }
   await flush()
   assert.equal(f.calls.length, before)
   assert.equal(f.last().focusedStoredSessionId, 'focus-9')
-  assert.equal(f.last().busyBySession.one, false)
+  for (let i = 0; i < 10; i++) f.state.busyBySession.set({ one: true })
+  await flush()
+  assert.equal(f.calls.length, before + 1, 'one new work edge refreshes without polling')
+  assert.equal(f.last().busyBySession.one, undefined, 'unverified runtime busy never borrows this owner')
   assert.equal(observers(f), 1)
   assert.equal(scopedQueries(f)[0].observers[0], observer)
   assert.equal(f.intervals.size, 1)
   await f.tick()
-  assert.equal(f.calls.length, before + 1)
+  assert.equal(f.calls.length, before + 2)
 })
 
 test('readiness marks an island created after an initial cache hit and follows mode/scope/errors', options, async t => {

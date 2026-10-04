@@ -169,8 +169,11 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
     ...(inbox?.admission?.explicitSessionIds?.(scope) || []),
     ...(inbox?.admission?.admittedSessionIds?.(scope) || [])
   ])].filter(id => !inbox.model.isSettled(scope, id) && !inbox.model.isSnoozed(scope, id))
+  // Discover a just-started old thread even if it is settled and still outside
+  // the recent page. Discovery alone carries no attention authority.
+  const pendingWorkIds = inbox?.pendingWorkSessionIds?.(scope) || []
   const listedIds = new Set([...sessions.values()].flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
-  const missing = explicitRequestedIds.filter(id => !listedIds.has(id))
+  const missing = [...new Set([...explicitRequestedIds, ...pendingWorkIds])].filter(id => !listedIds.has(id))
   for (let index = 0; index < missing.length; index += 4) {
     const rows = await Promise.all(missing.slice(index, index + 4).map(async id => {
       try {
@@ -263,6 +266,9 @@ function startCodexInboxObserver(ctx, inbox) {
   if (!inbox) return () => {}
   let scope = inboxOwnerScope(), pageCount = 1, mode = readCodexInboxMode(), disposed = false
   const liveOwners = new Map()
+  const pendingEvents = []
+  let refreshVersion = 0, refreshing = false
+  let lastFocus = JSON.stringify(codexInboxLiveFocus()), lastBusy = new Set()
   let metadataPreview = null
   let liveAuthority = Symbol('Inbox live connection')
   const options = () => {
@@ -292,6 +298,27 @@ function startCodexInboxObserver(ctx, inbox) {
     }
   }
   const observer = new CodexInboxObserverVendor.QueryObserver(queryClient, options())
+  const refreshLiveIdentity = () => {
+    refreshVersion++
+    if (refreshing || disposed || mode !== 'on') return
+    refreshing = true
+    // Atom changes settle together. If an old fetch is already in flight,
+    // finish it before requesting proof for the newly focused runtime.
+    void Promise.resolve().then(async () => {
+      try {
+        while (!disposed && mode === 'on') {
+          const version = refreshVersion
+          if (observer.getCurrentResult().isFetching) await observer.refetch({ cancelRefetch: false })
+          if (disposed || mode !== 'on') break
+          await observer.refetch()
+          if (version === refreshVersion) break
+        }
+      } finally { refreshing = false }
+    })
+  }
+  const pendingWorkSessionIds = owner => pendingEvents.filter(item => sameInboxScope(item.focus, owner) &&
+    Date.now() - item.at <= 10_000).map(item => item.focus.storedId)
+  inbox.pendingWorkSessionIds = pendingWorkSessionIds
   const markReady = () => {
     const query = observer.getCurrentResult()
     const ready = !disposed && mode === 'on' && sameInboxScope(scope, inboxOwnerScope()) && !query.isPending && !query.error && !!query.data
@@ -305,6 +332,12 @@ function startCodexInboxObserver(ctx, inbox) {
     const live = authoritative && Array.isArray(data?.rawLiveSessions)
       ? resolveCodexInboxLiveSessions(owner, data.targetProfile, data.rawLiveSessions, data.sessions, liveOwners)
       : { liveSessions: [], liveStatusKnown: false }
+    const verifiedRuntimeIds = new Set((live.liveSessions || []).filter(row =>
+      row.profile === owner.profile && row.connection_id === owner.connectionId &&
+      data.rawLiveSessions.some(raw => raw && (raw.session_id || raw.id) === (row.session_id || row.id)))
+      .map(row => row.session_id || row.id))
+    const busyBySession = Object.fromEntries(Object.entries(host.state.busyBySession?.get?.() || {})
+      .filter(([id]) => verifiedRuntimeIds.has(id)))
     inbox.setMode(mode === 'on')
     inbox.rowOwnerEvidence = mode === 'on' && !query.error && data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner)
       ? { scope: owner, ids: data.sessions.flatMap(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)) }
@@ -315,9 +348,8 @@ function startCodexInboxObserver(ctx, inbox) {
       sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
       liveStatusKnown: authoritative && !!data?.liveStatusKnown && !!live?.liveStatusKnown,
       liveStatusAt: data?.liveStatusAt,
-      busyBySession: host.state.busyBySession?.get?.() || {},
-      // The SDK's id-only busy map cannot prove ownership across namespaces.
-      // Retain it as a conservative action guard, never as admission evidence.
+      // ID-only busy flags borrow only independently verified runtime identity.
+      busyBySession,
       busyOwnerKnown: authoritative && !!data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner),
       focusedStoredSessionId: host.state.focusedStoredSessionId?.get?.() || null,
       explicitRequestedIds: data?.explicitRequestedIds,
@@ -334,12 +366,25 @@ function startCodexInboxObserver(ctx, inbox) {
         if (!disposed && mode === 'on' && sameInboxScope(owner, scope)) void observer.refetch()
       }
     })
+    if (authoritative && pendingEvents.length) {
+      const focus = JSON.stringify(codexInboxLiveFocus())
+      for (let index = 0; index < pendingEvents.length;) {
+        const item = pendingEvents[index]
+        if (Date.now() - item.at > 10_000 || JSON.stringify(item.focus) !== focus) {
+          pendingEvents.splice(index, 1); continue
+        }
+        if (!verifyLiveEvent(item.event)) { index++; continue }
+        pendingEvents.splice(index, 1)
+        inbox.activity?.(item.event)
+      }
+    }
     markReady()
   }
   const configure = () => {
     if (disposed) return
     const nextScope = inboxOwnerScope(), nextMode = readCodexInboxMode()
     if (sameInboxScope(scope, nextScope) && mode === nextMode) return
+    pendingEvents.length = 0
     if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null }
     mode = nextMode
     observer.setOptions(options())
@@ -361,14 +406,29 @@ function startCodexInboxObserver(ctx, inbox) {
       data.sessions.some(row => codexInboxLiveStoredMatch(row.id, raw[0], [row]))
   }
   inbox.verifyLiveEvent = verifyLiveEvent
+  const focusChanged = () => {
+    configure(); project()
+    const next = JSON.stringify(codexInboxLiveFocus())
+    if (next !== lastFocus) {
+      pendingEvents.length = 0; lastFocus = next
+      refreshLiveIdentity()
+    }
+  }
+  const busyChanged = () => {
+    project()
+    const values = host.state.busyBySession?.get?.() || {}
+    const busy = new Set(Object.entries(values).filter(([, value]) => value === true).map(([id]) => id))
+    if ([...busy].some(id => !lastBusy.has(id))) refreshLiveIdentity()
+    lastBusy = busy
+  }
   const subscriptions = [
-    ...['profile', 'connectionId', 'focusedSessionOwner'].map(name => host.state[name]?.subscribe?.(configure)),
-    host.state.focusedStoredSessionId?.subscribe?.(() => { configure(); project() }),
-    host.state.busyBySession?.subscribe?.(project),
+    ...['profile', 'connectionId', 'focusedSessionOwner', 'focusedStoredSessionId', 'focusedSessionId'].map(name => host.state[name]?.subscribe?.(focusChanged)),
+    host.state.busyBySession?.subscribe?.(busyChanged),
     host.state.gateway?.subscribe?.(() => {
       if (host.state.gateway.get() !== 'open') {
         liveAuthority = Symbol('Inbox live connection')
         metadataPreview = null
+        pendingEvents.length = 0
         liveOwners.clear()
         project()
       } else if (mode === 'on') {
@@ -382,7 +442,19 @@ function startCodexInboxObserver(ctx, inbox) {
     // They may trigger a scoped read; only that read can establish ownership.
     if (!event.replayed && ['message.start', 'message.complete', 'error'].includes(event.type) &&
         mode === 'on' && event.connectionId === scope.connectionId && event.profile === scope.profile) {
-      void observer.refetch({ cancelRefetch: false })
+      const focus = codexInboxLiveFocus()
+      if (!verifyLiveEvent(event) && focus && sameInboxScope(focus, scope) && focus.runtimeId === event.session_id) {
+        // Keep only lifecycle + the nominated identity, never message content.
+        // Release it only after a fresh connected read verifies that identity.
+        const payload = {}
+        if (typeof event.payload?.status === 'string') payload.status = event.payload.status
+        if (event.payload?.error) payload.error = true
+        pendingEvents.push({ focus, at: Date.now(), event: {
+          type: event.type, ...scope, session_id: focus.runtimeId, payload
+        } })
+        if (pendingEvents.length > 64) pendingEvents.splice(0, pendingEvents.length - 64)
+      }
+      refreshLiveIdentity()
     }
   }))
   window.addEventListener(INBOX_MODE_EVENT, configure)
@@ -395,6 +467,7 @@ function startCodexInboxObserver(ctx, inbox) {
   const stop = () => {
     if (disposed) return
     disposed = true
+    pendingEvents.length = 0
     subscriptions.forEach(unsubscribe => unsubscribe())
     window.removeEventListener(INBOX_MODE_EVENT, configure)
     readiness?.disconnect()
@@ -402,6 +475,7 @@ function startCodexInboxObserver(ctx, inbox) {
     observer.destroy()
     liveOwners.clear()
     if (inbox.verifyLiveEvent === verifyLiveEvent) delete inbox.verifyLiveEvent
+    if (inbox.pendingWorkSessionIds === pendingWorkSessionIds) delete inbox.pendingWorkSessionIds
     inbox.rowOwnerEvidence = null
     markReady()
   }

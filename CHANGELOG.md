@@ -13,6 +13,10 @@ All notable changes to this project are documented here.
 - Verified session-row restore badges, next-thread navigation for the current chat, owner-separated persistent attention state and theme-aware activity indicators.
 - Inbox usage instructions recommending one task per thread, settling finished work, aiming for an empty Inbox at the end of the day, and keeping Pinned and Sessions collapsed.
 
+### Fixed
+
+- Sending a new message in an older or settled conversation brings it back to Inbox, including short replies and threads outside the recent history page. Opening history alone still does not add it.
+
 ### Known limitations
 
 - Cron execution sessions are excluded. Cron-triggered work delivered into a regular chat may still appear when Hermes does not expose its origin.
