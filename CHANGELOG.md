@@ -16,6 +16,7 @@ All notable changes to this project are documented here.
 ### Fixed
 
 - Sending a new message in an older or settled conversation brings it back to Inbox, including short replies and threads outside the recent history page. Opening history alone still does not add it.
+- A delayed ownership check no longer lets work received before Settle undo that decision. New work after Settle still restores the thread; Snooze is preserved.
 
 ### Known limitations
 

@@ -422,6 +422,18 @@ function startCodexInboxObserver(ctx, inbox) {
     lastBusy = busy
   }
   const subscriptions = [
+    inbox.model?.subscribe?.(event => {
+      if (event?.type !== 'manual-settle') return
+      const settledKey = inbox.model.key(event.scope, event.session)
+      if (!settledKey) return
+      // Verification can finish after Settle. Only work received after that
+      // successful decision may restore attention; wall-clock order is unsafe.
+      for (let index = pendingEvents.length - 1; index >= 0; index--) {
+        const item = pendingEvents[index]
+        if (sameInboxScope(item.focus, event.scope) &&
+            inbox.model.key(item.focus, item.focus.storedId) === settledKey) pendingEvents.splice(index, 1)
+      }
+    }),
     ...['profile', 'connectionId', 'focusedSessionOwner', 'focusedStoredSessionId', 'focusedSessionId'].map(name => host.state[name]?.subscribe?.(focusChanged)),
     host.state.busyBySession?.subscribe?.(busyChanged),
     host.state.gateway?.subscribe?.(() => {

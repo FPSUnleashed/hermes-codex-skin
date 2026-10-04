@@ -42,7 +42,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
   const listeners = new Set();
   const expired = new Map();
   const validTimestamp = value => Number.isSafeInteger(value) && value > 0 && value <= 8640000000000000;
-  const notify = () => { for (const fn of listeners) { try { fn(); } catch { /* A view subscriber cannot undo a saved model transaction. */ } } };
+  const notify = event => { for (const fn of listeners) { try { fn(event); } catch { /* A view subscriber cannot undo a saved model transaction. */ } } };
   const validKey = key => {
     try { const p = JSON.parse(key); return Array.isArray(p) && p.length === 3 && typeof p[0] === 'string' && p.slice(1).every(v => typeof v === 'string' && v); }
     catch { return false; }
@@ -126,11 +126,16 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
     for (const record of Object.values(draft.records)) at = Math.max(at, (record.snoozedAt || 0) + 1);
     return Math.min(at, 8640000000000000);
   };
-  const transaction = change => {
+  const transaction = (change, event) => {
     const draft = JSON.parse(JSON.stringify(state));
     const result = change(draft);
     if (result === false) return false;
-    if (JSON.stringify(draft) === JSON.stringify(state)) return result;
+    if (JSON.stringify(draft) === JSON.stringify(state)) {
+      // A repeated manual decision still fences earlier queued work, even
+      // when it saves identical bytes within the same clock millisecond.
+      if (event) notify(event);
+      return result;
+    }
     try {
       if (typeof storage?.set !== 'function') throw Error('Storage unavailable');
       storage.set(CODEX_INBOX_STORE, draft);
@@ -143,7 +148,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
       if (canonical(parsed) !== canonical(draft)) throw Error('Inbox storage readback failed');
       state = draft;
       error = null;
-      notify();
+      notify(event);
       return result;
     } catch {
       error = 'Inbox state could not be saved. No Inbox changes were applied.';
@@ -211,7 +216,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
         if (options.manual === true) item.record.manualSettled = true;
         else delete item.record.manualSettled;
         return true;
-      });
+      }, options.manual === true ? { type: 'manual-settle', scope, session } : undefined);
     },
     unsettle(scope, session) {
       const restoreKey = rootKey(state, scope, session);

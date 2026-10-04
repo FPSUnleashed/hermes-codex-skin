@@ -40,6 +40,35 @@ test('settle and explicit un-settle preserve source/profile islands A to B to A'
   assert.equal(model.isSettled(a, row), false);
 });
 
+test('manual Settle signals a committed decision, including identical bytes, never a failed save', t => {
+  t.mock.method(Date, 'now', () => 1800000000000);
+  const store = memory(), model = createCodexInboxModel(store), row = session(), events = [];
+  const stop = model.subscribe(event => {
+    if (event?.type !== 'manual-settle') return;
+    assert.equal(model.isManualSettled(event.scope, event.session), true);
+    events.push(event);
+  });
+  model.ingest(a, [row]);
+  model.settle(a, row);
+  assert.equal(events.length, 0);
+  assert.equal(model.settle(a, row, { manual: true }), true);
+  const saved = JSON.stringify(store.get('inbox-state-v1'));
+  assert.equal(model.settle(a, row, { manual: true }), true);
+  assert.equal(JSON.stringify(store.get('inbox-state-v1')), saved);
+  assert.equal(events.length, 2);
+  assert.equal(events[0].scope, a);
+  assert.equal(events[0].session, row);
+  const save = store.set;
+  store.set = () => {};
+  assert.equal(model.settle(b, row, { manual: true }), false);
+  assert.equal(events.length, 2);
+  assert.equal(model.isManualSettled(b, row), false);
+  store.set = save;
+  stop();
+  assert.equal(model.settle(c, row, { manual: true }), true);
+  assert.equal(events.length, 2);
+});
+
 test('reading, title, last_active, unread and mounted is_active never wake a settled thread', () => {
   const model = createCodexInboxModel(memory());
   model.ingest(a, [session()]); model.settle(a, session());

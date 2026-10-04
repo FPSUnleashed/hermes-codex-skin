@@ -89,6 +89,39 @@ test('shipping observer and real browser: resend old/settled threads, fast repli
     await browser.evaluate("window.holdLive=true;focusOld();emit('message.start',{}, {replayed:true});flush()")
     await browser.evaluate('window.holdLive=false;releaseLive();flush()')
     assert.equal(await browser.evaluate('present()'), false, 'replayed start never restores old attention')
+    for (const decision of ['settle', 'same-clock-settle', 'lineage-settle', 'foreign-settle', 'failed-settle']) {
+      await browser.evaluate("setup('desktop');focusOld();flush()")
+      await browser.evaluate("emit('message.start');emit('message.complete',{status:'complete'});flush()")
+      assert.equal(await browser.evaluate('present()'), true, 'real bridged work seeds attention')
+      if (decision === 'same-clock-settle') await browser.evaluate('window.realNow=Date.now;window.fixedNow=Date.now();Date.now=()=>fixedNow')
+      if (decision === 'lineage-settle') await browser.evaluate("metadata={...metadata,_lineage_root_id:'root',_lineage_ids:['root','old']}")
+      await browser.evaluate("state.gateway.set('closed');window.holdLive=true;state.gateway.set('open');emit('message.start');flush()")
+      assert.equal(await browser.evaluate('typeof releaseLive'), 'function')
+      assert.deepEqual(await browser.evaluate('runtime.pendingWorkSessionIds(scope)'), ['old'])
+      if (decision === 'foreign-settle') {
+        await browser.evaluate("runtime.model.settle({...scope,connectionId:'source-B'},metadata,{manual:true});flush()")
+      } else if (decision === 'failed-settle') {
+        await browser.evaluate("window.save=storage.set;storage.set=()=>{};document.querySelector('[data-codex-inbox-settle]').click();flush()")
+        assert.equal(await browser.evaluate('runtime.model.isManualSettled(scope,metadata)'), false)
+        await browser.evaluate('storage.set=save')
+      } else if (decision === 'lineage-settle') {
+        await browser.evaluate('runtime.model.ingest(scope,[metadata]);document.querySelector("[data-codex-inbox-settle]").click();flush()')
+      } else {
+        await browser.evaluate('document.querySelector("[data-codex-inbox-settle]").click();flush()')
+      }
+      const settled = !['foreign-settle', 'failed-settle'].includes(decision)
+      assert.equal(await browser.evaluate('present()'), !settled, decision)
+      await browser.evaluate('window.holdLive=false;releaseLive();flush()')
+      assert.equal(await browser.evaluate('present()'), !settled, 'earlier queued work must respect ' + decision)
+      assert.equal(await browser.evaluate('runtime.model.isManualSettled(scope,metadata)'), settled)
+      if (settled) {
+        // A genuinely later message still restores attention, even at the same clock value.
+        await browser.evaluate("emit('message.start');emit('message.complete',{status:'complete'});flush()")
+        assert.equal(await browser.evaluate('present()'), true, 'new work after ' + decision + ' can restore attention')
+      }
+      if (decision === 'same-clock-settle') await browser.evaluate('Date.now=realNow')
+    }
+    assert.deepEqual(await browser.evaluate('errors'), [])
   } finally {
     await browser.evaluate('disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(() => {})
     browser.close()
