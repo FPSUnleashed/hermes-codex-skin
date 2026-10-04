@@ -34,6 +34,9 @@ test('legacy titlebar autohide state is inert and no palette option is registere
         PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'titleBar.center',left:'titleBar.left',right:'titleBar.right'},
         useEffect=()=>{},jsx=()=>null;
       ${source}
+      // Isolate retired titlebar behavior from the metadata service, whose
+      // shared-cache lifetime is covered in inbox-observer.test.mjs.
+      startCodexInboxObserver = () => () => {};
       window.pluginDisposers=[];
       fixturePlugin.register({onDispose:f=>pluginDisposers.push(f),storage:{get:(key,fallback)=>{storageReads.push(key);return key==='titlebar-autohide'?'on':fallback},set:()=>{}},register:()=>{}});
     })()`)

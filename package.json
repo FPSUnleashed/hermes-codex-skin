@@ -1,0 +1,10 @@
+{
+  "name": "hermes-codex-skin-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@tanstack/query-core": "5.101.2"
+  }
+}

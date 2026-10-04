@@ -27,6 +27,8 @@ Pull requests that fix an upstream bug through the skin will be closed without m
 
 ## Before opening a pull request
 
+Run `npm ci --ignore-scripts --no-audit --no-fund` first to install the pinned test-only dependencies. These are not required to install or run the plugin in Hermes.
+
 1. Run `node --check codex-chat-look/plugin.js`.
 2. Run `node --test --test-concurrency=1 test/*.test.mjs` (the same serial browser-test run as CI).
 3. Install the exact candidate through Hermes' disk plugin directory.

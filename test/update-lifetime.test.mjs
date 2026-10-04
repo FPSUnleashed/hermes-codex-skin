@@ -30,7 +30,8 @@ test('view remount and StrictMode cleanup do not destroy the plugin-owned update
   assert.equal(f.updater.state.target?.id,id,'remount must keep accepting new release metadata')
   leave()
  }
- assert.equal(f.disposers.length,2,'updater and styles each clean up on plugin unload, not view navigation')
+ // Other plugin services may register unload disposers; test the updater's
+ // actual lifetime rather than freezing the total number of services.
  f.disposers.forEach(fn=>fn())
  f.updater.accept(f.offer(4))
  assert.equal(f.updater.state.target?.id,3,'actual plugin unload must stop the controller')
