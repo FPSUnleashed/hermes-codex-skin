@@ -30,6 +30,9 @@ jobs:
       - name: Check plugin syntax
         run: node --check codex-chat-look/plugin.js
 
+      - name: Install pinned test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Run regression tests
         # Browser-backed files each launch Chrome; avoid startup contention.
         run: node --test --test-concurrency=1 test/*.test.mjs

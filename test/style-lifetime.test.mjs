@@ -15,6 +15,9 @@ test('styles follow plugin lifetime, including immediate disable and rapid repla
       const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}};
       const PALETTE_AREA='palette',THEMES_AREA='themes',jsx=()=>null;
       ${source}
+      // This style-only fixture has no backend or SDK cache. Query lifecycle
+      // is exercised with the real shared client in inbox-observer.test.mjs.
+      startCodexInboxObserver = () => () => {};
       window.enableSkin=()=>{
         const disposers=[];
         fixturePlugin.register({onDispose:f=>disposers.push(f),storage:{get:(_key,fallback)=>fallback,set:()=>{}},register:()=>{}});

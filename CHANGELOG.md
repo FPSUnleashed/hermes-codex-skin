@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Inbox above Pinned and Sessions, enabled by default and adjustable through **Codex Skin: Inbox** in the Command + K palette.
+- Admit fresh, verified non-cron work automatically; retain it after completion until Settle. Empty creation, opening, focus and history reading do not admit a chat.
+- Settle hides attention without stopping, archiving, deleting or unpinning a chat. The latest settlement offers Undo for three seconds below the Inbox threads.
+- Snooze presets of 15 minutes, 30 minutes, 1 hour, 3 hours and 1 day, with Wake now and persistent deadlines.
+- Verified session-row restore badges, next-thread navigation for the current chat, owner-separated persistent attention state and theme-aware activity indicators.
+- Inbox usage instructions recommending one task per thread, settling finished work, aiming for an empty Inbox at the end of the day, and keeping Pinned and Sessions collapsed.
+
+### Known limitations
+
+- Cron execution sessions are excluded. Cron-triggered work delivered into a regular chat may still appear when Hermes does not expose its origin.
+- Inbox does not replace Hermes' complete native session context menu; use Sessions for the native thread actions. Restore badges remain hidden when a row's connection and profile cannot be verified.
+
 ## [1.8.2] - 2026-09-29
 
 

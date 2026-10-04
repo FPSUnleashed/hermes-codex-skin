@@ -1,5 +1,5 @@
-import { host, PALETTE_AREA, THEMES_AREA, useQuery } from '@hermes/plugin-sdk'
-import { useEffect, useRef } from 'react'
+import { host, PALETTE_AREA, THEMES_AREA, queryClient, useQuery, useValue } from '@hermes/plugin-sdk'
+import { useEffect, useRef, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
@@ -3794,8 +3794,13 @@ export default {
   register(ctx) {
     pluginStorage = ctx.storage
     const updater = createSkinUpdater(ctx.storage)
+    const inbox = globalThis.document?.body ? installCodexInboxRuntime({ storage: ctx.storage, host }) : null
+    startCodexInboxObserver(ctx, inbox)
+    startCodexInboxMenuOpenObserver(ctx, inbox)
     // The controller belongs to the plugin, not to a route-mounted UI slot.
     ctx.onDispose(() => updater.dispose())
+    ctx.onDispose(() => inbox?.dispose())
+    ctx.onDispose(connectCodexInboxEvents(inbox))
     let uninstallStyle
     let disposed = false
     ctx.onDispose(() => {
@@ -3809,6 +3814,9 @@ export default {
     })
     ctx.register({ id: 'update-runtime', area: 'composer.leading', order: 19, render: () => jsx(CodexUpdateRuntime, { updater }) })
     ctx.register({ id: 'update-button', area: 'composer.leading', order: 20, render: () => jsx(CodexUpdateButton, { updater }) })
+    ctx.register({ id: 'inbox-settled-badge', area: 'sessionRow.trailing', data: { render: ({ sessionId }) => jsx(CodexSettledBadge, { sessionId, inbox }) } })
+    ctx.register({ id: 'inbox-open-intent', area: 'sessionRow.leading', data: { render: ({ sessionId }) => jsx(CodexInboxNativeOpenIntent, { sessionId, inbox }) } })
+
     ctx.register({ id: 'theme', area: THEMES_AREA, data: CODEX_THEME })
     ctx.register({
       id: 'toggle-composer-width',
@@ -3847,6 +3855,19 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'clean', 'transcript', 'tool', 'calls', 'interim', 'messages'],
         run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
+      }
+    })
+    ctx.register({
+      id: 'toggle-inbox',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-inbox',
+        label: 'Codex Skin: Inbox',
+        detail: () => readCodexInboxMode() === 'on' ? 'On' : 'Off',
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'inbox', 'settle', 'threads', 'sessions'],
+        run: () => setCodexInboxMode(readCodexInboxMode() === 'on' ? 'off' : 'on', inbox)
       }
     })
   }
@@ -4273,3 +4294,2047 @@ function CodexUpdateButton({ updater }) {
   return jsx('span', { ref, style: { display: 'none' } })
 }
 // END GENERATED UPDATE RUNTIME
+// BEGIN GENERATED INBOX RUNTIME
+// Vendored QueryObserver from @tanstack/query-core@5.101.2.
+// Upstream: https://github.com/TanStack/query (packages/query-core).
+// Generated with esbuild@0.28.1, browser IIFE, es2022, minify, no external imports.
+// Regenerate explicitly: node scripts/build-updater.mjs --vendor-observer=/path/to/pinned/node_modules/parent
+// Normal builds concatenate this checked-in file and require no npm dependencies.
+/*
+MIT License
+
+Copyright (c) 2021-present Tanner Linsley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+// BEGIN PINNED OBSERVER BUNDLE
+var CodexInboxObserverVendor=(()=>{var I=Object.defineProperty;var st=Object.getOwnPropertyDescriptor;var it=Object.getOwnPropertyNames;var nt=Object.prototype.hasOwnProperty;var ot=(t,e)=>{for(var r in e)I(t,r,{get:e[r],enumerable:!0})},at=(t,e,r,s)=>{if(e&&typeof e=="object"||typeof e=="function")for(let i of it(e))!nt.call(t,i)&&i!==r&&I(t,i,{get:()=>e[i],enumerable:!(s=st(e,i))||s.enumerable});return t};var ut=t=>at(I({},"__esModule",{value:!0}),t);var bt={};ot(bt,{QueryObserver:()=>A});var b=class{constructor(){this.listeners=new Set,this.subscribe=this.subscribe.bind(this)}subscribe(t){return this.listeners.add(t),this.onSubscribe(),()=>{this.listeners.delete(t),this.onUnsubscribe()}}hasListeners(){return this.listeners.size>0}onSubscribe(){}onUnsubscribe(){}};var ht=class extends b{#e;#t;#s;constructor(){super(),this.#s=t=>{if(typeof window<"u"&&window.addEventListener){let e=()=>t();return window.addEventListener("visibilitychange",e,!1),()=>{window.removeEventListener("visibilitychange",e)}}}}onSubscribe(){this.#t||this.setEventListener(this.#s)}onUnsubscribe(){this.hasListeners()||(this.#t?.(),this.#t=void 0)}setEventListener(t){this.#s=t,this.#t?.(),this.#t=t(e=>{typeof e=="boolean"?this.setFocused(e):this.onFocus()})}setFocused(t){this.#e!==t&&(this.#e=t,this.onFocus())}onFocus(){let t=this.isFocused();this.listeners.forEach(e=>{e(t)})}isFocused(){return typeof this.#e=="boolean"?this.#e:globalThis.document?.visibilityState!=="hidden"}},_=new ht;var ct={setTimeout:(t,e)=>setTimeout(t,e),clearTimeout:t=>clearTimeout(t),setInterval:(t,e)=>setInterval(t,e),clearInterval:t=>clearInterval(t)},lt=class{#e=ct;#t=!1;setTimeoutProvider(t){this.#e=t}setTimeout(t,e){return this.#e.setTimeout(t,e)}clearTimeout(t){this.#e.clearTimeout(t)}setInterval(t,e){return this.#e.setInterval(t,e)}clearInterval(t){this.#e.clearInterval(t)}},F=new lt;function V(t){setTimeout(t,0)}var $=typeof window>"u"||"Deno"in globalThis;function G(){}function P(t){return typeof t=="number"&&t>=0&&t!==1/0}function W(t,e){return Math.max(t+(e||0)-Date.now(),0)}function g(t,e){return typeof t=="function"?t(e):t}function c(t,e){return typeof t=="function"?t(e):t}var ft=Object.prototype.hasOwnProperty;function J(t,e,r=0){if(t===e)return t;if(r>500)return e;let s=H(t)&&H(e);if(!s&&!(z(t)&&z(e)))return e;let h=(s?t:Object.keys(t)).length,d=s?e:Object.keys(e),n=d.length,u=s?new Array(n):{},v=0;for(let a=0;a<n;a++){let f=s?a:d[a],o=t[f],p=e[f];if(o===p){u[f]=o,(s?a<h:ft.call(t,f))&&v++;continue}if(o===null||p===null||typeof o!="object"||typeof p!="object"){u[f]=p;continue}let S=J(o,p,r+1);u[f]=S,S===o&&v++}return h===n&&v===h?t:u}function E(t,e){if(!e||Object.keys(t).length!==Object.keys(e).length)return!1;for(let r in t)if(t[r]!==e[r])return!1;return!0}function H(t){return Array.isArray(t)&&t.length===Object.keys(t).length}function z(t){if(!B(t))return!1;let e=t.constructor;if(e===void 0)return!0;let r=e.prototype;return!(!B(r)||!r.hasOwnProperty("isPrototypeOf")||Object.getPrototypeOf(t)!==Object.prototype)}function B(t){return Object.prototype.toString.call(t)==="[object Object]"}function Q(t,e,r){return typeof r.structuralSharing=="function"?r.structuralSharing(t,e):r.structuralSharing!==!1?J(t,e):e}var U=(()=>{let t=()=>$;return{isServer(){return t()},setIsServer(e){t=e}}})();function x(){let t,e,r=new Promise((i,h)=>{t=i,e=h});r.status="pending",r.catch(()=>{});function s(i){Object.assign(r,i),delete r.resolve,delete r.reject}return r.resolve=i=>{s({status:"fulfilled",value:i}),t(i)},r.reject=i=>{s({status:"rejected",reason:i}),e(i)},r}var dt=V;function pt(){let t=[],e=0,r=n=>{n()},s=n=>{n()},i=dt,h=n=>{e?t.push(n):i(()=>{r(n)})},d=()=>{let n=t;t=[],n.length&&i(()=>{s(()=>{n.forEach(u=>{r(u)})})})};return{batch:n=>{let u;e++;try{u=n()}finally{e--,e||d()}return u},batchCalls:n=>(...u)=>{h(()=>{n(...u)})},schedule:h,setNotifyFunction:n=>{r=n},setBatchNotifyFunction:n=>{s=n},setScheduler:n=>{i=n}}}var Z=pt();var yt=class extends b{#e=!0;#t;#s;constructor(){super(),this.#s=t=>{if(typeof window<"u"&&window.addEventListener){let e=()=>t(!0),r=()=>t(!1);return window.addEventListener("online",e,!1),window.addEventListener("offline",r,!1),()=>{window.removeEventListener("online",e),window.removeEventListener("offline",r)}}}}onSubscribe(){this.#t||this.setEventListener(this.#s)}onUnsubscribe(){this.hasListeners()||(this.#t?.(),this.#t=void 0)}setEventListener(t){this.#s=t,this.#t?.(),this.#t=t(this.setOnline.bind(this))}setOnline(t){this.#e!==t&&(this.#e=t,this.listeners.forEach(r=>{r(t)}))}isOnline(){return this.#e}},X=new yt;function Y(t){return(t??"online")==="online"?X.isOnline():!0}function tt(t,e){return{fetchFailureCount:0,fetchFailureReason:null,fetchStatus:Y(e.networkMode)?"fetching":"paused",...t===void 0&&{error:null,status:"pending"}}}var A=class extends b{constructor(t,e){super(),this.options=e,this.#e=t,this.#n=null,this.#i=x(),this.bindMethods(),this.setOptions(e)}#e;#t=void 0;#s=void 0;#r=void 0;#a;#l;#i;#n;#y;#f;#d;#u;#h;#o;#p=new Set;bindMethods(){this.refetch=this.refetch.bind(this)}onSubscribe(){this.listeners.size===1&&(this.#t.addObserver(this),et(this.#t,this.options)?this.#c():this.updateResult(),this.#g())}onUnsubscribe(){this.hasListeners()||this.destroy()}shouldFetchOnReconnect(){return k(this.#t,this.options,this.options.refetchOnReconnect)}shouldFetchOnWindowFocus(){return k(this.#t,this.options,this.options.refetchOnWindowFocus)}destroy(){this.listeners=new Set,this.#S(),this.#O(),this.#t.removeObserver(this)}setOptions(t){let e=this.options,r=this.#t;if(this.options=this.#e.defaultQueryOptions(t),this.options.enabled!==void 0&&typeof this.options.enabled!="boolean"&&typeof this.options.enabled!="function"&&typeof c(this.options.enabled,this.#t)!="boolean")throw new Error("Expected enabled to be a boolean or a callback that returns a boolean");this.#F(),this.#t.setOptions(this.options),e._defaulted&&!E(this.options,e)&&this.#e.getQueryCache().notify({type:"observerOptionsUpdated",query:this.#t,observer:this});let s=this.hasListeners();s&&rt(this.#t,r,this.options,e)&&this.#c(),this.updateResult(),s&&(this.#t!==r||c(this.options.enabled,this.#t)!==c(e.enabled,this.#t)||g(this.options.staleTime,this.#t)!==g(e.staleTime,this.#t))&&this.#m();let i=this.#v();s&&(this.#t!==r||c(this.options.enabled,this.#t)!==c(e.enabled,this.#t)||i!==this.#o)&&this.#b(i)}getOptimisticResult(t){let e=this.#e.getQueryCache().build(this.#e,t),r=this.createResult(e,t);return vt(this,r)&&(this.#r=r,this.#l=this.options,this.#a=this.#t.state),r}getCurrentResult(){return this.#r}trackResult(t,e){return new Proxy(t,{get:(r,s)=>(this.trackProp(s),e?.(s),s==="promise"&&(this.trackProp("data"),!this.options.experimental_prefetchInRender&&this.#i.status==="pending"&&this.#i.reject(new Error("experimental_prefetchInRender feature flag is not enabled"))),Reflect.get(r,s))})}trackProp(t){this.#p.add(t)}getCurrentQuery(){return this.#t}refetch({...t}={}){return this.fetch({...t})}fetchOptimistic(t){let e=this.#e.defaultQueryOptions(t),r=this.#e.getQueryCache().build(this.#e,e);return r.fetch().then(()=>this.createResult(r,e))}fetch(t){return this.#c({...t,cancelRefetch:t.cancelRefetch??!0}).then(()=>(this.updateResult(),this.#r))}#c(t){this.#F();let e=this.#t.fetch(this.options,t);return t?.throwOnError||(e=e.catch(G)),e}#m(){this.#S();let t=g(this.options.staleTime,this.#t);if(U.isServer()||this.#r.isStale||!P(t))return;let r=W(this.#r.dataUpdatedAt,t)+1;this.#u=F.setTimeout(()=>{this.#r.isStale||this.updateResult()},r)}#v(){return(typeof this.options.refetchInterval=="function"?this.options.refetchInterval(this.#t):this.options.refetchInterval)??!1}#b(t){this.#O(),this.#o=t,!(U.isServer()||c(this.options.enabled,this.#t)===!1||!P(this.#o)||this.#o===0)&&(this.#h=F.setInterval(()=>{(this.options.refetchIntervalInBackground||_.isFocused())&&this.#c()},this.#o))}#g(){this.#m(),this.#b(this.#v())}#S(){this.#u!==void 0&&(F.clearTimeout(this.#u),this.#u=void 0)}#O(){this.#h!==void 0&&(F.clearInterval(this.#h),this.#h=void 0)}createResult(t,e){let r=this.#t,s=this.options,i=this.#r,h=this.#a,d=this.#l,u=t!==r?t.state:this.#s,{state:v}=t,a={...v},f=!1,o;if(e._optimisticResults){let l=this.hasListeners(),O=!l&&et(t,e),w=l&&rt(t,r,e,s);(O||w)&&(a={...a,...tt(v.data,t.options)}),e._optimisticResults==="isRestoring"&&(a.fetchStatus="idle")}let{error:p,errorUpdatedAt:S,status:m}=a;o=a.data;let q=!1;if(e.placeholderData!==void 0&&o===void 0&&m==="pending"){let l;i?.isPlaceholderData&&e.placeholderData===d?.placeholderData?(l=i.data,q=!0):l=typeof e.placeholderData=="function"?e.placeholderData(this.#d?.state.data,this.#d):e.placeholderData,l!==void 0&&(m="success",o=Q(i?.data,l,e),f=!0)}if(e.select&&o!==void 0&&!q)if(i&&o===h?.data&&e.select===this.#y)o=this.#f;else try{this.#y=e.select,o=e.select(o),o=Q(i?.data,o,e),this.#f=o,this.#n=null}catch(l){this.#n=l}this.#n&&(p=this.#n,o=this.#f,S=Date.now(),m="error");let D=a.fetchStatus==="fetching",T=m==="pending",M=m==="error",L=T&&D,N=o!==void 0,y={status:m,fetchStatus:a.fetchStatus,isPending:T,isSuccess:m==="success",isError:M,isInitialLoading:L,isLoading:L,data:o,dataUpdatedAt:a.dataUpdatedAt,error:p,errorUpdatedAt:S,failureCount:a.fetchFailureCount,failureReason:a.fetchFailureReason,errorUpdateCount:a.errorUpdateCount,isFetched:t.isFetched(),isFetchedAfterMount:a.dataUpdateCount>u.dataUpdateCount||a.errorUpdateCount>u.errorUpdateCount,isFetching:D,isRefetching:D&&!T,isLoadingError:M&&!N,isPaused:a.fetchStatus==="paused",isPlaceholderData:f,isRefetchError:M&&N,isStale:j(t,e),refetch:this.refetch,promise:this.#i,isEnabled:c(e.enabled,t)!==!1};if(this.options.experimental_prefetchInRender){let l=y.data!==void 0,O=y.status==="error"&&!l,w=R=>{O?R.reject(y.error):l&&R.resolve(y.data)},K=()=>{let R=this.#i=y.promise=x();w(R)},C=this.#i;switch(C.status){case"pending":t.queryHash===r.queryHash&&w(C);break;case"fulfilled":(O||y.data!==C.value)&&K();break;case"rejected":(!O||y.error!==C.reason)&&K();break}}return y}updateResult(){let t=this.#r,e=this.createResult(this.#t,this.options);if(this.#a=this.#t.state,this.#l=this.options,this.#a.data!==void 0&&(this.#d=this.#t),E(e,t))return;this.#r=e;let r=()=>{if(!t)return!0;let{notifyOnChangeProps:s}=this.options,i=typeof s=="function"?s():s;if(i==="all"||!i&&!this.#p.size)return!0;let h=new Set(i??this.#p);return this.options.throwOnError&&h.add("error"),Object.keys(this.#r).some(d=>{let n=d;return this.#r[n]!==t[n]&&h.has(n)})};this.#w({listeners:r()})}#F(){let t=this.#e.getQueryCache().build(this.#e,this.options);if(t===this.#t)return;let e=this.#t;this.#t=t,this.#s=t.state,this.hasListeners()&&(e?.removeObserver(this),t.addObserver(this))}onQueryUpdate(){this.updateResult(),this.hasListeners()&&this.#g()}#w(t){Z.batch(()=>{t.listeners&&this.listeners.forEach(e=>{e(this.#r)}),this.#e.getQueryCache().notify({query:this.#t,type:"observerResultsUpdated"})})}};function mt(t,e){return c(e.enabled,t)!==!1&&t.state.data===void 0&&!(t.state.status==="error"&&c(e.retryOnMount,t)===!1)}function et(t,e){return mt(t,e)||t.state.data!==void 0&&k(t,e,e.refetchOnMount)}function k(t,e,r){if(c(e.enabled,t)!==!1&&g(e.staleTime,t)!=="static"){let s=typeof r=="function"?r(t):r;return s==="always"||s!==!1&&j(t,e)}return!1}function rt(t,e,r,s){return(t!==e||c(s.enabled,t)===!1)&&(!r.suspense||t.state.status!=="error")&&j(t,r)}function j(t,e){return c(e.enabled,t)!==!1&&t.isStaleByTime(g(e.staleTime,t))}function vt(t,e){return!E(t.getCurrentResult(),e)}return ut(bt);})();
+
+
+// The native bridge reads metadata only. The existing React Query client owns
+// refresh, deduplication and cancellation across renderer/plugin lifetimes.
+const INBOX_MODE_KEY = 'inbox'
+const INBOX_MODE_EVENT = `${ID}:inbox-mode`
+const INBOX_ROWS_EVENT = `${ID}:inbox-rows`
+
+function readCodexInboxMode() {
+  try { return pluginStorage?.get(INBOX_MODE_KEY, 'on') === 'off' ? 'off' : 'on' }
+  catch { return 'off' }
+}
+
+function setCodexInboxMode(mode, inbox) {
+  const next = mode === 'off' ? 'off' : 'on'
+  try {
+    pluginStorage?.set(INBOX_MODE_KEY, next)
+    if (pluginStorage?.get(INBOX_MODE_KEY, null) !== next) throw new Error('Inbox setting was not saved.')
+  }
+  catch {
+    host.notify?.({ kind: 'error', message: 'Could not save the Inbox setting.' })
+    return readCodexInboxMode()
+  }
+  inbox?.setMode(next === 'on')
+  globalThis.window?.dispatchEvent?.(new CustomEvent(INBOX_MODE_EVENT, { detail: next }))
+  return next
+}
+
+function inboxGatewayScope() {
+  return {
+    connectionId: String(host.state.connectionId?.get?.() || host.activeConnectionId?.() || ''),
+    profile: String(host.state.profile?.get?.() || 'default')
+  }
+}
+
+function inboxOwnerScope() {
+  return codexInboxFocusedThread()?.scope || inboxGatewayScope()
+}
+
+function sameInboxScope(left, right) {
+  return left.connectionId === right.connectionId && left.profile === right.profile
+}
+
+async function readCodexInboxRowOwner(scope) {
+  // Route inventory alone can hide failed source enumerations. Require the
+  // credential-free roster's complete source status for an id-only row slot.
+  if (typeof window.hermesDesktop?.getAgentRoster !== 'function') return null
+  try {
+    const roster = await window.hermesDesktop.getAgentRoster()
+    const sources = roster?.sources
+    if (!Array.isArray(sources) || sources.length !== 1 || sources[0]?.reachable !== true || sources[0]?.error || sources[0]?.needsSignIn || sources[0]?.connectionId !== scope.connectionId) return null
+    const routes = roster.agents
+    if (!Array.isArray(routes) || !routes.length || routes.some(route =>
+      typeof route?.connectionId !== 'string' || !route.connectionId || typeof route.profile !== 'string' || !route.profile)) return null
+    const owners = new Map(routes.map(route => [JSON.stringify([route.connectionId, route.profile]), route]))
+    const owner = owners.size === 1 ? [...owners.values()][0] : null
+    return owner && sameInboxScope(owner, scope) ? { ...scope } : null
+  } catch { return null }
+}
+
+function codexInboxBadgeScope(inbox, sessionId, currentScope) {
+  const evidence = inbox?.rowOwnerEvidence
+  return evidence?.scope && sameInboxScope(evidence.scope, currentScope) && evidence.ids.includes(sessionId)
+    ? evidence.scope : null
+}
+
+function codexInboxFocusedThread() {
+  const owner = host.state.focusedSessionOwner?.get?.()
+  const id = host.state.focusedStoredSessionId?.get?.()
+  return typeof id === 'string' && id && typeof owner?.connectionId === 'string' && owner.connectionId && typeof owner.profile === 'string' && owner.profile
+    ? { id, scope: { connectionId: owner.connectionId, profile: owner.profile } } : null
+}
+
+function codexInboxLiveFocus() {
+  const thread = codexInboxFocusedThread(), runtimeId = host.state.focusedSessionId?.get?.()
+  return thread && typeof runtimeId === 'string' && runtimeId ? { ...thread.scope, runtimeId, storedId: thread.id } : null
+}
+
+function codexInboxLiveStoredIds(row) {
+  return [row.session_key, row.stored_session_id].filter(id => typeof id === 'string' && id)
+}
+
+function codexInboxLiveStoredMatch(storedId, row, metadata) {
+  const stored = codexInboxLiveStoredIds(row)
+  return stored.includes(storedId) || metadata.some(session => {
+    const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
+    return ids.includes(storedId) && stored.some(id => ids.includes(id))
+  })
+}
+
+function resolveCodexInboxLiveSessions(scope, targetProfile, rawRows, metadata, owners) {
+  const liveSessions = [], unresolved = new Set()
+  let liveStatusKnown = true
+  for (const row of rawRows) {
+    if (!row || typeof row !== 'object') { liveStatusKnown = false; continue }
+    if (row.connection_id && row.connection_id !== scope.connectionId) continue
+    if (row.profile && row.profile !== targetProfile) continue
+    const runtimeId = row.session_id || row.id
+    const proof = owners.get(JSON.stringify([scope.connectionId, runtimeId]))
+    if (row.profile || proof && !proof.conflicted && codexInboxLiveStoredMatch(proof.storedId, row, metadata)) {
+      if (!row.profile && proof.profile !== scope.profile) continue
+      liveSessions.push({ ...row, profile: scope.profile, connection_id: scope.connectionId })
+    } else {
+      const ids = codexInboxLiveStoredIds(row)
+      if (!ids.length) liveStatusKnown = false
+      ids.forEach(id => unresolved.add(id))
+    }
+  }
+  for (const session of metadata) {
+    const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
+    if (!ids.some(id => unresolved.has(id))) continue
+    if (liveSessions.some(row => codexInboxLiveStoredIds(row).some(id => ids.includes(id)))) continue
+    // This guards a known durable row. Never give an unowned runtime an alias
+    // into this profile or use its activity as an admission/completion signal.
+    liveSessions.push({ id: session.id, session_key: session.id, status: 'unknown', profile: scope.profile, connection_id: scope.connectionId })
+  }
+  return { liveSessions, liveStatusKnown }
+}
+
+
+async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}) {
+  const bridge = globalThis.window?.hermesDesktop
+  if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
+  const focusedBefore = codexInboxLiveFocus()
+  const sessions = new Map()
+  let offset = 0, total = 0
+  let targetProfile = scope.profile
+  for (let page = 0; page < pageCount; page++) {
+    if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    const params = new URLSearchParams({
+      limit: '100', offset: String(offset), min_messages: '1',
+      archived: 'exclude', order: 'recent', profile: scope.profile
+    })
+    const data = await bridge.api({
+      ...(scope.connectionId ? { connectionId: scope.connectionId } : {}),
+      profile: scope.profile,
+      path: `/api/sessions?${params}`, timeoutMs: 60_000
+    })
+    if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    if (!Array.isArray(data?.sessions) || !Number.isFinite(data.total) || data.total < 0) {
+      throw new Error('Inbox received an incomplete session list.')
+    }
+    if (targetProfile === scope.profile && data.sessions.some(session => session.profile && session.profile !== scope.profile) && host.profileRoutes) {
+      const routes = await host.profileRoutes()
+      const matches = routes.filter(route => sameInboxScope(route, scope))
+      if (matches.length === 1 && typeof matches[0].targetProfile === 'string' && matches[0].targetProfile) targetProfile = matches[0].targetProfile
+      if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    }
+    if (data.errors?.length || data.storage?.[targetProfile] === 'corrupt') {
+      throw new Error('The session list could not be read completely.')
+    }
+    total = data.total
+    for (const session of data.sessions) {
+      // A scoped response may still contain a carried row from another owner.
+      if (session.profile && session.profile !== targetProfile) continue
+      if (session.connection_id && session.connection_id !== scope.connectionId) continue
+      if (session.hidden || session.archived || !session.id) continue
+      const durable = session._lineage_root_id || session.id
+      const previous = sessions.get(durable)
+      if (!previous || (session.last_active || 0) > (previous.last_active || 0)) sessions.set(durable, { ...session, profile: scope.profile })
+    }
+    // Pinned backfills can exceed the requested page. They must not advance
+    // the database offset past conversations we have not fetched.
+    offset += 100
+    if (offset >= total) break
+    if (!data.sessions.length) throw new Error('Inbox pagination stopped before the end of the session list.')
+  }
+  // Only known attention is fetched beyond the recent metadata page. Removing
+  // manual history pagination must not truncate admitted or reopened threads.
+  const explicitRequestedIds = [...new Set([
+    ...(inbox?.admission?.explicitSessionIds?.(scope) || []),
+    ...(inbox?.admission?.admittedSessionIds?.(scope) || [])
+  ])].filter(id => !inbox.model.isSettled(scope, id) && !inbox.model.isSnoozed(scope, id))
+  const listedIds = new Set([...sessions.values()].flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
+  const missing = explicitRequestedIds.filter(id => !listedIds.has(id))
+  for (let index = 0; index < missing.length; index += 4) {
+    const rows = await Promise.all(missing.slice(index, index + 4).map(async id => {
+      try {
+        return await readCodexInboxOpenedSession({ id, scope }, {
+          followLineage: true,
+          stillCurrent: () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())
+        })
+      } catch (error) {
+        if (isCodexInboxSessionNotFound(error)) return null
+        throw error
+      }
+    }))
+    for (const row of rows) {
+      if (row && !row.archived && !row.hidden) sessions.set(row._lineage_root_id || row.id, row)
+    }
+  }
+  // Paint the owner-scoped list without waiting for activity/roster round trips.
+  // This stage deliberately carries no authority for activity or Settle.
+  onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
+  let liveSessions = [], rawLiveSessions = [], liveStatusKnown = false, liveReadSucceeded = false, liveStatusAt = 0
+  try {
+    if (!sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    let live
+    if (typeof host.requestProfile === 'function' && typeof host.profileRoutes === 'function') {
+      const routes = (await host.profileRoutes()).filter(route => sameInboxScope(route, scope))
+      if (routes.length !== 1 || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
+      if (typeof routes[0].targetProfile === 'string' && routes[0].targetProfile) targetProfile = routes[0].targetProfile
+      liveStatusAt = Date.now()
+      live = await host.requestProfile(routes[0], 'session.active_list', { profile: targetProfile })
+    } else {
+      // A legacy ambient request is safe only for the gateway it actually uses.
+      if (!sameInboxScope(scope, inboxGatewayScope())) throw new Error('Inbox requires explicit live-owner routing.')
+      liveStatusAt = Date.now()
+      live = await host.request('session.active_list', { profile: targetProfile })
+    }
+    if (Array.isArray(live?.sessions)) {
+      liveReadSucceeded = true
+      // Keep only identity/status metadata, not another profile's preview text.
+      const fields = ['id', 'session_id', 'session_key', 'stored_session_id', 'profile', 'connection_id', 'status', 'state', 'busy']
+      rawLiveSessions = live.sessions.map(row => row && typeof row === 'object'
+        ? Object.fromEntries(fields.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]])) : null)
+      const focusedAfter = codexInboxLiveFocus(), metadata = [...sessions.values()]
+      if (focusedBefore && JSON.stringify(focusedBefore) === JSON.stringify(focusedAfter) && sameInboxScope(focusedBefore, scope)) {
+        const matching = rawLiveSessions.filter(row => row && (row.session_id || row.id) === focusedBefore.runtimeId &&
+          (!row.profile || row.profile === targetProfile) && (!row.connection_id || row.connection_id === scope.connectionId) &&
+          codexInboxLiveStoredMatch(focusedBefore.storedId, row, metadata))
+        if (matching.length === 1) {
+          const key = JSON.stringify([scope.connectionId, focusedBefore.runtimeId]), previous = liveOwners.get(key)
+          const conflict = previous && (previous.conflicted || previous.profile !== focusedBefore.profile ||
+            !codexInboxLiveStoredMatch(previous.storedId, matching[0], metadata))
+          liveOwners.set(key, conflict ? { ...previous, conflicted: true } : focusedBefore)
+        }
+      }
+      ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, metadata, liveOwners))
+      // A send can start before SQLite moves the old thread into the recent
+      // page. Backfill only positively owned work, never unowned runtime IDs.
+      const knownIds = new Set(metadata.flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
+      const workingIds = [...new Set(liveSessions.filter(row => codexInboxWorkStatus(row) === 'work')
+        .flatMap(codexInboxLiveStoredIds))].filter(id => !knownIds.has(id))
+      for (let index = 0; index < workingIds.length; index += 4) {
+        const rows = await Promise.all(workingIds.slice(index, index + 4).map(async id => {
+          try {
+            return await readCodexInboxOpenedSession({ id, scope }, {
+              stillCurrent: () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())
+            })
+          } catch (error) {
+            if (isCodexInboxSessionNotFound(error)) return null
+            throw error
+          }
+        }))
+        for (const row of rows) if (row && !row.hidden && !row.archived) sessions.set(row._lineage_root_id || row.id, row)
+      }
+      if (workingIds.length) {
+        ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, [...sessions.values()], liveOwners))
+      }
+    }
+  } catch {
+    // A partial live read or failed work backfill must not authorize Settle.
+    liveSessions = []; rawLiveSessions = []; liveStatusKnown = false; liveReadSucceeded = false
+  }
+  if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+  const rowOwnerScope = await readCodexInboxRowOwner(scope)
+  if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+  return { sessions: [...sessions.values()], liveSessions, rawLiveSessions, targetProfile, liveStatusKnown, liveReadSucceeded, liveStatusAt, rowOwnerScope, explicitRequestedIds, hasMore: offset < total }
+}
+
+function startCodexInboxObserver(ctx, inbox) {
+  // A data service must not inherit the mount lifetime of optional UI chrome.
+  // The vendored observer uses the SDK's cache, never a plugin-owned client.
+  if (!inbox) return () => {}
+  let scope = inboxOwnerScope(), pageCount = 1, mode = readCodexInboxMode(), disposed = false
+  const liveOwners = new Map()
+  let metadataPreview = null
+  let liveAuthority = Symbol('Inbox live connection')
+  const options = () => {
+    const owner = { ...scope }, pages = pageCount
+    return {
+      queryKey: [ID, 'inbox', owner.connectionId, owner.profile, pages],
+      queryFn: async ({ signal }) => {
+        const authority = liveAuthority, proofs = new Map(liveOwners)
+        const data = await readCodexInboxPage(owner, pages, signal, inbox, proofs, metadata => {
+          if (disposed || signal.aborted || authority !== liveAuthority || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
+          metadataPreview = metadata
+          project()
+        })
+        // In-flight reads and native cache hits cannot carry authority across
+        // a disconnect or a new plugin lifetime. Stage owner proofs likewise.
+        const connected = !sameInboxScope(owner, inboxGatewayScope()) ||
+          !host.state.gateway || host.state.gateway.get() === 'open'
+        const current = !disposed && authority === liveAuthority && connected && !signal.aborted
+        if (current && data.liveReadSucceeded) {
+          for (const [key, proof] of proofs) liveOwners.set(key, proof)
+        }
+        if (current) metadataPreview = null
+        return { ...data, _codexInboxLiveAuthority: current && data.liveReadSucceeded ? authority : null }
+      },
+      enabled: mode === 'on', staleTime: 10_000,
+      refetchInterval: mode === 'on' ? 10_000 : false, retry: 1
+    }
+  }
+  const observer = new CodexInboxObserverVendor.QueryObserver(queryClient, options())
+  const markReady = () => {
+    const query = observer.getCurrentResult()
+    const ready = !disposed && mode === 'on' && sameInboxScope(scope, inboxOwnerScope()) && !query.isPending && !query.error && !!query.data
+    const island = globalThis.document?.querySelector?.('[data-codex-inbox-owned="island"]')
+    if (island && island.dataset.codexInboxQueryReady !== String(ready)) island.dataset.codexInboxQueryReady = String(ready)
+  }
+  const project = () => {
+    if (disposed || !sameInboxScope(scope, inboxOwnerScope())) return
+    const query = observer.getCurrentResult(), owner = { ...scope }, data = metadataPreview || query.data
+    const authoritative = !query.error && data?._codexInboxLiveAuthority === liveAuthority
+    const live = authoritative && Array.isArray(data?.rawLiveSessions)
+      ? resolveCodexInboxLiveSessions(owner, data.targetProfile, data.rawLiveSessions, data.sessions, liveOwners)
+      : { liveSessions: [], liveStatusKnown: false }
+    inbox.setMode(mode === 'on')
+    inbox.rowOwnerEvidence = mode === 'on' && !query.error && data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner)
+      ? { scope: owner, ids: data.sessions.flatMap(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)) }
+      : null
+    window.dispatchEvent(new CustomEvent(INBOX_ROWS_EVENT))
+    inbox.update({
+      scope: owner,
+      sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
+      liveStatusKnown: authoritative && !!data?.liveStatusKnown && !!live?.liveStatusKnown,
+      liveStatusAt: data?.liveStatusAt,
+      busyBySession: host.state.busyBySession?.get?.() || {},
+      // The SDK's id-only busy map cannot prove ownership across namespaces.
+      // Retain it as a conservative action guard, never as admission evidence.
+      busyOwnerKnown: authoritative && !!data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner),
+      focusedStoredSessionId: host.state.focusedStoredSessionId?.get?.() || null,
+      explicitRequestedIds: data?.explicitRequestedIds,
+      loading: !data && (query.isPending || query.isFetching),
+      error: query.error ? 'Could not refresh Inbox.' : null,
+      hasMore: !!data?.hasMore,
+      loadMore: () => {
+        if (disposed || mode !== 'on' || !sameInboxScope(owner, scope)) return
+        pageCount++
+        observer.setOptions(options())
+        project()
+      },
+      retry: () => {
+        if (!disposed && mode === 'on' && sameInboxScope(owner, scope)) void observer.refetch()
+      }
+    })
+    markReady()
+  }
+  const configure = () => {
+    if (disposed) return
+    const nextScope = inboxOwnerScope(), nextMode = readCodexInboxMode()
+    if (sameInboxScope(scope, nextScope) && mode === nextMode) return
+    if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null }
+    mode = nextMode
+    observer.setOptions(options())
+    project()
+  }
+  const stopQuery = observer.subscribe(project)
+  const verifyLiveEvent = event => {
+    const query = observer.getCurrentResult(), data = query.data
+    if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
+        event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
+        !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return false
+    const raw = data.rawLiveSessions.filter(row => row && (row.session_id || row.id) === event.session_id)
+    if (raw.some(row => row.profile && row.profile !== data.targetProfile || row.connection_id && row.connection_id !== scope.connectionId)) return false
+    const proof = liveOwners.get(JSON.stringify([scope.connectionId, event.session_id]))
+    if (proof && !proof.conflicted && proof.profile === scope.profile &&
+        (!raw.length || raw.length === 1 && codexInboxLiveStoredMatch(proof.storedId, raw[0], data.sessions)) &&
+        data.sessions.some(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].includes(proof.storedId))) return true
+    return raw.length === 1 && raw[0].profile === data.targetProfile &&
+      data.sessions.some(row => codexInboxLiveStoredMatch(row.id, raw[0], [row]))
+  }
+  inbox.verifyLiveEvent = verifyLiveEvent
+  const subscriptions = [
+    ...['profile', 'connectionId', 'focusedSessionOwner'].map(name => host.state[name]?.subscribe?.(configure)),
+    host.state.focusedStoredSessionId?.subscribe?.(() => { configure(); project() }),
+    host.state.busyBySession?.subscribe?.(project),
+    host.state.gateway?.subscribe?.(() => {
+      if (host.state.gateway.get() !== 'open') {
+        liveAuthority = Symbol('Inbox live connection')
+        metadataPreview = null
+        liveOwners.clear()
+        project()
+      } else if (mode === 'on') {
+        project()
+        void observer.refetch()
+      }
+    })
+  ].filter(Boolean)
+  if (typeof host.onEvent === 'function') subscriptions.push(host.onEvent('*', event => {
+    // SDK profile tags can describe the active surface, not the event producer.
+    // They may trigger a scoped read; only that read can establish ownership.
+    if (!event.replayed && ['message.start', 'message.complete', 'error'].includes(event.type) &&
+        mode === 'on' && event.connectionId === scope.connectionId && event.profile === scope.profile) {
+      void observer.refetch({ cancelRefetch: false })
+    }
+  }))
+  window.addEventListener(INBOX_MODE_EVENT, configure)
+  // The DOM adapter creates/recreates its island asynchronously, including on
+  // navigation after a cache hit. Keep readiness accurate without refetching.
+  const readiness = globalThis.document?.body && typeof window.MutationObserver === 'function'
+    ? new window.MutationObserver(markReady) : null
+  readiness?.observe(document.body, { childList: true, subtree: true })
+  project()
+  const stop = () => {
+    if (disposed) return
+    disposed = true
+    subscriptions.forEach(unsubscribe => unsubscribe())
+    window.removeEventListener(INBOX_MODE_EVENT, configure)
+    readiness?.disconnect()
+    stopQuery()
+    observer.destroy()
+    liveOwners.clear()
+    if (inbox.verifyLiveEvent === verifyLiveEvent) delete inbox.verifyLiveEvent
+    inbox.rowOwnerEvidence = null
+    markReady()
+  }
+  ctx.onDispose(stop)
+  return stop
+}
+
+function CodexSettledBadge({ sessionId, inbox }) {
+  const profile = useValue(host.state.profile)
+  const connectionId = useValue(host.state.connectionId)
+  const [, repaint] = useState(0)
+  useEffect(() => {
+    const changed = () => repaint(value => value + 1)
+    const stopModel = inbox?.model.subscribe(changed)
+    window.addEventListener(INBOX_MODE_EVENT, changed)
+    window.addEventListener(INBOX_ROWS_EVENT, changed)
+    return () => { stopModel?.(); window.removeEventListener(INBOX_MODE_EVENT, changed); window.removeEventListener(INBOX_ROWS_EVENT, changed) }
+  }, [inbox])
+  const currentScope = { connectionId: String(connectionId || host.activeConnectionId?.() || ''), profile: String(profile || 'default') }
+  const scope = codexInboxBadgeScope(inbox, sessionId, currentScope)
+  // The native slot supplies only an id. Never decorate a mixed-owner row by
+  // borrowing the active gateway's identity, even if that id exists there.
+  if (!scope) return null
+  if (!inbox || readCodexInboxMode() !== 'on') return null
+  if (!inbox.admission?.isEligible(scope, sessionId)) return null
+  const settled = inbox.model.isSettled(scope, sessionId)
+  const snoozed = inbox.model.isSnoozed?.(scope, sessionId) === true
+  if (!settled && !snoozed) return null
+  const stop = event => { event.preventDefault(); event.stopPropagation() }
+  const badge = (label, action, title, apply) => jsx('button', {
+    type: 'button', key: label, 'data-codex-inbox-owned': 'badge', 'aria-label': action, title,
+    onPointerDown: stop,
+    onClick: async event => {
+      stop(event)
+      // A row from the previous owner can remain mounted during a switch.
+      if (readCodexInboxMode() !== 'on' || codexInboxBadgeScope(inbox, sessionId, inboxOwnerScope()) !== scope) return
+      const freshOwner = await readCodexInboxRowOwner(scope)
+      if (freshOwner && readCodexInboxMode() === 'on' && codexInboxBadgeScope(inbox, sessionId, inboxOwnerScope()) === scope) apply()
+    },
+    children: [
+      jsx('span', { className: 'codex-inbox-settled', children: label }),
+      jsx('span', { className: 'codex-inbox-unsettle', children: action })
+    ]
+  })
+  const badges = []
+  if (settled) badges.push(badge('Settled', 'Un-settle', 'Un-settle', () => inbox.model.unsettle(scope, sessionId)))
+  if (snoozed) {
+    const deadline = new Date(inbox.model.snoozedUntil(scope, sessionId)).toLocaleString()
+    badges.push(badge('Snoozed', 'Wake now', `Snoozed until ${deadline}`, () => inbox.model.cancelSnooze(scope, sessionId)))
+  }
+  return badges.length === 1 ? badges[0] : jsx('span', { style: { display: 'inline-flex' }, children: badges })
+}
+
+function connectCodexInboxEvents(inbox) {
+  if (!inbox || !host.onEvent) return () => {}
+  return host.onEvent('*', event => {
+    if (event.replayed) return
+    // Presentation tags alone cannot prove ownership, even when populated.
+    // Verify the runtime against the observer's connected owner evidence.
+    if (!event.connectionId || !event.profile || !event.session_id) return
+    if (typeof inbox.verifyLiveEvent !== 'function' || !inbox.verifyLiveEvent(event)) return
+    if (typeof inbox.activity === 'function') inbox.activity(event)
+    else if (['message.start', 'tool.start'].includes(event.type)) {
+      inbox.reactivate({ type: 'work', scope: { connectionId: event.connectionId, profile: event.profile }, session_id: event.session_id })
+    }
+  })
+}
+
+
+// Pure metadata decoder for the native Command surfaces. No listeners, actions,
+// fetches, logs, persistence or ownership inference from the active connection.
+// The controller must call it before cmdk consumes Enter/removes the menu and
+// independently verify focus/API ownership before admitting an explicit open.
+function resolveCodexInboxMenuOpenGesture(event, { document: doc, queryClient } = {}) {
+  if (!doc || !event || event.isTrusted !== true || event.defaultPrevented ||
+      event.isComposing || event.keyCode === 229 || event.shiftKey || event.ctrlKey ||
+      event.metaKey || event.altKey || event.repeat ||
+      (event.view && event.view !== doc.defaultView)) return null
+  if (event.type !== 'click' && event.type !== 'keydown') return null
+  if (event.type === 'click' ? event.button !== 0 : event.key !== 'Enter') return null
+  if (typeof queryClient?.getQueryData !== 'function') return null
+
+  const commandSelector = '[data-slot="command"]'
+  const itemSelector = '[data-slot="command-item"][data-value]'
+  const target = event.target?.nodeType === 3 ? event.target.parentElement : event.target
+  if (!target?.closest || target.ownerDocument !== doc || !target.isConnected) return null
+  const command = target.closest(commandSelector)
+  if (!command) return null
+
+  // Reject disabled/closed surfaces as well as disabled children of an item.
+  const unavailable = element => {
+    for (let node = element; node; node = node.parentElement) {
+      if (node.hasAttribute('disabled') || node.getAttribute('aria-disabled') === 'true' ||
+          node.getAttribute('data-disabled') === 'true' || node.hasAttribute('inert') ||
+          node.hasAttribute('hidden') || node.getAttribute('aria-hidden') === 'true' ||
+          node.getAttribute('data-state') === 'closed') return true
+    }
+    return false
+  }
+  if (unavailable(target)) return null
+
+  let item
+  if (event.type === 'click') {
+    item = target.closest(itemSelector)
+  } else {
+    // cmdk selects the highlighted item, not necessarily the event target.
+    // Never borrow another Command's selection (including a nested Command).
+    if (target.matches('input, textarea, [contenteditable="true"]') &&
+        !target.matches('[data-slot="command-input"]')) return null
+    const selected = [...command.querySelectorAll(`${itemSelector}[data-selected="true"]`)]
+      .filter(node => node.closest(commandSelector) === command)
+    if (selected.length !== 1) return null
+    item = selected[0]
+  }
+  if (!item || item.closest(commandSelector) !== command || !item.isConnected || unavailable(item)) return null
+  const value = item.getAttribute('data-value')
+  if (typeof value !== 'string' || !value) return null
+
+  // Read only the SDK's two native caches, not private stores/components/Fiber.
+  let pickerRows, paletteRows
+  try {
+    const picker = queryClient.getQueryData(['session-picker', 'sessions'])
+    const palette = queryClient.getQueryData(['command-palette', 'sessions'])
+    pickerRows = Array.isArray(picker?.sessions) ? picker.sessions : []
+    paletteRows = Array.isArray(palette?.sessions) ? palette.sessions : []
+  } catch { return null }
+  const validId = id => typeof id === 'string' && id.length > 0
+  const rows = [...pickerRows, ...paletteRows].filter(row => row && validId(row.id))
+  const idsOf = row => [row.id, row._lineage_root_id,
+    ...(Array.isArray(row._lineage_ids) ? row._lineage_ids : [])].filter(validId)
+  const scopeOf = row => validId(row.connection_id) && validId(row.profile)
+    ? { connectionId: row.connection_id, profile: row.profile } : null
+  // Keep incomplete owners distinct too: unknown metadata cannot prove that a
+  // qualified clone belongs to the same owner. Never trim/coerce owner tokens.
+  const ownerKey = row => JSON.stringify([
+    typeof row.connection_id === 'string' ? row.connection_id : null,
+    typeof row.profile === 'string' ? row.profile : null
+  ])
+  const resolveOwner = (sessionId, candidates, kind) => {
+    if (!candidates.length) return null
+    const owners = new Set(rows.filter(row => idsOf(row).includes(sessionId)).map(ownerKey))
+    if (owners.size !== 1) return null
+    return { sessionId, scope: scopeOf(candidates[0]), kind }
+  }
+
+  // Native sessionTitle: title.trim() || preview.trim() || 'Untitled session'.
+  // The verified fallback is completely reconstructible from cache, so do NOT
+  // fall back to arbitrary displayed text or accept just an id suffix. Native
+  // picker signatures always end in row.id, never a substituted lineage id.
+  // Test this first: a legitimate picker title/preview may contain U+0001.
+  const pickerCandidates = pickerRows.filter(row => {
+    if (!row || !validId(row.id) ||
+        (row.title != null && typeof row.title !== 'string') ||
+        (row.preview != null && typeof row.preview !== 'string')) return false
+    const preview = row.preview?.trim() ?? ''
+    const title = row.title?.trim() || preview || 'Untitled session'
+    return value === `${title} ${preview} ${row.id}`
+  })
+  if (pickerCandidates.length) {
+    const sessionIds = new Set(pickerCandidates.map(row => row.id))
+    if (sessionIds.size !== 1) return null
+    return resolveOwner(pickerCandidates[0].id, pickerCandidates, 'picker')
+  }
+
+  // Native paletteValue appends the id after the LAST separator; a title may
+  // itself contain that character. Labels/previews never become output/logs.
+  const separator = value.lastIndexOf('\u0001')
+  if (separator !== -1) {
+    const nativeId = value.slice(separator + 1)
+    const match = /^(session-|pinned-|goto-)(.+)$/.exec(nativeId)
+    if (!match) return null // archived-* restores only; settings/others do not open.
+    const prefix = match[1], sessionId = match[2]
+    if (prefix === 'goto-' && !/^\d{8}_\d{6}_[a-f0-9]{6}$/.test(sessionId)) return null
+    // session/pinned native entries use row.id unchanged (toSessionEntry).
+    // A lineage alias alone cannot manufacture a native entry for that alias.
+    const candidates = paletteRows.filter(row => row && row.id === sessionId)
+    if (candidates.length) return resolveOwner(sessionId, candidates, 'palette')
+    if (prefix !== 'goto-' || !/^\d{8}_\d{6}_[a-f0-9]{6}$/.test(sessionId)) return null
+    // goto accepts a native-format stored root/segment as typed, without
+    // rewriting it to a tip. Explicit native lineage metadata may qualify it.
+    const lineageRows = rows.filter(row => idsOf(row).includes(sessionId))
+    if (lineageRows.length) return resolveOwner(sessionId, lineageRows, 'palette')
+    return { sessionId, scope: null, kind: 'palette' } // parent verifies focus/API.
+  }
+
+  return null
+}
+
+
+// Observe a real native-row open through the supported decoration slot.
+// A hidden marker supplies the durable row identity without copying native actions.
+async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, expectedRootId, followLineage = false } = {}) {
+  const scope = thread?.scope, id = thread?.id
+  if (!id || !scope || !stillCurrent()) throw new Error('Inbox open owner changed.')
+  const bridge = globalThis.window?.hermesDesktop
+  if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
+  let resolvedId = id, lineage = null
+  if (followLineage || expectedRootId && expectedRootId !== id) {
+    const rootId = expectedRootId || id
+    lineage = await bridge.api({
+      connectionId: scope.connectionId, profile: scope.profile,
+      path: `/api/sessions/${encodeURIComponent(rootId)}/latest-descendant?${new URLSearchParams({ profile: scope.profile })}`,
+      timeoutMs: 60_000
+    })
+    if (!stillCurrent()) throw new Error('Inbox open owner changed.')
+    if (lineage?.requested_session_id !== rootId || !Array.isArray(lineage.path) || lineage.path[0] !== rootId || lineage.path.at(-1) !== lineage.session_id || lineage.path.some(value => typeof value !== 'string' || !value)) {
+      throw new Error('Inbox opened-chat lineage could not be verified.')
+    }
+    if (expectedRootId && !lineage.path.includes(id)) throw Object.assign(new Error('Inbox opened-chat target does not belong to the clicked row.'), { code: 'OPEN_TARGET_NOT_FOCUSED' })
+    if (followLineage) resolvedId = lineage.session_id
+  }
+  const row = await bridge.api({
+    connectionId: scope.connectionId, profile: scope.profile,
+    path: `/api/sessions/${encodeURIComponent(resolvedId)}?${new URLSearchParams({ profile: scope.profile })}`,
+    timeoutMs: 60_000
+  })
+  if (!stillCurrent()) throw new Error('Inbox open owner changed.')
+  if (!row || row.id !== resolvedId || typeof row.profile !== 'string') throw new Error('Inbox received incomplete opened-chat metadata.')
+  let targetProfile = scope.profile
+  if (row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
+    const routes = await host.profileRoutes()
+    const matches = routes.filter(route => sameInboxScope(route, scope))
+    if (matches.length === 1 && matches[0].targetProfile) targetProfile = matches[0].targetProfile
+  }
+  if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
+    throw new Error('Inbox opened-chat owner could not be verified.')
+  }
+  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile, connection_id: scope.connectionId }
+}
+
+function isCodexInboxSessionNotFound(error) {
+  const status = error?.status ?? error?.statusCode
+  if (status != null) return status === 404
+  // Electron invoke drops statusCode. Read only the native HTTP prefix,
+  // never a status mentioned inside an auth, transport or corrupt-body error.
+  const nativeStatus = /^Error invoking remote method 'hermes:api': Error: (\d{3}): /.exec(error?.message || '')
+  return nativeStatus?.[1] === '404'
+}
+
+async function codexInboxUnchangedOpenOwner(sessionId, scope, stillCurrent) {
+  const roster = await globalThis.window?.hermesDesktop?.getAgentRoster?.()
+  if (!stillCurrent() || !Array.isArray(roster?.sources) || !roster.sources.length || !Array.isArray(roster.agents)) return false
+  if (roster.sources.some(source => source.reachable !== true || source.error || source.needsSignIn || !source.connectionId)) return false
+  const sources = new Set(roster.sources.map(source => source.connectionId)), owners = new Map()
+  for (const owner of roster.agents) {
+    if (!sources.has(owner.connectionId) || typeof owner.profile !== 'string' || !owner.profile) return false
+    owners.set(JSON.stringify([owner.connectionId, owner.profile]), owner)
+  }
+  if (!owners.has(JSON.stringify([scope.connectionId, scope.profile]))) return false
+  if (owners.size === 1) return true
+  // A mixed roster is not ambiguous when this exact stored id exists under
+  // only one owner. Read metadata only and require a complete negative proof.
+  let found = []
+  const routes = [...owners.values()]
+  for (let offset = 0; offset < routes.length; offset += 4) {
+    const batch = await Promise.all(routes.slice(offset, offset + 4).map(async owner => {
+      try {
+        await readCodexInboxOpenedSession({ id: sessionId, scope: owner }, { stillCurrent })
+        return owner
+      } catch (error) {
+        if (isCodexInboxSessionNotFound(error)) return null
+        throw error
+      }
+    }))
+    if (!stillCurrent()) return false
+    found = found.concat(batch.filter(Boolean))
+    if (found.length > 1 || found.some(owner => !sameInboxScope(owner, scope))) return false
+  }
+  return found.length === 1 && sameInboxScope(found[0], scope)
+}
+
+function bindCodexInboxNativeOpenIntent(row, sessionId, inbox, resolveGesture = null) {
+  if (!row || !sessionId && !resolveGesture || !inbox) return () => {}
+  let disposed = false, intent = null, timer = null, commitTimer = null, subscriptions = [], middlePress = null
+  const key = thread => thread ? JSON.stringify([thread.scope.connectionId, thread.scope.profile, thread.id]) : null
+  const reset = () => {
+    intent = null
+    if (timer !== null) clearTimeout(timer)
+    timer = null
+    if (commitTimer !== null) clearTimeout(commitTimer)
+    commitTimer = null
+    subscriptions.forEach(stop => stop())
+    subscriptions = []
+  }
+  const commit = async () => {
+    const pending = intent, thread = codexInboxFocusedThread()
+    if (disposed || !pending || pending.loading || !thread || readCodexInboxMode() !== 'on') return
+    if (pending.scopeHint && !sameInboxScope(pending.scopeHint, thread.scope)) return
+    if (!sameInboxScope(thread.scope, inboxOwnerScope())) return
+    // The focus stores may publish owner and id separately. Never accept a
+    // transitional old id as the target of a differently labelled native row.
+    const targetId = pending.sessionId
+    const sameLineage = thread.id === targetId || inbox.model?.key(thread.scope, targetId) === inbox.model?.key(thread.scope, thread.id)
+    if (!sameLineage && key(thread) !== pending.before && thread.id === pending.beforeId) return
+    pending.loading = true
+    const revision = pending.revision
+    const stillCurrent = () => !disposed && intent === pending && key(codexInboxFocusedThread()) === key(thread) && sameInboxScope(thread.scope, inboxOwnerScope())
+    try {
+      if (key(thread) === pending.before && !pending.scopeHint && !await codexInboxUnchangedOpenOwner(targetId, thread.scope, stillCurrent)) return
+      const session = await readCodexInboxOpenedSession(thread, { stillCurrent, expectedRootId: sameLineage ? undefined : targetId })
+      if (stillCurrent() && inbox.opened({ explicit: true, scope: thread.scope, id: thread.id, session })) reset()
+    } catch (error) {
+      // Native resume is asynchronous. A still-unchanged previous focus is
+      // not a failed open, and must never be admitted on behalf of this row.
+      if (error?.code === 'OPEN_TARGET_NOT_FOCUSED' && key(thread) === pending.before) return
+      if (stillCurrent()) {
+        host.notify?.({ kind: 'error', message: 'Could not return this chat to Inbox.' })
+        reset()
+      }
+    } finally {
+      if (intent === pending) {
+        pending.loading = false
+        if (pending.revision !== revision) scheduleCommit()
+      }
+    }
+  }
+  const scheduleCommit = () => {
+    if (disposed || !intent || commitTimer !== null) return
+    // Chrome can drain microtasks between capture and the native bubble handler.
+    // A task boundary lets the real handler run before we inspect its result.
+    commitTimer = setTimeout(() => { commitTimer = null; void commit() }, 0)
+  }
+  const activate = event => {
+    if (disposed || readCodexInboxMode() !== 'on' || !event.isTrusted || event.shiftKey || event.defaultPrevented) return
+    if (event.type === 'click' && event.button !== 0 || event.type === 'pointerup' && event.button !== 1) return
+    let descriptor
+    if (resolveGesture) {
+      descriptor = resolveGesture(event)
+      if (!descriptor || !row.contains(event.target)) return
+    } else {
+      const target = event.target?.closest?.('button[data-slot="row-button"]')
+      if (!target || !row.contains(target) || event.target.closest?.('[data-row-actions], [data-reorder-handle]')) return
+      descriptor = { sessionId, scope: null }
+    }
+    reset()
+    const before = codexInboxFocusedThread()
+    intent = { sessionId: descriptor.sessionId, scopeHint: descriptor.scope ? { ...descriptor.scope } : null, before: key(before), beforeId: before?.id, loading: false, revision: 0 }
+    // Subscribe only during one verified open gesture, not once per idle row.
+    subscriptions = ['focusedStoredSessionId', 'focusedSessionOwner', 'profile', 'connectionId']
+      .map(name => host.state[name]?.subscribe?.(() => {
+        if (intent) intent.revision++
+        scheduleCommit()
+      })).filter(Boolean)
+    timer = setTimeout(reset, 60_000)
+    // Native click/resume handlers must run first; do not prevent or forward them.
+    scheduleCommit()
+  }
+  const pointerDown = event => {
+    if (resolveGesture) return
+    if (!event.isTrusted || event.button !== 1 || event.shiftKey || readCodexInboxMode() !== 'on') return
+    const target = event.target?.closest?.('button[data-slot="row-button"]')
+    middlePress = target && row.contains(target) && !event.target.closest?.('[data-row-actions], [data-reorder-handle]')
+      ? { target, pointerId: event.pointerId } : null
+  }
+  const pointerUp = event => {
+    const press = middlePress
+    middlePress = null
+    if (!press || press.pointerId !== event.pointerId || press.target !== event.target?.closest?.('button[data-slot="row-button"]')) return
+    activate(event)
+  }
+  const pointerCancel = () => { middlePress = null }
+  row.addEventListener('click', activate, true)
+  if (resolveGesture) row.addEventListener('keydown', activate, true)
+  row.addEventListener('pointerdown', pointerDown, true)
+  row.addEventListener('pointerup', pointerUp, true)
+  row.addEventListener('pointercancel', pointerCancel, true)
+  return () => {
+    disposed = true
+    reset()
+    middlePress = null
+    row.removeEventListener('click', activate, true)
+    if (resolveGesture) row.removeEventListener('keydown', activate, true)
+    row.removeEventListener('pointerdown', pointerDown, true)
+    row.removeEventListener('pointerup', pointerUp, true)
+    row.removeEventListener('pointercancel', pointerCancel, true)
+  }
+}
+
+function CodexInboxNativeOpenIntent({ sessionId, inbox }) {
+  const marker = useRef(null)
+  useEffect(() => bindCodexInboxNativeOpenIntent(marker.current?.closest?.('.row-hover'), sessionId, inbox), [sessionId, inbox])
+  return jsx('span', { ref: marker, 'aria-hidden': true, style: { display: 'none' }, 'data-codex-inbox-open-observer': sessionId })
+}
+
+function startCodexInboxMenuOpenObserver(ctx, inbox) {
+  const doc = globalThis.document
+  if (!inbox || typeof doc?.addEventListener !== 'function') return () => {}
+  const stop = bindCodexInboxNativeOpenIntent(doc, null, inbox, event => resolveCodexInboxMenuOpenGesture(event, { document: doc, queryClient }))
+  ctx.onDispose(stop)
+  return stop
+}
+
+
+// Plugin-owned DOM chrome, transcribed from desktop sidebar/chrome.tsx,
+// row-geometry.ts, session-row.tsx and ui/row-button.tsx. These are not imports
+// or instances of the private SidebarSessionRow / SessionActionsMenu components.
+// Parent installs this scoped fallback CSS once and owns all menu/action logic.
+const CODEX_INBOX_ROW_UI_CSS = `
+[data-codex-inbox-row-ui] { box-sizing:border-box; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:stretch; min-height:1.625rem; padding-right:.5rem; border-radius:.375rem; position:relative; }
+[data-codex-inbox-row-ui]:hover { background:var(--ui-row-hover-background,transparent); }
+[data-codex-inbox-row-ui][data-active='true'] { background:var(--ui-row-active-background,transparent); }
+[data-codex-inbox-row-ui] > [data-slot='row-button'] { box-sizing:border-box; display:flex; height:100%; min-width:0; align-items:center; align-self:stretch; gap:.375rem; padding:.125rem .5rem; border:0; background:transparent; text-align:left; color:inherit; font:inherit; cursor:pointer; z-index:0; }
+[data-codex-inbox-row-ui] [data-codex-inbox-lead] { display:grid; width:.875rem; height:.875rem; flex-shrink:0; place-items:center; overflow:hidden; position:relative; }
+[data-codex-inbox-row-ui] [data-codex-inbox-work-dot] { box-sizing:border-box; width:6px; height:6px; border-radius:50%; background:var(--ui-text-quaternary,currentColor); color:var(--ui-text-quaternary,currentColor); opacity:0; }
+[data-codex-inbox-row-ui][data-work-state='working'] [data-codex-inbox-work-dot] { background:var(--ui-text-primary,currentColor); opacity:1; }
+[data-codex-inbox-row-ui][data-work-state='completed'] [data-codex-inbox-work-dot] { background:var(--ui-success,var(--ui-text-quaternary,currentColor)); opacity:1; }
+/* Plugin-owned transcription of the installed host's private arc-border arc-row:
+   styles.css:1111-1157,1202-1231,1246-1261,1274-1277. The installed SDK has
+   no RunningBorder export; native session-row.tsx paints an aria-hidden span.
+   Keep the native masked 300% gradient and diagonal translation, not rotation. */
+[data-codex-inbox-row-ui] > [data-codex-inbox-running-arc] {
+  --codex-inbox-arc-c0:color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary,currentColor)) 0%,transparent);
+  --codex-inbox-arc-c1:var(--dt-midground,var(--ui-text-primary,currentColor));
+  --codex-inbox-arc-c2:color-mix(in srgb,var(--codex-inbox-arc-c1) 45%,transparent);
+  --codex-inbox-arc-angle:160deg; --codex-inbox-arc-width:.078125rem;
+  --codex-inbox-arc-standoff:0rem; --codex-inbox-arc-duration:2.23s;
+  box-sizing:border-box; pointer-events:none; position:absolute; overflow:hidden;
+  border-radius:inherit;
+  inset:calc(var(--codex-inbox-arc-standoff) * -1); padding:var(--codex-inbox-arc-width);
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; opacity:0;
+}
+:root:is(.dark,[data-hermes-mode='dark']) [data-codex-inbox-row-ui] > [data-codex-inbox-running-arc] { --codex-inbox-arc-c1:var(--dt-foreground,var(--ui-text-primary,currentColor)); }
+[data-codex-inbox-row-ui][data-work-state='working'] > [data-codex-inbox-running-arc] { opacity:1; }
+[data-codex-inbox-row-ui][data-work-state='working'] > [data-codex-inbox-running-arc]::before {
+  content:''; position:absolute; top:0; left:0; width:300%; height:300%;
+  background:linear-gradient(var(--codex-inbox-arc-angle),transparent 0%,var(--codex-inbox-arc-c0) 15%,var(--codex-inbox-arc-c1) 20%,var(--codex-inbox-arc-c2) 25%,transparent 35%,transparent 40%,var(--codex-inbox-arc-c0) 55%,var(--codex-inbox-arc-c1) 60%,var(--codex-inbox-arc-c2) 65%,transparent 75%,transparent 80%,var(--codex-inbox-arc-c0) 95%,var(--codex-inbox-arc-c1) 100%);
+  will-change:transform; animation:codex-inbox-row-contour var(--codex-inbox-arc-duration) linear infinite;
+}
+@keyframes codex-inbox-row-contour { 0% { transform:translate(-10%,-10%); } 100% { transform:translate(-50%,-50%); } }
+[data-codex-inbox-row-ui] [data-codex-inbox-title-wrap] { min-width:0; flex:1; align-self:center; }
+[data-codex-inbox-row-ui] [data-codex-inbox-label] { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8125rem; line-height:1.35; font-weight:400; color:var(--ui-text-secondary,inherit); }
+[data-codex-inbox-row-ui]:is(:hover,:focus-within,[data-active='true']) [data-codex-inbox-label] { color:var(--ui-text-primary,inherit); }
+[data-codex-inbox-row-ui] > [data-row-actions] { display:flex; flex-shrink:0; align-items:center; align-self:stretch; }
+[data-codex-inbox-row-ui] > [data-row-actions] > button { box-sizing:border-box; display:inline-flex; width:1.5rem; height:1.5rem; flex-shrink:0; align-items:center; justify-content:center; padding:0; border:0; border-radius:4px; background:transparent; color:var(--ui-text-secondary,inherit); font:inherit; cursor:pointer; opacity:0; pointer-events:none; transition:opacity 100ms; }
+[data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > button { opacity:1; pointer-events:auto; }
+[data-codex-inbox-row-ui] > [data-row-actions] > button:hover { background:var(--chrome-action-hover,var(--ui-control-hover-background,transparent)); color:var(--ui-text-primary,inherit); }
+[data-codex-inbox-row-ui] button:focus-visible { outline:1px solid var(--ui-accent,currentColor); outline-offset:-1px; }
+[data-codex-inbox-row-ui] button:disabled { cursor:default; }
+[data-codex-inbox-row-ui] > [data-row-actions] > button:disabled { pointer-events:none; }
+[data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > button:disabled { opacity:.5; }
+[data-codex-inbox-row-ui] > [data-row-actions] > [data-codex-inbox-settle] { opacity:1; pointer-events:auto; }
+[data-codex-inbox-row-ui] > [data-row-actions] > [data-codex-inbox-settle]:disabled,
+[data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > [data-codex-inbox-settle]:disabled { opacity:0; visibility:hidden; pointer-events:none; transition:none; }
+[data-codex-inbox-row-ui] svg { display:block; width:.75rem; height:.75rem; pointer-events:none; flex-shrink:0; }
+@media (prefers-reduced-motion:reduce) {
+  [data-codex-inbox-row-ui][data-work-state='working'] > [data-codex-inbox-running-arc]::before { animation:none; }
+  [data-codex-inbox-row-ui] > [data-row-actions] > button { transition:none; }
+}
+`;
+
+function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
+  if (!doc || typeof doc.createElement !== 'function') throw new TypeError('document is required');
+  const make = (tag, className, marker) => {
+    const node = doc.createElement(tag);
+    node.className = className;
+    if (marker) node.setAttribute(marker, '');
+    return node;
+  };
+  const row = make('div', 'min-h-[1.625rem] pr-2 grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-md group row-hover relative', 'data-codex-inbox-row-ui');
+  const go = make('button', 'pl-2 pr-2 gap-1.5 flex h-full min-w-0 items-center self-stretch py-0.5 bg-transparent text-left z-0', 'data-codex-inbox-open');
+  go.type = 'button';
+  go.setAttribute('data-slot', 'row-button');
+  const lead = make('span', 'grid size-3.5 shrink-0 place-items-center overflow-hidden', 'data-codex-inbox-lead');
+  lead.setAttribute('aria-hidden', 'true');
+  const workDot = make('span', '', 'data-codex-inbox-work-dot');
+  const runningArc = make('span', '', 'data-codex-inbox-running-arc');
+  runningArc.setAttribute('aria-hidden', 'true');
+  lead.append(workDot);
+  const wrap = make('span', 'min-w-0 flex-1 self-center', 'data-codex-inbox-title-wrap');
+  const label = make('span', 'min-w-0 truncate text-[0.8125rem] text-(--ui-text-secondary) leading-[1.35] hover-marquee block font-normal group-hover:text-foreground group-data-[working=true]:text-foreground/90', 'data-codex-inbox-label');
+  const text = make('span', 'hover-marquee-inner');
+  label.append(text); wrap.append(label); go.append(lead, wrap);
+  const actions = make('div', 'flex shrink-0 items-center self-stretch', 'data-row-actions');
+  const glyphButton = (marker, name, paths) => {
+    const button = make('button', 'inline-flex shrink-0 cursor-pointer items-center justify-center size-6 rounded-[4px] text-(--ui-text-secondary) bg-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100', marker);
+    button.type = 'button';
+    button.setAttribute('data-slot', 'button');
+    button.setAttribute('data-size', 'icon-xs');
+    button.setAttribute('data-variant', 'ghost');
+    button.setAttribute('aria-label', name); button.title = name;
+    const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.25'); svg.setAttribute('stroke-linecap', 'round');
+    for (const d of paths) {
+      const path = doc.createElementNS(svg.namespaceURI, 'path'); path.setAttribute('d', d); svg.append(path);
+    }
+    button.append(svg); return button;
+  };
+  const menu = glyphButton('data-codex-inbox-menu', 'Inbox row options', ['M3 8h.01M8 8h.01M13 8h.01']);
+  menu.firstChild.setAttribute('stroke-width', '2.5');
+  menu.setAttribute('aria-haspopup', 'menu'); menu.setAttribute('aria-expanded', 'false');
+  const clock = glyphButton('data-codex-inbox-snooze', 'Snooze', ['M8 1.75a6.25 6.25 0 1 0 0 12.5 6.25 6.25 0 0 0 0-12.5', 'M8 4.5V8l2.5 1.5']);
+  actions.append(menu, clock); row.append(go, actions, runningArc);
+  // Do not let plugin-owned clicks/presses enter an ancestor's native gestures.
+  // Preserve the actual event and its defaults/modifiers for parent callbacks.
+  row.addEventListener('pointerdown', event => event.stopPropagation());
+  for (const [button, callback] of [[go, onOpen], [menu, onMenu], [clock, onSnooze]]) {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      if (!button.disabled && typeof callback === 'function') callback(event);
+    });
+  }
+  // The action remains the same button/callback and disabled ledger. Only
+  // callers opting in get a Settle check rather than the generic options menu.
+  let settleAction = false;
+  let menuTitle = null;
+  const workStates = new Set(['working', 'completed', 'reading', 'unknown', 'idle']);
+  const update = (state = {}) => {
+    if ('title' in state) { text.textContent = String(state.title ?? ''); go.title = text.textContent; }
+    if ('selected' in state) {
+      row.classList.toggle('bg-(--ui-row-active-background)', Boolean(state.selected));
+      row.setAttribute('data-active', String(Boolean(state.selected)));
+      // The shipped skin paints aria-current; keep it on the shell, not the
+      // transparent body, so selection does not create a second inset band.
+      if (state.selected) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current');
+    }
+    if ('disabled' in state) { go.disabled = Boolean(state.disabled); clock.disabled = Boolean(state.disabled); }
+    if ('menuDisabled' in state || 'disabled' in state) {
+      if ('menuDisabled' in state) menu.dataset.menuDisabled = String(Boolean(state.menuDisabled));
+      menu.disabled = go.disabled || menu.dataset.menuDisabled === 'true';
+    }
+    if ('workState' in state) {
+      // Rendering consumes an explicit state; it never guesses completion from
+      // inactivity, selection or a missing runtime slice.
+      row.setAttribute('data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
+    }
+    if ('settleAction' in state) {
+      settleAction = Boolean(state.settleAction);
+      // Only Inbox opts into Snooze-left / Settle-right. Generic options keep
+      // their original order. Move a sibling only on mode changes so ordinary
+      // keyed updates cannot detach controls or disturb their keyboard focus.
+      const firstAction = settleAction ? clock : menu;
+      if (actions.firstElementChild !== firstAction) actions.insertBefore(firstAction, actions.firstChild);
+      menu.toggleAttribute('data-codex-inbox-settle', settleAction);
+      menu.firstChild.firstChild.setAttribute('d', settleAction ? 'M3.5 8.5l3 3 6-7' : 'M3 8h.01M8 8h.01M13 8h.01');
+      menu.firstChild.setAttribute('stroke-width', settleAction ? '1.25' : '2.5');
+      if (settleAction) {
+        menu.removeAttribute('aria-haspopup'); menu.removeAttribute('aria-expanded');
+      } else {
+        menu.setAttribute('aria-haspopup', 'menu'); menu.setAttribute('aria-expanded', 'false');
+      }
+    }
+    if ('menuTitle' in state) menuTitle = state.menuTitle == null ? null : String(state.menuTitle);
+    if ('menuTitle' in state || 'settleAction' in state) {
+      const name = menuTitle ?? (settleAction ? 'Settle' : 'Inbox row options');
+      menu.title = name; menu.setAttribute('aria-label', name);
+    }
+  };
+  update({ title: '', selected: false, disabled: false, menuDisabled: false, workState: 'idle' });
+  return { row, go, label, lead, actions, menu, clock, update };
+}
+
+globalThis.CODEX_INBOX_ROW_UI_CSS = CODEX_INBOX_ROW_UI_CSS;
+globalThis.createCodexInboxRowUI = createCodexInboxRowUI;
+
+
+// Standalone block: bundled by the parent plugin. No imports or network access.
+const CODEX_INBOX_STORE = 'inbox-state-v1';
+
+
+function codexInboxScope(scope) {
+  if (!scope || typeof scope.profile !== 'string' || !scope.profile) return null;
+  if (typeof scope.connectionId !== 'string') return null;
+  return { connectionId: scope.connectionId, profile: scope.profile };
+}
+
+function codexInboxId(session) {
+  const id = typeof session === 'string' ? session : session?.id ?? session?.session_id;
+  return typeof id === 'string' && id ? id : null;
+}
+
+function codexInboxOwnedBy(scope, session) {
+  return !!scope && (!session?.profile || session.profile === scope.profile) &&
+    (session?._connection_id == null || session._connection_id === scope.connectionId) &&
+    (session?.connectionId == null || session.connectionId === scope.connectionId) &&
+    (session?.connection_id == null || session.connection_id === scope.connectionId);
+}
+
+function codexInboxKey(scope, durableId) {
+  const valid = codexInboxScope(scope);
+  const id = codexInboxId(durableId);
+  return valid && id ? JSON.stringify([valid.connectionId, valid.profile, id]) : null;
+}
+
+function codexInboxWorkStatus(value) {
+  const status = typeof value === 'string' ? value : value?.status ?? value?.state;
+  if (status === 'resuming') return 'reading';
+  if (value === true || value?.busy === true) return 'work';
+  if (value === false) return 'idle';
+  if (['starting', 'running', 'working', 'streaming', 'waiting', 'needs-input', 'queued'].includes(status)) return 'work';
+  if (['idle', 'resuming', 'completed', 'done', 'stopped'].includes(status)) return status === 'resuming' ? 'reading' : 'idle';
+  return 'unknown';
+}
+
+function createCodexInboxModel(storage, { restoreAttention } = {}) {
+  let state = { version: 1, records: {}, aliases: {} };
+  let error = null;
+  const listeners = new Set();
+  const expired = new Map();
+  const validTimestamp = value => Number.isSafeInteger(value) && value > 0 && value <= 8640000000000000;
+  const notify = () => { for (const fn of listeners) { try { fn(); } catch { /* A view subscriber cannot undo a saved model transaction. */ } } };
+  const validKey = key => {
+    try { const p = JSON.parse(key); return Array.isArray(p) && p.length === 3 && typeof p[0] === 'string' && p.slice(1).every(v => typeof v === 'string' && v); }
+    catch { return false; }
+  };
+  try {
+    const raw = storage?.get?.(CODEX_INBOX_STORE);
+    const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (saved != null) {
+      if (saved.version !== 1 || !saved.records || !saved.aliases) throw Error('Invalid Inbox state');
+      for (const [key, record] of Object.entries(saved.records)) {
+        if (!validKey(key) || !record || typeof record !== 'object') continue;
+        const watermarks = {};
+        for (const [id, count] of Object.entries(record.watermarks || {})) {
+          if (id && Number.isSafeInteger(count) && count >= 0) Object.defineProperty(watermarks, id, { value: count, enumerable: true, writable: true, configurable: true });
+        }
+        state.records[key] = {
+          settledAt: Number.isFinite(record.settledAt) && record.settledAt > 0 ? record.settledAt : null, watermarks,
+          snoozeUntil: validTimestamp(record.snoozeUntil) ? record.snoozeUntil : null,
+          snoozedAt: validTimestamp(record.snoozedAt) ? record.snoozedAt : validTimestamp(record.snoozeUntil) ? 1 : null,
+          ...(record.manualSettled === true ? { manualSettled: true } : {})
+        };
+      }
+      for (const [alias, root] of Object.entries(saved.aliases)) {
+        if (!validKey(alias) || !validKey(root)) continue;
+        const a = JSON.parse(alias), r = JSON.parse(root);
+        if (a[0] === r[0] && a[1] === r[1] && state.records[root]) state.aliases[alias] = root;
+      }
+    }
+  } catch { error = 'Inbox state could not be read. Settle and Snooze are unavailable until storage recovers.'; }
+
+  const putCount = (record, id, count) => {
+    const previous = Object.prototype.hasOwnProperty.call(record.watermarks, id) ? record.watermarks[id] : 0;
+    Object.defineProperty(record.watermarks, id, { value: Math.max(previous, count), enumerable: true, writable: true, configurable: true });
+  };
+  const accept = (scope, session) => {
+    if (!codexInboxKey(scope, session)) return false;
+    if (typeof session !== 'object' || !session) return true;
+    return codexInboxOwnedBy(scope, session);
+  };
+  const rootKey = (draft, scope, session) => {
+    if (!accept(scope, session)) return null;
+    const own = codexInboxKey(scope, session);
+    const declared = typeof session === 'object' ? codexInboxKey(scope, session._lineage_root_id) : null;
+    return draft.aliases[declared] || declared || draft.aliases[own] || own;
+  };
+  const associate = (draft, scope, session) => {
+    const key = rootKey(draft, scope, session);
+    if (!key) return null;
+    const own = codexInboxKey(scope, session);
+    const ids = [codexInboxId(session), ...(Array.isArray(session?._lineage_ids) ? session._lineage_ids : [])];
+    if (session?._lineage_root_id) ids.push(session._lineage_root_id);
+    const record = draft.records[key] || { settledAt: null, watermarks: {}, snoozeUntil: null, snoozedAt: null };
+    // A lineage discovered after settling retains its prior durable record.
+    for (const id of ids) {
+      const alias = codexInboxKey(scope, id);
+      if (!alias) continue;
+      const priorKey = draft.aliases[alias] || alias;
+      const prior = draft.records[priorKey];
+      if (prior && prior !== record) {
+        record.settledAt = Math.max(record.settledAt || 0, prior.settledAt || 0) || null;
+        if (prior.settledAt && prior.manualSettled === true) record.manualSettled = true;
+        // Keep the most recent explicit duration/cancellation when lineage arrives late.
+        if ((prior.snoozedAt || 0) > (record.snoozedAt || 0) ||
+            (prior.snoozedAt && prior.snoozedAt === record.snoozedAt && !prior.snoozeUntil)) {
+          record.snoozeUntil = prior.snoozeUntil; record.snoozedAt = prior.snoozedAt;
+        }
+        for (const [pid, count] of Object.entries(prior.watermarks)) putCount(record, pid, count);
+        for (const [a, target] of Object.entries(draft.aliases)) if (target === priorKey) draft.aliases[a] = key;
+        delete draft.records[priorKey];
+      }
+      draft.aliases[alias] = key;
+    }
+    draft.aliases[own] = key;
+    draft.records[key] = record;
+    return { key, record, id: codexInboxId(session) };
+  };
+  const snoozeTime = draft => {
+    // Millisecond ordering keeps two rapid decisions unambiguous during late lineage
+    // discovery, even when the system clock moves backwards between those decisions.
+    let at = Date.now();
+    for (const record of Object.values(draft.records)) at = Math.max(at, (record.snoozedAt || 0) + 1);
+    return Math.min(at, 8640000000000000);
+  };
+  const transaction = change => {
+    const draft = JSON.parse(JSON.stringify(state));
+    const result = change(draft);
+    if (result === false) return false;
+    if (JSON.stringify(draft) === JSON.stringify(state)) return result;
+    try {
+      if (typeof storage?.set !== 'function') throw Error('Storage unavailable');
+      storage.set(CODEX_INBOX_STORE, draft);
+      // The desktop SDK can silently swallow quota/permission errors. A write is
+      // committed only after an exact structural readback, including string stores.
+      const saved = storage.get?.(CODEX_INBOX_STORE);
+      const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved;
+      const canonical = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+        ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+      if (canonical(parsed) !== canonical(draft)) throw Error('Inbox storage readback failed');
+      state = draft;
+      error = null;
+      notify();
+      return result;
+    } catch {
+      error = 'Inbox state could not be saved. No Inbox changes were applied.';
+      notify();
+      return false;
+    }
+  };
+  return {
+    key: (scope, session) => rootKey(state, scope, session),
+    isSettled(scope, session) { const key = rootKey(state, scope, session); return !!(key && state.records[key]?.settledAt); },
+    isManualSettled(scope, session) { const key = rootKey(state, scope, session); return !!(key && state.records[key]?.settledAt && state.records[key].manualSettled === true); },
+    snoozedUntil(scope, session) { const key = rootKey(state, scope, session); return key && state.records[key]?.snoozeUntil || null; },
+    isSnoozed(scope, session, now = Date.now()) {
+      const key = rootKey(state, scope, session);
+      return !!(key && state.records[key]?.snoozeUntil > now);
+    },
+    snooze(scope, session, until) {
+      if (!validTimestamp(until) || until <= Date.now()) return false;
+      return transaction(draft => {
+        const item = associate(draft, scope, session);
+        if (!item) return false;
+        item.record.snoozeUntil = until; item.record.snoozedAt = snoozeTime(draft);
+        return true;
+      });
+    },
+    cancelSnooze(scope, session) {
+      const restoreKey = rootKey(state, scope, session);
+      if (state.records[restoreKey]?.snoozeUntil && restoreAttention?.(scope, session) === false) { notify(); return false; }
+      return transaction(draft => {
+        const key = rootKey(draft, scope, session);
+        if (!key) return false;
+        if (draft.records[key]?.snoozeUntil) {
+          draft.records[key].snoozeUntil = null; draft.records[key].snoozedAt = snoozeTime(draft);
+        }
+        return true;
+      });
+    },
+    nextSnoozeDeadline(now = Date.now()) {
+      let next = null;
+      for (const record of Object.values(state.records)) {
+        if (record.snoozeUntil > now && (next === null || record.snoozeUntil < next)) next = record.snoozeUntil;
+      }
+      return next;
+    },
+    // Runtime-owned timers call this on expiry/resume. No persistence write is needed:
+    // isSnoozed always reads the wall clock, and subscribe wakes native React badges.
+    expireSnoozes(now = Date.now()) {
+      let changed = false;
+      for (const [key, record] of Object.entries(state.records)) {
+        const token = JSON.stringify([record.snoozedAt, record.snoozeUntil]);
+        if (record.snoozeUntil && record.snoozeUntil <= now && expired.get(key) !== token) {
+          expired.set(key, token); changed = true;
+        }
+      }
+      if (changed) notify();
+      return changed;
+    },
+    settle(scope, session, options = {}) {
+      return transaction(draft => {
+        const item = associate(draft, scope, session);
+        if (!item) return false;
+        const count = session?.message_count;
+        if (Number.isSafeInteger(count) && count >= 0) putCount(item.record, item.id, count);
+        item.record.settledAt = Date.now();
+        if (options.manual === true) item.record.manualSettled = true;
+        else delete item.record.manualSettled;
+        return true;
+      });
+    },
+    unsettle(scope, session) {
+      const restoreKey = rootKey(state, scope, session);
+      if (state.records[restoreKey]?.settledAt && restoreAttention?.(scope, session) === false) { notify(); return false; }
+      return transaction(draft => {
+        const key = rootKey(draft, scope, session);
+        if (!key) return false;
+        if (draft.records[key]) { draft.records[key].settledAt = null; delete draft.records[key].manualSettled; }
+        return true;
+      });
+    },
+    reopen(scope, session) {
+      if (restoreAttention?.(scope, session) === false) { notify(); return false; }
+      return transaction(draft => {
+        const item = associate(draft, scope, session);
+        if (!item) return false;
+        item.record.settledAt = null; delete item.record.manualSettled;
+        if (item.record.snoozeUntil) {
+          item.record.snoozeUntil = null; item.record.snoozedAt = snoozeTime(draft);
+        }
+        return true;
+      });
+    },
+    ingest(scope, sessions = [], options = {}) {
+      if (!codexInboxScope(scope)) return false;
+      return transaction(draft => {
+        for (const session of sessions) {
+          const item = associate(draft, scope, session);
+          if (!item) continue;
+          const count = session?.message_count;
+          if (Number.isSafeInteger(count) && count >= 0) {
+            const previous = Object.prototype.hasOwnProperty.call(item.record.watermarks, item.id) ? item.record.watermarks[item.id] : undefined;
+            if (previous !== undefined && count > previous && item.record.manualSettled !== true) item.record.settledAt = null;
+            putCount(item.record, item.id, count);
+          }
+        }
+        for (const session of options.liveSessions || []) {
+          if (!accept(scope, session) || codexInboxWorkStatus(session) !== 'work') continue;
+          const item = associate(draft, scope, session);
+          if (item && item.record.manualSettled !== true) item.record.settledAt = null;
+        }
+        return true;
+      });
+    },
+    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+    get error() { return error; }
+  };
+}
+
+// REST list/detail metadata retains source and immutable created_source.
+// Unknown/new source kinds require an explicit compatibility review, not a guess.
+function codexInboxSource(session) {
+  if (!session || typeof session !== 'object') return 'unknown';
+  const source = session.source, created = session.created_source;
+  if (source === 'cron' || created === 'cron') return 'cron';
+  const known = ['desktop', 'tui', 'cli', 'web', 'local', 'api', 'api_server', 'tool', 'subagent', 'kanban',
+    'telegram', 'discord', 'whatsapp', 'whatsapp_cloud', 'slack', 'signal', 'mattermost', 'matrix',
+    'homeassistant', 'email', 'sms', 'dingtalk', 'webhook', 'msgraph_webhook', 'feishu', 'wecom',
+    'wecom_callback', 'weixin', 'bluebubbles', 'qqbot', 'yuanbao', 'relay',
+    'line', 'teams', 'ntfy', 'simplex', 'irc', 'a2a', 'raft', 'buzz', 'photon', 'google_chat'];
+  if (!known.includes(source) || created != null && (!known.includes(created) || created !== source)) return 'unknown';
+  return 'noncron';
+}
+
+// v1 admissions mixed creation/open/work and cannot certify which happened.
+// Keep that store untouched as a backup; v2 starts with verified work only.
+// User Settle/Snooze records and aliases live in their unchanged separate store.
+function createCodexInboxAdmission(storage, model) {
+  const storeKey = 'inbox-admission-v2';
+  let state = { version: 2, admitted: {}, blocked: {} }, error = null, readable = false;
+  const pendingAdmissions = new Map(), blocked = new Set(), sources = new Map();
+  const scopeKey = scope => { const valid = codexInboxScope(scope); return valid ? JSON.stringify([valid.connectionId, valid.profile]) : null; };
+  const validKey = (key, length) => {
+    try { const tuple = JSON.parse(key); return Array.isArray(tuple) && tuple.length === length && typeof tuple[0] === 'string' && tuple.slice(1).every(v => typeof v === 'string' && v); }
+    catch { return false; }
+  };
+  const canonical = value => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+  const load = () => {
+    try {
+      if (typeof storage?.get !== 'function') throw Error('Storage unavailable');
+      const raw = storage.get(storeKey), saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (saved != null) {
+        const objectMap = value => value && typeof value === 'object' && !Array.isArray(value);
+        if (saved.version !== 2 || !objectMap(saved.admitted) || !objectMap(saved.blocked)) throw Error('Invalid Inbox admission');
+        for (const records of [saved.admitted, saved.blocked]) {
+          for (const [key, value] of Object.entries(records)) if (!validKey(key, 3) || value !== true) throw Error('Invalid Inbox admission');
+        }
+        state = JSON.parse(JSON.stringify(saved));
+        Object.keys(state.blocked).forEach(key => blocked.add(key));
+      }
+      readable = true; error = null; return true;
+    } catch {
+      readable = false; error = 'Inbox admission could not be read. Historical chats remain excluded until storage recovers.'; return false;
+    }
+  };
+  load();
+  const ids = session => [...new Set([codexInboxId(session), session?._lineage_root_id,
+    ...(Array.isArray(session?._lineage_ids) ? session._lineage_ids : [])].filter(id => typeof id === 'string' && id))];
+  const keys = (scope, session) => [...new Set([...ids(session).map(id => codexInboxKey(scope, id)), model?.key(scope, session)].filter(Boolean))];
+  const allowed = (scope, session) => {
+    if (!scopeKey(scope) || !codexInboxOwnedBy(scope, session)) return false;
+    const rowKeys = keys(scope, session);
+    if (!rowKeys.length || rowKeys.some(key => blocked.has(key) || state.blocked[key])) return false;
+    // Strings and captured Undo identities use known, already verified work.
+    // A full metadata row cannot borrow a previous safe classification.
+    if (session && typeof session === 'object' && Object.hasOwn(session, 'source')) {
+      if (codexInboxSource(session) !== 'noncron') return false;
+    } else if (session && typeof session === 'object' && Object.keys(session).some(key =>
+      !['id', 'session_id', 'profile', 'connectionId', 'connection_id', '_connection_id', '_lineage_root_id', '_lineage_ids'].includes(key))) return false;
+    return !rowKeys.some(key => sources.has(key) && sources.get(key) !== 'noncron');
+  };
+  const eligible = (draft, scope, session) => allowed(scope, session) && keys(scope, session).some(key => draft.admitted[key] === true);
+  const recordSessionIds = (scope, records) => {
+    if (!readable || !scopeKey(scope)) return [];
+    const owner = scopeKey(scope), ids = new Map();
+    for (const key of Object.keys(records)) {
+      const tuple = JSON.parse(key);
+      if (JSON.stringify(tuple.slice(0, 2)) === owner) ids.set(model?.key(scope, tuple[2]) || key, tuple[2]);
+    }
+    return [...ids.values()];
+  };
+  return {
+    cutoff: () => null,
+    isEligible: (scope, session) => readable && eligible(state, scope, session),
+    restore: (scope, session) => readable && eligible(state, scope, session),
+    explicitSessionIds() { return []; },
+    admittedSessionIds(scope) { return recordSessionIds(scope, state.admitted).filter(id => allowed(scope, id)); },
+    observe(scope, sessions = [], options = {}) {
+      const owner = scopeKey(scope);
+      if (!owner) return false;
+      if (!pendingAdmissions.has(owner)) pendingAdmissions.set(owner, new Set());
+      const pending = pendingAdmissions.get(owner), working = new Set();
+      // Classify the complete snapshot before admitting anything. Cron taint
+      // follows only supported lineage/aliases, including late discovery.
+      const rows = sessions.filter(session => codexInboxId(session) && codexInboxOwnedBy(scope, session));
+      const classifications = new Map(), provenance = new Map();
+      for (const session of rows) {
+        const source = codexInboxSource(session);
+        for (const key of keys(scope, session)) {
+          const prior = classifications.get(key);
+          const conflict = prior === 'noncron' && source === 'noncron' && provenance.get(key) !== session.source;
+          classifications.set(key, prior === 'cron' || source === 'cron' ? 'cron' : conflict || prior && prior !== source ? 'unknown' : source);
+          if (!provenance.has(key)) provenance.set(key, session.source);
+        }
+      }
+      classifications.forEach((source, key) => { sources.set(key, source); if (source === 'cron') blocked.add(key); });
+      let changed;
+      do {
+        changed = false;
+        for (const session of rows) {
+          const rowKeys = keys(scope, session);
+          if (rowKeys.some(key => blocked.has(key))) for (const key of rowKeys) if (!blocked.has(key)) { blocked.add(key); changed = true; }
+        }
+      } while (changed);
+      for (const session of options.workingSessions || []) if (allowed(scope, session) && codexInboxSource(session) === 'noncron') keys(scope, session).forEach(key => working.add(key));
+      for (const live of options.liveSessions || []) {
+        if (!codexInboxOwnedBy(scope, live) || codexInboxWorkStatus(live) !== 'work') continue;
+        const liveIds = [...ids(live), live.session_key, live.stored_session_id].filter(Boolean);
+        // Do not invent a durable chat from a transient runtime ID.
+        for (const row of rows) if (allowed(scope, row) && codexInboxSource(row) === 'noncron' && ids(row).some(id => liveIds.includes(id))) keys(scope, row).forEach(key => working.add(key));
+      }
+      // Keep verified work intent pending across a failed save and subsequent
+      // idle refresh. It is still excluded until a durable readback succeeds.
+      working.forEach(key => pending.add(key));
+      if (!readable && !load()) return false;
+      const draft = JSON.parse(JSON.stringify(state));
+      for (const session of rows) {
+        if (!allowed(scope, session) || codexInboxSource(session) !== 'noncron') continue;
+        const rowKeys = keys(scope, session);
+        if (eligible(draft, scope, session) || rowKeys.some(key => working.has(key))) {
+          for (const key of rowKeys) { draft.admitted[key] = true; pending.add(key); }
+        }
+      }
+      for (const key of pending) if (!blocked.has(key) && sources.get(key) === 'noncron') draft.admitted[key] = true;
+      for (const key of blocked) { draft.blocked[key] = true; delete draft.admitted[key]; pending.delete(key); }
+      if (canonical(draft) === canonical(state) && !error) { pending.clear(); return true; }
+      try {
+        if (typeof storage?.set !== 'function') throw Error('Storage unavailable');
+        storage.set(storeKey, draft);
+        const raw = storage.get(storeKey), saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (canonical(saved) !== canonical(draft)) throw Error('Inbox admission readback failed');
+        state = draft; pending.clear(); error = null; return true;
+      } catch {
+        error = 'Inbox admission could not be saved. New admissions were not applied; existing attention is preserved.'; return false;
+      }
+    },
+    get error() { return error; }
+  };
+}
+
+function installCodexInboxRuntime({ storage, host, document: doc = document, window: win = window }) {
+  // Hot reload replaces only this DOM adapter, never the host's native children.
+  const registryKey = '__codexInboxRuntimeDispose';
+  doc[registryKey]?.();
+  let admission;
+  const model = createCodexInboxModel(storage, {
+    restoreAttention: (scope, session) => admission.restore(scope, session)
+  });
+  admission = createCodexInboxAdmission(storage, model);
+  let on = false;
+  try { on = storage?.get?.('inbox', 'on') !== 'off'; } catch { /* Fail closed until the parent supplies a mode. */ }
+  let disposed = false, raf = null, island = null, style = null, container = null;
+  let deadlineTimer = null, armingDeadline = false, snoozePopup = null;
+  const rowBindings = new Map();
+  const settleNotices = new Map();
+  const activityByKey = new Map();
+  const timerHost = win.setTimeout ? win : doc.defaultView;
+  const clearDeadline = () => { if (deadlineTimer !== null) timerHost.clearTimeout(deadlineTimer); deadlineTimer = null; };
+  const refreshDeadline = () => {
+    if (armingDeadline) return;
+    armingDeadline = true;
+    try {
+      clearDeadline();
+      if (disposed || !on) return;
+      model.expireSnoozes();
+      const next = model.nextSnoozeDeadline();
+      if (next !== null) deadlineTimer = timerHost.setTimeout(() => {
+        deadlineTimer = null; refreshDeadline(); requestRender();
+      }, Math.max(1, Math.min(2147483647, next - Date.now())));
+    } finally { armingDeadline = false; }
+  };
+  let inboxOpen = true, signature = null, currentScope = null;
+  let input = { sessions: [], liveSessions: [], liveStatusKnown: false, loading: true };
+  const badgeBindings = new Map();
+  const settledBadgeBindings = new Map();
+  const externalBindings = new Map();
+  const own = 'data-codex-inbox-owned';
+  const owns = node => node?.nodeType === 1 ? !!node.closest(`[${own}]`) : !!node?.parentElement?.closest(`[${own}]`);
+  const setAttr = (el, name, value) => { if (el.getAttribute(name) !== String(value)) el.setAttribute(name, String(value)); };
+  const visibleSessions = () => {
+    const rows = new Map();
+    for (const session of input.sessions) {
+      if (!codexInboxId(session) || session.archived || session.hidden || !codexInboxOwnedBy(currentScope, session)) continue;
+      const key = model.key(currentScope, session);
+      if (!rows.has(key)) rows.set(key, session);
+    }
+    return [...rows.values()];
+  };
+  const inboxSessions = () => visibleSessions().filter(session => admission.isEligible(currentScope, session));
+  const findSession = id => visibleSessions().find(s => codexInboxId(s) === id || s._lineage_root_id === id || s._lineage_ids?.includes(id));
+  const runtimeAliases = session => {
+    const aliases = new Set([codexInboxId(session), session?._lineage_root_id, ...(session?._lineage_ids || [])].filter(Boolean));
+    const owner = codexInboxScope(host.state?.focusedSessionOwner?.get?.());
+    const stored = host.state?.focusedStoredSessionId?.get?.();
+    if (owner && JSON.stringify(owner) === JSON.stringify(currentScope) && aliases.has(stored)) {
+      const runtimeId = host.state?.focusedSessionId?.get?.();
+      if (typeof runtimeId === 'string' && runtimeId) aliases.add(runtimeId);
+    }
+    for (const live of input.liveSessions || []) {
+      if (!codexInboxOwnedBy(currentScope, live)) continue;
+      const ids = [live.session_id, live.id, live.session_key, live.stored_session_id, live._lineage_root_id, ...(live._lineage_ids || [])].filter(Boolean);
+      if (ids.some(id => aliases.has(id))) ids.forEach(id => aliases.add(id));
+    }
+    return aliases;
+  };
+  const safety = (session, admissionCheck = false) => {
+    const ids = runtimeAliases(session);
+    let unresolved = input.liveStatusKnown !== true;
+    let reading = false;
+    for (const live of input.liveSessions || []) {
+      if (!codexInboxOwnedBy(currentScope, live)) continue;
+      if (![live.id, live.session_id, live.session_key, live.stored_session_id, live._lineage_root_id].some(id => ids.has(id))) continue;
+      const status = codexInboxWorkStatus(live);
+      if (status === 'work') return 'work';
+      if (status === 'unknown') unresolved = true;
+      if (status === 'reading') reading = true;
+    }
+    for (const id of admissionCheck && input.busyOwnerKnown === false ? [] : ids) {
+      const busy = input.busyBySession instanceof Map ? input.busyBySession.get(id) : input.busyBySession?.[id];
+      if (busy === undefined) continue;
+      const status = codexInboxWorkStatus(busy);
+      if (status === 'work') return 'work';
+      if (status === 'unknown') unresolved = true;
+      if (status === 'reading') reading = true;
+    }
+    return unresolved ? 'unknown' : reading ? 'reading' : 'idle';
+  };
+  const reconcileAdmission = () => {
+    const sessions = visibleSessions(), working = input.loading || input.error || input.liveStatusKnown !== true ? [] : sessions.filter(session => safety(session, true) === 'work');
+    // Rendering deduplicates lineage rows, never their source evidence. A late
+    // cron ancestor/alias must taint the whole thread whichever row comes first.
+    admission.observe(currentScope, input.sessions, { workingSessions: working });
+    model.ingest(currentScope, sessions, { liveSessions: working.map(session => ({ ...session, status: 'working' })) });
+  };
+  const reconcileActivity = () => {
+    if (input.loading || input.error) return;
+    for (const session of inboxSessions()) {
+      const key = model.key(currentScope, session), previous = activityByKey.get(key);
+      const status = safety(session, true), newer = Number.isFinite(input.liveStatusAt) && input.liveStatusAt > (previous?.at || 0);
+      // A terminal frame precedes backend cleanup. A late working snapshot
+      // cannot cancel that receipt; a new positive work event can.
+      if (status === 'work' && previous?.phase !== 'completed' && (!previous || newer)) {
+        activityByKey.set(key, { phase: 'working', at: input.liveStatusAt || Date.now(), children: previous?.children || new Set() });
+      } else if (status === 'idle' && previous?.phase === 'working' && !previous.children.size && newer) {
+        activityByKey.set(key, { ...previous, phase: session.unread === true ? 'completed' : 'unknown', at: input.liveStatusAt });
+      }
+    }
+  };
+  const workState = session => {
+    if (input.loading || input.error) return 'unknown';
+    const status = safety(session, true), activity = activityByKey.get(model.key(currentScope, session));
+    if (status === 'unknown' || status === 'reading') return status;
+    if (activity?.phase === 'completed') return 'completed';
+    if (status === 'work' || activity?.phase === 'working') return 'working';
+    if (activity?.phase === 'unknown') return 'unknown';
+    // Native unread marks a completed reply. Merely idle/busy:false does not.
+    return session.unread === true ? 'completed' : 'idle';
+  };
+  const requestRender = () => {
+    if (!disposed && raf === null) raf = win.requestAnimationFrame(() => { raf = null; render(); });
+  };
+  const button = (label, handler) => {
+    const el = doc.createElement('button');
+    el.type = 'button'; el.textContent = label; el.addEventListener('click', handler);
+    return el;
+  };
+  const stop = event => { event.preventDefault(); event.stopPropagation(); };
+  const routeOptions = () => ({ profile: currentScope.profile, route: { ...currentScope } });
+  const open = session => { if (!disposed && on && currentScope && codexInboxOwnedBy(currentScope, session)) host.openSession?.(codexInboxId(session), routeOptions()); };
+  const active = session => {
+    const stored = host.state?.focusedStoredSessionId?.get?.();
+    const id = stored || host.state?.activeSessionId?.get?.();
+    const focusedOwner = host.state?.focusedSessionOwner?.get?.();
+    if (focusedOwner != null) {
+      const owner = codexInboxScope(focusedOwner);
+      if (!owner || owner.profile !== currentScope.profile || owner.connectionId !== currentScope.connectionId) return false;
+    } else {
+      const profile = host.state?.focusedSessionProfile?.get?.() || host.state?.profile?.get?.();
+      const connection = host.state?.connectionId?.get?.();
+      if (profile && profile !== currentScope.profile || typeof connection === 'string' && connection !== currentScope.connectionId) return false;
+    }
+    return !!id && runtimeAliases(session).has(id);
+  };
+  const removeFromInbox = (session, save) => {
+    const isCurrent = active(session);
+    const all = inboxSessions();
+    const index = all.findIndex(s => model.key(currentScope, s) === model.key(currentScope, session));
+    const following = [...all.slice(index + 1), ...all.slice(0, Math.max(0, index))];
+    const candidates = following.filter(s => model.key(currentScope, s) !== model.key(currentScope, session) && !model.isSettled(currentScope, s) && !model.isSnoozed(currentScope, s));
+    if (!save()) return false;
+    if (isCurrent) {
+      if (candidates.length) open(candidates[0]);
+      else host.newChat?.({ ...currentScope });
+    }
+    requestRender();
+    return true;
+  };
+  const sameScope = scope => JSON.stringify(codexInboxScope(scope)) === JSON.stringify(currentScope);
+  const clearSettleNotice = item => {
+    if (settleNotices.get(item.key) !== item) return;
+    timerHost.clearTimeout(item.timer); settleNotices.delete(item.key);
+  };
+  const clearSettleNotices = () => { for (const item of settleNotices.values()) clearSettleNotice(item); };
+  const undoSettle = item => {
+    if (disposed || !on || !sameScope(item.scope) || settleNotices.get(item.key) !== item) return false;
+    // Check the deadline in the handler too: sleeping/throttled timers confer no
+    // extra time. The captured owner and durable identity never follow new focus.
+    if (Date.now() >= item.until) { clearSettleNotice(item); requestRender(); return false; }
+    if (!model.unsettle(item.scope, item.session)) { requestRender(); return false; }
+    clearSettleNotice(item); requestRender(); return true;
+  };
+  const settle = session => {
+    if (disposed || !on || !currentScope || !codexInboxOwnedBy(currentScope, session)) return false;
+    const fresh = findSession(codexInboxId(session));
+    if (!fresh || codexInboxId(fresh) !== codexInboxId(session) || !admission.isEligible(currentScope, fresh) ||
+        model.isSettled(currentScope, fresh) || model.isSnoozed(currentScope, fresh)) return false;
+    const scope = { ...currentScope };
+    const result = removeFromInbox(fresh, () => {
+      if (!model.settle(scope, fresh, { manual: true })) return false;
+      const key = model.key(scope, fresh);
+      clearSettleNotices();
+      const captured = { id: codexInboxId(fresh), ...scope };
+      if (fresh._lineage_root_id) captured._lineage_root_id = fresh._lineage_root_id;
+      if (Array.isArray(fresh._lineage_ids)) captured._lineage_ids = [...fresh._lineage_ids];
+      const item = { key, scope, session: captured, until: Date.now() + 3000, timer: null };
+      settleNotices.set(key, item);
+      item.timer = timerHost.setTimeout(() => { clearSettleNotice(item); requestRender(); }, 3000);
+      return true;
+    });
+    if (result) render();
+    return result;
+  };
+  const snooze = (session, until, scope = currentScope) => {
+    if (disposed || !on || !currentScope || !sameScope(scope) || input.loading || input.error ||
+        !codexInboxOwnedBy(currentScope, session) || model.isSettled(currentScope, session)) return false;
+    const fresh = findSession(codexInboxId(session));
+    return fresh ? removeFromInbox(fresh, () => model.snooze(currentScope, fresh, until)) : false;
+  };
+  const cancelSnooze = (session, scope = currentScope) => {
+    if (disposed || !on || !currentScope || !sameScope(scope)) return false;
+    return model.cancelSnooze(currentScope, session);
+  };
+  const closeSnoozePopup = (restoreFocus = true) => {
+    const item = snoozePopup;
+    if (!item) return;
+    snoozePopup = null; item.element.remove();
+    item.anchor.setAttribute('aria-expanded', 'false');
+    doc.removeEventListener('pointerdown', item.outside, true);
+    doc.removeEventListener('keydown', item.keydown, true);
+    win.removeEventListener?.('resize', item.position);
+    doc.removeEventListener('scroll', item.position, true);
+    if (restoreFocus && item.anchor.isConnected) item.anchor.focus();
+  };
+  const rowSession = row => {
+    const binding = rowBindings.get(row.getAttribute('data-codex-inbox-key'));
+    return !disposed && on && binding?.row === row && row.isConnected && sameScope(binding.scope) ? findSession(binding.id) : null;
+  };
+  const showSnoozePopup = (session, anchor, event) => {
+    if (disposed || !on || !currentScope || input.loading || input.error) return;
+    if (snoozePopup?.anchor === anchor) {
+      const pointer = event?.detail > 0;
+      closeSnoozePopup(!pointer);
+      if (pointer && doc.activeElement === anchor) anchor.blur();
+      return;
+    }
+    closeSnoozePopup(false);
+    const element = doc.createElement('div');
+    element.setAttribute(own, 'popup'); element.setAttribute('data-codex-inbox-snooze-popup', '');
+    element.setAttribute('role', 'menu'); element.setAttribute('aria-label', 'Snooze thread');
+    const item = { element, anchor, id: codexInboxId(session), scope: { ...currentScope } };
+    snoozePopup = item; anchor.setAttribute('aria-expanded', 'true');
+    const choose = duration => {
+      if (snoozePopup !== item || !sameScope(item.scope) || disposed || !on) return;
+      const fresh = findSession(item.id);
+      if (fresh && snooze(fresh, Date.now() + duration, item.scope)) closeSnoozePopup(false);
+      // A failed save keeps this exact menu open. Errors paint in the Inbox,
+      // never as extra menu options, fields or a footer.
+      else requestRender();
+    };
+    const controls = [];
+    for (const [label, duration] of [['15 min', 900000], ['30 min', 1800000], ['1 hour', 3600000], ['3 hours', 10800000], ['1 day', 86400000]]) {
+      const option = button(label, event => { stop(event); choose(duration); });
+      option.setAttribute('role', 'menuitem'); option.tabIndex = -1;
+      option.addEventListener('pointermove', () => {
+        if (snoozePopup === item && doc.activeElement !== option) option.focus({ preventScroll: true });
+      });
+      controls.push(option); element.appendChild(option);
+    }
+    item.position = () => {
+      const rect = anchor.getBoundingClientRect();
+      const view = doc.defaultView, width = Math.min(160, Math.max(0, view.innerWidth - 16));
+      element.style.width = `${width}px`;
+      element.style.left = `${Math.max(8, Math.min(rect.right - width, view.innerWidth - width - 8))}px`;
+      const height = element.getBoundingClientRect().height;
+      element.style.top = `${Math.max(8, Math.min(rect.bottom + 4, view.innerHeight - height - 8))}px`;
+    };
+    item.outside = event => { if (!element.contains(event.target) && !anchor.contains(event.target)) closeSnoozePopup(false); };
+    item.keydown = event => {
+      // Dismissal never cancels the host's original event or steals an outside
+      // click. Only menu-owned navigation/activation consumes a key.
+      if (event.key === 'Escape') { closeSnoozePopup(element.contains(doc.activeElement)); return; }
+      if (!element.contains(event.target)) return;
+      if (event.key === 'Tab') { closeSnoozePopup(false); return; }
+      const index = controls.indexOf(doc.activeElement);
+      if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        stop(event);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? controls.length - 1 :
+          (Math.max(0, index) + (event.key === 'ArrowDown' ? 1 : controls.length - 1)) % controls.length;
+        controls[next].focus();
+      } else if ((event.key === 'Enter' || event.key === ' ') && index >= 0) {
+        stop(event); if (!event.repeat) controls[index].click();
+      }
+    };
+    doc.body.appendChild(element); item.position();
+    doc.addEventListener('pointerdown', item.outside, true); doc.addEventListener('keydown', item.keydown, true);
+    win.addEventListener?.('resize', item.position); doc.addEventListener('scroll', item.position, true);
+    element.querySelector('button')?.focus();
+  };
+  const cleanupDOM = () => {
+    closeSnoozePopup(false); clearSettleNotices(); rowBindings.clear();
+    island?.remove(); island = null; signature = null; container = null;
+    style?.remove(); style = null;
+    for (const badge of badgeBindings.values()) badge.remove();
+    badgeBindings.clear();
+    for (const badge of settledBadgeBindings.values()) badge.remove();
+    settledBadgeBindings.clear();
+  };
+  const nativeHeaderTemplate = root => {
+    // Copy only a native header button and its wrapper, never rows, actions,
+    // React ownership, or native listeners. Structural matching is locale-safe.
+    let wrapper, header;
+    for (const section of root.children) {
+      if (owns(section) || !section.matches('[data-slot="sidebar-group"]')) continue;
+      const candidate = [...section.children].find(el => el.classList.contains('group/section'));
+      const source = [...(candidate?.children || [])].find(el => el.matches('button') && el.classList.contains('group/section-label'));
+      if (!source?.querySelector('.dither') || !source.querySelector('.codicon-chevron-right') || !source.querySelector('.dither').parentElement.querySelector('.truncate')) continue;
+      wrapper = candidate.cloneNode(false); header = source.cloneNode(true); break;
+    }
+    if (!header) {
+      // Exact installed SidebarSectionHeader / SidebarPanelLabel / DisclosureCaret
+      // shape, until native Pinned or Sessions mounts. Its classes inherit host fonts.
+      wrapper = doc.createElement('div');
+      wrapper.className = 'group/section flex shrink-0 items-center justify-between gap-1 pb-1 pt-1.5';
+      header = doc.createElement('button');
+      header.className = 'group/section-label flex w-fit min-w-0 items-center gap-1 bg-transparent text-left leading-none';
+      const label = doc.createElement('span');
+      label.className = 'flex min-w-0 items-center gap-2 pl-2 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-(--theme-primary)';
+      const dot = doc.createElement('span'); dot.setAttribute('aria-hidden', 'true'); dot.className = 'dither inline-block size-2 shrink-0 rounded-[1px]';
+      const text = doc.createElement('span'); text.className = 'min-w-0 truncate leading-none';
+      label.append(dot, text);
+      const caret = doc.createElement('i'); caret.setAttribute('aria-hidden', 'true'); caret.style.fontSize = '0.75rem';
+      caret.className = 'codicon codicon-chevron-right shrink-0 duration-150 text-(--ui-text-tertiary) opacity-0 transition group-hover/section-label:opacity-100';
+      header.append(label, caret);
+    }
+    wrapper.appendChild(header);
+    for (const node of [wrapper, ...wrapper.querySelectorAll('*')]) {
+      for (const attr of [...node.attributes]) {
+        if (/^on/i.test(attr.name) || attr.name === 'id' || attr.name.startsWith('data-codex-inbox-') || ['aria-controls', 'aria-labelledby', 'aria-describedby', 'aria-expanded', 'title'].includes(attr.name)) node.removeAttribute(attr.name);
+      }
+    }
+    header.type = 'button'; header.removeAttribute('disabled');
+    header.querySelector('.dither').parentElement.querySelector('.truncate').textContent = 'Inbox';
+    header.querySelector('.codicon-chevron-right').classList.remove('rotate-90');
+    return { wrapper, header, fingerprint: wrapper.outerHTML };
+  };
+  const ensureStyle = () => {
+    if (style?.isConnected) return;
+    style = doc.createElement('style'); style.setAttribute(own, 'style');
+    style.textContent = CODEX_INBOX_ROW_UI_CSS + `
+/* Native Sessions keeps a growing, minimum-height viewport even when closed.
+   Allocate the remaining height to Inbox; cap native lists without moving or
+   rewriting their React-owned nodes. Removing the island restores the host. */
+html[data-codex-chat-look='true'] [data-sessions-mode]:has(> [data-codex-inbox-owned='island']) { overflow:hidden; }
+html[data-codex-chat-look='true'] [data-sessions-mode]:has(> [data-codex-inbox-owned='island']) > [data-slot='sidebar-group']:not([data-codex-inbox-owned]) { flex:0 1 auto!important; min-height:0!important; max-height:35%; overflow:hidden; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] { margin-top:auto; }
+html[data-codex-chat-look='true'] [data-sessions-mode]:has(> [data-codex-inbox-owned='island']) > [data-slot='sidebar-group']:not([data-codex-inbox-owned]) > [data-slot='sidebar-group-content'] { min-height:0; overflow-y:auto; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] { flex:1 1 0; min-height:3.5rem; color:var(--ui-text-primary); }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'][data-codex-inbox-expanded='false'] { flex:0 0 auto; min-height:0; padding-bottom:0; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'][hidden] { display:none!important; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)) { color:inherit; background:transparent; border:0; cursor:pointer; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):not([data-codex-inbox-header]):hover { background:var(--ui-control-hover-background); }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):focus-visible { outline:1px solid var(--ui-accent); }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):disabled { color:var(--ui-text-quaternary); cursor:default; }
+html[data-codex-chat-look='true'] [data-codex-inbox-snooze-popup] { position:fixed; z-index:var(--z-modal-popover, 140); box-sizing:border-box; display:flex; flex-direction:column; padding:4px; max-height:calc(100vh - 16px); overflow:auto; border:1px solid var(--ui-stroke-secondary); border-radius:8px; background:color-mix(in srgb, var(--ui-bg-elevated) 96%, transparent); color:var(--ui-text-primary); font:12px var(--font-sans, system-ui); backdrop-filter:blur(12px); }
+html[data-codex-chat-look='true'] [data-codex-inbox-snooze-popup] button { padding:4px 8px; text-align:left; border-radius:6px; font:inherit; line-height:16px; }
+html[data-codex-chat-look='true'] [data-codex-inbox-snooze-popup] button:is(:hover,:focus) { background:var(--ui-control-active-background); color:var(--ui-text-primary); outline:none; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge'] { display:inline-flex; font-size:10px; padding:1px 4px; color:var(--ui-text-tertiary); }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge'] .codex-inbox-unsettle { display:none; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge']:hover .codex-inbox-settled,
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge']:focus-within .codex-inbox-settled { display:none; }
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge']:hover .codex-inbox-unsettle,
+html[data-codex-chat-look='true'] [data-codex-inbox-owned='badge']:focus-within .codex-inbox-unsettle { display:inline; }
+html[data-codex-chat-look='true'] [data-codex-inbox-status] { padding:6px 8px; font-size:11px; color:var(--ui-text-tertiary); }
+html[data-codex-chat-look='true'] [data-codex-inbox-settle-notice] { position:relative; overflow:hidden; display:flex; align-items:center; justify-content:space-between; gap:8px; margin:2px 4px; padding:4px 8px; border:1px solid var(--ui-stroke-secondary); border-radius:6px; background:var(--ui-sidebar-surface-background,var(--ui-bg-sidebar,var(--ui-bg-elevated))); color:var(--ui-text-primary); font:11px var(--font-sans, system-ui); }
+html[data-codex-chat-look='true'] [data-codex-inbox-settle-notice] button { padding:2px 4px; border-radius:4px; font:inherit; }
+html[data-codex-chat-look='true'] [data-codex-inbox-undo-track] { pointer-events:none; position:absolute; left:0; right:0; bottom:0; height:2px; background:color-mix(in srgb,var(--ui-accent,var(--ui-text-primary)) 12%,transparent); }
+html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:block; width:100%; height:100%; background:var(--ui-accent,var(--ui-text-primary)); transform-origin:left center; animation:codex-inbox-undo-progress 3s linear both; }
+@keyframes codex-inbox-undo-progress { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@media(prefers-reduced-motion:reduce) { html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { animation:none; transform:scaleX(1); } }
+`;
+    (doc.head || doc.documentElement).appendChild(style);
+  };
+  const nativeSession = row => {
+    const bound = externalBindings.get(row);
+    return bound && bound.scope.connectionId === currentScope.connectionId && bound.scope.profile === currentScope.profile &&
+      admission.isEligible(currentScope, bound.session) ? bound.session : null;
+  };
+  const renderBadges = root => {
+    // Explicit opt-in bindings only. The shipping parent uses SESSION_ROW_AREAS;
+    // do not infer identity from native labels, DOM order or conversation anchors.
+    const rows = new Set(externalBindings.keys());
+    for (const [row, badge] of settledBadgeBindings) {
+      const session = rows.has(row) && row.isConnected && root.contains(row) && nativeSession(row);
+      if (!session || !model.isSettled(currentScope, session) || !model.isSnoozed(currentScope, session)) { badge.remove(); settledBadgeBindings.delete(row); }
+    }
+    for (const [row, badge] of badgeBindings) {
+      const session = rows.has(row) && row.isConnected && root.contains(row) && nativeSession(row);
+      if (!session || !model.isSettled(currentScope, session) && !model.isSnoozed(currentScope, session)) { badge.remove(); badgeBindings.delete(row); }
+    }
+    for (const row of rows) {
+      if (!root.contains(row) || owns(row)) continue;
+      const session = nativeSession(row);
+      const snoozed = session && model.isSnoozed(currentScope, session);
+      if (!session || !model.isSettled(currentScope, session) && !snoozed) continue;
+      let badge = badgeBindings.get(row);
+      if (!badge?.isConnected) {
+        badge?.remove();
+        const scope = { ...currentScope };
+        badge = button('', event => {
+          stop(event);
+          if (disposed || !on || !sameScope(scope)) return;
+          const fresh = nativeSession(row);
+          if (fresh) {
+            if (model.isSnoozed(currentScope, fresh)) cancelSnooze(fresh, scope);
+            else model.unsettle(currentScope, fresh);
+          }
+        });
+        badge.setAttribute(own, 'badge');
+        const label = doc.createElement('span'); label.className = 'codex-inbox-settled';
+        const action = doc.createElement('span'); action.className = 'codex-inbox-unsettle';
+        badge.append(label, action);
+        const target = row.querySelector('[data-row-actions]') || row;
+        // Never nest a button inside a native button; use an explicit sibling slot.
+        if (target.closest('button')) continue;
+        target.appendChild(badge); badgeBindings.set(row, badge);
+      }
+      const label = badge.querySelector('.codex-inbox-settled'), action = badge.querySelector('.codex-inbox-unsettle');
+      const name = snoozed ? 'Wake now' : 'Un-settle', text = snoozed ? 'Snoozed' : 'Settled';
+      if (label.textContent !== text) label.textContent = text;
+      if (action.textContent !== name) action.textContent = name;
+      setAttr(badge, 'aria-label', name);
+      const title = snoozed ? `Snoozed until ${new Date(model.snoozedUntil(currentScope, session)).toLocaleString()}. Wake now` : name;
+      if (badge.title !== title) badge.title = title;
+      // Both states remain independently reversible, including while snoozed.
+      if (snoozed && model.isSettled(currentScope, session)) {
+        let settledBadge = settledBadgeBindings.get(row);
+        if (!settledBadge?.isConnected) {
+          settledBadge?.remove();
+          const scope = { ...currentScope };
+          settledBadge = button('', event => {
+            stop(event);
+            if (disposed || !on || !sameScope(scope)) return;
+            const fresh = nativeSession(row); if (fresh) model.unsettle(currentScope, fresh);
+          });
+          settledBadge.setAttribute(own, 'badge'); settledBadge.setAttribute('aria-label', 'Un-settle'); settledBadge.title = 'Un-settle';
+          const label = doc.createElement('span'); label.className = 'codex-inbox-settled'; label.textContent = 'Settled';
+          const action = doc.createElement('span'); action.className = 'codex-inbox-unsettle'; action.textContent = 'Un-settle';
+          settledBadge.append(label, action); badge.parentElement.appendChild(settledBadge); settledBadgeBindings.set(row, settledBadge);
+        }
+      }
+    }
+  };
+  function render() {
+    if (disposed) return;
+    if (!on || !currentScope) { cleanupDOM(); return; }
+    const root = doc.querySelector('[data-sessions-mode]');
+    if (!root) { if (container) cleanupDOM(); return; }
+    if (container !== root || !island?.isConnected) {
+      cleanupDOM(); container = root; ensureStyle();
+      island = doc.createElement('div'); island.setAttribute(own, 'island');
+      island.setAttribute('data-slot', 'sidebar-group'); island.setAttribute('data-sidebar', 'group');
+      island.className = 'relative flex w-full min-w-0 min-h-0 flex-col p-0 pb-1';
+      const first = [...root.children].find(el => el.matches('[data-slot="sidebar-group"]'));
+      root.insertBefore(island, first || root.firstChild);
+    }
+    setAttr(island, 'aria-busy', input.loading === true);
+    const headerTemplate = nativeHeaderTemplate(root);
+    for (const item of settleNotices.values()) {
+      if (Date.now() >= item.until || !model.isManualSettled(item.scope, item.session)) clearSettleNotice(item);
+    }
+    const sessions = inboxSessions().filter(s => !model.isSettled(currentScope, s) && !model.isSnoozed(currentScope, s));
+    const shown = sessions;
+    const nextSignature = JSON.stringify([currentScope, inboxOpen, input.loading, !!input.error, model.error, admission.error, headerTemplate.fingerprint,
+      [...settleNotices.values()].map(item => [item.key, item.until]), sessions.length, shown.map(s => [model.key(currentScope, s), codexInboxId(s), s.title, safety(s), workState(s), active(s)])]);
+    if (signature !== nextSignature) {
+      signature = nextSignature;
+      setAttr(island, 'data-codex-inbox-expanded', inboxOpen);
+      const focusedElement = island.contains(doc.activeElement) ? doc.activeElement : null;
+      const focusedHeader = focusedElement?.hasAttribute('data-codex-inbox-header');
+      const oldHeader = island.querySelector('[data-codex-inbox-header]');
+      const scrollTop = island.querySelector('[data-slot="sidebar-group-content"]')?.scrollTop || 0;
+      island.replaceChildren();
+      const reuseHeader = oldHeader?.__codexInboxTemplate === headerTemplate.fingerprint;
+      const header = reuseHeader ? oldHeader : headerTemplate.header;
+      const wrapper = reuseHeader ? oldHeader.parentElement : headerTemplate.wrapper;
+      if (!reuseHeader) {
+        header.__codexInboxTemplate = headerTemplate.fingerprint;
+        const toggle = event => {
+          if (disposed || !on || !header.isConnected || !island.contains(header)) return;
+          stop(event); inboxOpen = !inboxOpen; requestRender();
+        };
+        header.addEventListener('click', toggle);
+        header.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') { stop(event); if (!event.repeat) toggle(event); }
+        });
+      }
+      header.setAttribute('aria-expanded', String(inboxOpen)); header.setAttribute('data-codex-inbox-header', '');
+      header.querySelector('.codicon-chevron-right').classList.toggle('rotate-90', inboxOpen);
+      island.appendChild(wrapper);
+      const content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade'; content.hidden = !inboxOpen;
+      island.appendChild(content);
+      const status = text => { const el = doc.createElement('div'); el.setAttribute('data-codex-inbox-status', ''); el.setAttribute('role', 'status'); el.textContent = text; content.appendChild(el); };
+      if (input.error) {
+        status('Inbox could not be loaded. Refresh Sessions to retry.');
+        if (typeof input.retry === 'function') content.appendChild(button('Retry Inbox', () => input.retry()));
+      }
+
+      if (model.error) status(model.error);
+      if (admission.error) status(admission.error);
+      if (!input.loading && !input.error && !model.error && !admission.error && !sessions.length) status('Inbox is clear. Settled and snoozed threads remain in Sessions and Pinned.');
+      const kept = new Set();
+      for (const session of shown) {
+        const key = model.key(currentScope, session);
+        if (kept.has(key)) continue;
+        kept.add(key);
+        let binding = rowBindings.get(key);
+        if (!binding) {
+          const ui = createCodexInboxRowUI({
+            document: doc,
+            onOpen: () => { const fresh = rowSession(ui.row); if (fresh) open(fresh); },
+            onMenu: event => { stop(event); const fresh = rowSession(ui.row); if (fresh) settle(fresh); },
+            onSnooze: event => { stop(event); const fresh = rowSession(ui.row); if (fresh) showSnoozePopup(fresh, ui.clock, event); }
+          });
+          ui.row.setAttribute('data-codex-inbox-key', key);
+
+          ui.clock.setAttribute('aria-haspopup', 'menu'); ui.clock.setAttribute('aria-expanded', 'false');
+          binding = { ...ui, action: ui.menu }; rowBindings.set(key, binding);
+        }
+        binding.id = codexInboxId(session); binding.scope = { ...currentScope };
+        const { row, clock, action } = binding;
+        setAttr(row, 'data-codex-inbox-row', binding.id);
+        const title = typeof session.title === 'string' && session.title ? session.title : 'Untitled thread';
+        binding.update({
+          title, selected: active(session), settleAction: true, workState: workState(session),
+          menuDisabled: false,
+          menuTitle: 'Remove from Inbox only. Work continues.'
+        });
+        setAttr(action, 'aria-label', `Settle ${title}`); setAttr(clock, 'aria-label', `Snooze ${title}`);
+        // Opening stays enabled as before; Snooze does not depend on work status.
+        clock.disabled = !!input.loading || !!input.error; clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
+        content.appendChild(row);
+      }
+      for (const item of settleNotices.values()) {
+        const notice = doc.createElement('div');
+        notice.setAttribute('data-codex-inbox-settle-notice', codexInboxId(item.session)); notice.setAttribute('role', 'status');
+        const label = doc.createElement('span'); label.textContent = 'Settled';
+        const undo = button('Undo', event => { stop(event); if (undo.isConnected && island?.contains(undo)) undoSettle(item); });
+        const track = doc.createElement('span'); track.setAttribute('data-codex-inbox-undo-track', ''); track.setAttribute('aria-hidden', 'true');
+        const progress = doc.createElement('span'); progress.setAttribute('data-codex-inbox-undo-progress', '');
+        // A metadata repaint must not restart the visual deadline.
+        progress.style.animationDelay = `-${Math.max(0, 3000 - (item.until - Date.now()))}ms`;
+        track.appendChild(progress); notice.append(label, undo, track); content.appendChild(notice);
+      }
+      for (const key of rowBindings.keys()) if (!kept.has(key)) rowBindings.delete(key);
+      if (snoozePopup && !snoozePopup.anchor.isConnected) closeSnoozePopup(false);
+
+      content.scrollTop = scrollTop;
+      if (focusedElement?.isConnected) focusedElement.focus({ preventScroll: true });
+      else if (focusedHeader) header.focus();
+      if (snoozePopup) snoozePopup.position();
+    }
+    renderBadges(root);
+  }
+  const observer = new win.MutationObserver(records => {
+    if (records.some(record => {
+      if (owns(record.target)) return false;
+      if (record.type === 'attributes' && ['class', 'style'].includes(record.attributeName)) {
+        return record.target.closest?.('[data-slot="sidebar-group"]')?.parentElement === container &&
+          (record.target.classList.contains('group/section') || !!record.target.closest?.('button.group\\/section-label'));
+      }
+      if (record.type === 'attributes') return true;
+      return [...record.addedNodes, ...record.removedNodes].some(node => !owns(node));
+    })) requestRender();
+  });
+  observer.observe(doc.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-sessions-mode', 'aria-expanded', 'class', 'style'] });
+  const offModel = model.subscribe(() => { refreshDeadline(); requestRender(); });
+  const resume = () => { if (!disposed && on) { refreshDeadline(); requestRender(); } };
+  doc.addEventListener('visibilitychange', resume);
+  win.addEventListener?.('focus', resume);
+  const offActive = ['activeSessionId', 'focusedStoredSessionId', 'focusedSessionOwner', 'focusedSessionProfile', 'profile', 'connectionId'].map(name => host.state?.[name]?.subscribe?.(requestRender)).filter(Boolean);
+  const api = {
+    model, admission, snooze, cancelSnooze,
+    opened() {
+      // Native navigation and metadata discovery are not attention decisions.
+      return false;
+    },
+    update(next) {
+      if (disposed) return;
+      const scope = codexInboxScope(next.scope);
+      if (JSON.stringify(scope) !== JSON.stringify(currentScope)) { cleanupDOM(); activityByKey.clear(); inboxOpen = true; }
+      currentScope = scope;
+      input = { ...next, sessions: Array.isArray(next.sessions) ? next.sessions : [], liveSessions: Array.isArray(next.liveSessions) ? next.liveSessions : [], liveStatusKnown: next.liveStatusKnown ?? Array.isArray(next.liveSessions) };
+      if (scope && on) { reconcileAdmission(); reconcileActivity(); }
+      refreshDeadline(); requestRender();
+    },
+    // Positive work/input events only. Callers must supply authoritative scope and ID.
+    // Background reads/resuming and explicit UI opens do nothing.
+    reactivate(event) {
+      if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || JSON.stringify(codexInboxScope(event.scope)) !== JSON.stringify(currentScope)) return false;
+      if (!['work', 'input', 'busy'].includes(event.type) && codexInboxWorkStatus(event) !== 'work') return false;
+      const id = event.session_id || event.id || event.session_key;
+      const session = findSession(id) || visibleSessions().find(s => runtimeAliases(s).has(id));
+      if (!session || input.loading || input.error || input.liveStatusKnown !== true ||
+          !admission.observe(currentScope, input.sessions, { workingSessions: [session] }) || !admission.isEligible(currentScope, session)) { requestRender(); return false; }
+      if (model.isManualSettled(currentScope, session) && !model.unsettle(currentScope, session)) { requestRender(); return false; }
+      const key = model.key(currentScope, session), previous = activityByKey.get(key);
+      activityByKey.set(key, { phase: 'working', at: Date.now(), children: previous?.children || new Set() });
+      const result = model.ingest(currentScope, [session], { liveSessions: [{ ...session, status: 'working' }] });
+      requestRender(); return result;
+    },
+    activity(event) {
+      if (disposed || !on || !currentScope || event?.replayed || !event?.session_id ||
+          !sameScope({ connectionId: event.connectionId, profile: event.profile })) return false;
+      const session = findSession(event.session_id) || visibleSessions().find(row => runtimeAliases(row).has(event.session_id));
+      if (!session) return false;
+      if (['message.start', 'tool.start'].includes(event.type)) {
+        if (event.type === 'tool.start' && model.isManualSettled(currentScope, session)) return false;
+        return api.reactivate({ type: 'work', scope: currentScope, session_id: event.session_id });
+      }
+      const key = model.key(currentScope, session), previous = activityByKey.get(key);
+      const activity = { phase: previous?.phase || 'idle', at: Date.now(), children: new Set(previous?.children || []) };
+      if (['subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type)) {
+        const child = event.payload?.subagent_id;
+        if (typeof child !== 'string' || !child) return false;
+        if (event.type === 'subagent.complete') activity.children.delete(child);
+        else { activity.children.add(child); activity.phase = 'working'; }
+      } else if (event.type === 'message.complete') {
+        activity.phase = activity.children.size ? 'working' : event.payload?.status === 'complete' && !event.payload.error ? 'completed' : 'unknown';
+      } else if (event.type === 'error') activity.phase = 'unknown';
+      else return false;
+      activityByKey.set(key, activity);
+      requestRender(); return true;
+    },
+    // Parent row-slot integration can bind an exact element without guessing React identity.
+    // The row must be outside the Inbox island, inside the native sessions container.
+    bindNativeRow(row, session, scope = currentScope) {
+      const valid = codexInboxScope(scope);
+      if (disposed || !row || !valid || !codexInboxId(session)) return () => {};
+      const binding = { session, scope: valid }; externalBindings.set(row, binding); requestRender();
+      return () => { if (externalBindings.get(row) === binding) { externalBindings.delete(row); badgeBindings.get(row)?.remove(); badgeBindings.delete(row); settledBadgeBindings.get(row)?.remove(); settledBadgeBindings.delete(row); requestRender(); } };
+    },
+    setMode(value) {
+      if (disposed) return false;
+      // Parent owns the string-valued preference and any persistence errors.
+      on = !!value;
+      if (!on) cleanupDOM();
+      else if (currentScope) reconcileAdmission();
+      refreshDeadline(); requestRender(); return true;
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true; clearDeadline(); observer.disconnect(); offModel(); offActive.forEach(fn => fn());
+      doc.removeEventListener('visibilitychange', resume); win.removeEventListener?.('focus', resume);
+      if (raf !== null) win.cancelAnimationFrame(raf);
+      cleanupDOM(); externalBindings.clear(); activityByKey.clear();
+      if (doc[registryKey] === api.dispose) delete doc[registryKey];
+    }
+  };
+  doc[registryKey] = api.dispose;
+  refreshDeadline(); requestRender();
+  return api;
+}
+// END GENERATED INBOX RUNTIME
