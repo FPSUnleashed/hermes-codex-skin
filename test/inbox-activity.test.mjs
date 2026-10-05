@@ -12,6 +12,7 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
   const browser = await chromium()
   try {
     await browser.call('Page.enable')
+    await browser.call('Emulation.setFocusEmulationEnabled', { enabled: true })
     await browser.call('Page.setDocumentContent', { frameId: (await browser.call('Page.getFrameTree')).frameTree.frame.id, html: `<!doctype html><style>
       :root { --ui-text-primary: ${theme === 'light' ? '#242424' : '#eeeeee'}; --ui-text-tertiary:#777; --ui-success:#16884b; --ui-control-active-background:#ddd; }
       body { margin:0; color:var(--ui-text-primary); background:${theme === 'light' ? '#fff' : '#171717'}; font:12px Arial; }
@@ -79,6 +80,45 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
     await browser.evaluate("clock++;update({liveStatusAt:clock,liveSessions:[{...session,session_id:'runtime-a',stored_session_id:'a',status:'working'}]})")
     assert.equal((await sample()).state, 'completed', 'late backend cleanup snapshot cannot erase a successful terminal frame')
     await browser.evaluate('update({liveSessions:[]})')
+
+    await browser.evaluate(`(() => {
+      window.surface=document.createElement('div');surface.setAttribute('data-chat-surface','');surface.setAttribute('data-session-anchor','session-tile:a');
+      surface.innerHTML='<div data-slot="aui_thread-viewport" data-following="false" style="position:fixed;left:350px;top:0;width:300px;height:150px;overflow:auto"><div data-slot="aui_turn-pair"><div data-slot="aui_assistant-message-root" style="height:40px"><div data-slot="aui_msg-actions"></div></div></div></div>';
+      document.body.appendChild(surface);
+    })()`)
+    assert.equal((await sample()).state, 'completed', 'opening while reading earlier messages does not acknowledge the latest reply')
+    await browser.evaluate("surface.setAttribute('data-session-anchor','session-tile:foreign');surface.firstChild.setAttribute('data-following','true')")
+    assert.equal((await sample()).state, 'completed', 'another mounted chat cannot acknowledge this reply')
+    await browser.evaluate("surface.setAttribute('data-session-anchor','session-tile:a');surface.setAttribute('data-pane-hidden','')")
+    assert.equal((await sample()).state, 'completed', 'a hidden pane cannot acknowledge a reply')
+    await browser.evaluate("surface.removeAttribute('data-pane-hidden');surface.firstChild.firstChild.style.marginTop='300px'")
+    assert.equal((await sample()).state, 'completed', 'a following marker alone does not prove visible reply geometry')
+    await browser.evaluate("surface.firstChild.firstChild.style.marginTop='0px';document.dispatchEvent(new Event('scroll'));flush()")
+    assert.equal((await sample()).state, 'idle', 'seeing the latest completed reply clears its green indicator')
+    assert.equal(await browser.evaluate('model.isSettled(scope,session)'), false, 'reading preserves Inbox attention')
+    await browser.evaluate("surface.remove();emit('message.complete',{status:'complete'})")
+    assert.equal((await sample()).state, 'idle', 'a repeated terminal receipt cannot relight the same read reply')
+    await browser.evaluate("surface.remove();clock++;update({sessions:[{...session,unread:true}],liveStatusAt:clock,liveSessions:[{...session,session_id:'runtime-a',stored_session_id:'a',status:'working'}]})")
+    assert.equal((await sample()).state, 'idle', 'a stale cleanup snapshot cannot relight the acknowledged reply')
+    await browser.evaluate('update({sessions:rows,liveSessions:[]})')
+    await browser.evaluate("emit('message.start');emit('message.complete',{status:'complete'})")
+    assert.equal((await sample()).state, 'completed', 'a genuinely new background reply needs reading again')
+    await browser.evaluate("surface.setAttribute('data-session-anchor','workspace');document.body.appendChild(surface)")
+    assert.equal((await sample()).state, 'completed', 'an unresolved primary runtime cannot borrow focused ownership')
+    await browser.evaluate("host.state.activeSessionId={get:()=> 'runtime-a'};host.state.connectionId={get:()=>scope.connectionId};host.state.profile={get:()=>scope.profile};document.dispatchEvent(new Event('scroll'));flush()")
+    assert.equal((await sample()).state, 'idle', 'the exact owner-qualified primary workspace acknowledges its visible latest reply')
+    await browser.evaluate("surface.remove();emit('message.start');emit('message.complete',{status:'complete'})")
+    await browser.evaluate(`(() => {
+      const tail=document.createElement('div');tail.setAttribute('data-slot','aui_assistant-message-root');tail.style.height='20px';
+      surface.firstChild.firstChild.appendChild(tail);document.body.appendChild(surface);
+      const latest=document.createElement('div');latest.setAttribute('data-slot','aui_turn-pair');latest.innerHTML='<div data-slot="aui_assistant-message-root" style="height:20px"></div>';
+      surface.firstChild.appendChild(latest);
+    })()`)
+    assert.equal((await sample()).state, 'completed', 'a footer in an earlier turn never acknowledges a newer turn without a text reply')
+    await browser.evaluate("surface.firstChild.lastChild.remove();document.dispatchEvent(new Event('scroll'));flush()")
+    assert.equal((await sample()).state, 'idle', 'the visible latest text reply is read even when its turn ends with a tool-only root')
+    assert.equal(await browser.evaluate('model.isSettled(scope,session)'), false, 'a trailing tool bubble never changes Inbox attention')
+    await browser.evaluate("surface.remove();emit('message.start');emit('message.complete',{status:'complete'})")
 
     for (const extra of [{replayed:true},{connectionId:'source-b'},{profile:'other'},{session_id:'unknown-runtime'}]) {
       await browser.evaluate(`emit('message.start',{},${JSON.stringify(extra)})`)

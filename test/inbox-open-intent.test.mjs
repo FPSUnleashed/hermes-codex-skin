@@ -162,6 +162,23 @@ async function installMenuFixture(browser) {
     flush()`)
 }
 
+test('real Chrome: a passive open metadata failure is silent and only verified later work admits the chat', async () => {
+  const browser = await chromium()
+  try {
+    const { frameTree } = await browser.call('Page.getFrameTree')
+    await browser.call('Page.setDocumentContent', { frameId: frameTree.frame.id, html: browserFixture() })
+    await browser.evaluate("const nativeApi=window.hermesDesktop.api;window.hermesDesktop.api=async options=>{if(options.path.startsWith('/api/sessions/'))throw Error('Metadata temporarily unavailable');return nativeApi(options)}")
+    await click(browser, 'document.getElementById("old-button")')
+    assert.equal(await browser.evaluate('notices.length'), 0, 'opening is not an Inbox restore action and must not announce a failed restore')
+    assert.equal(await browser.evaluate('present()'), false, 'an opened chat is not admitted by metadata failure or focus')
+    await browser.evaluate("update({sessions:[{...old,source:'desktop'},recent]});flush()")
+    assert.equal(await browser.evaluate('present()'), false, 'later passive metadata still cannot admit the chat')
+    await browser.evaluate("update({sessions:[{...old,source:'desktop'},recent],liveSessions:[{...old,...scope,status:'working'}]});flush()")
+    assert.equal(await browser.evaluate('present()'), true, 'later independently owned actual work can admit the chat without a false error')
+    await browser.evaluate('detach();runtime.dispose()')
+  } finally { browser.close() }
+})
+
 test('real Chrome: picker click and palette Enter preserve attention through toggle/reload and disposal', async () => {
   const browser = await chromium()
   try {
@@ -220,7 +237,7 @@ test('real Chrome: a palette open waits for its actual async target and refuses 
     await click(browser, 'document.getElementById("menu-old")')
     assert.equal(await browser.evaluate('present()'), false)
     assert.equal(await browser.evaluate("runtime.model.isSettled(scope,'old')&&runtime.model.isSnoozed(scope,'old')"), true)
-    assert.equal(await browser.evaluate('notices.length'), 1)
+    assert.equal(await browser.evaluate('notices.length'), 0, 'a rejected passive metadata read never announces an Inbox restore action')
     await browser.evaluate('menuDisposals.forEach(stop=>stop());detach();runtime.dispose()')
   } finally { browser.close() }
 })
