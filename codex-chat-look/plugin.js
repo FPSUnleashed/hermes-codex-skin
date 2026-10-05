@@ -2015,10 +2015,21 @@ html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header] > [dat
   height: 48px !important;
 }
 
+/* A sibling drag rectangle must not overlap explicit no-drag tabs. Keep the
+   native handle in the strip's top padding; pointer-events alone is not a
+   boundary for Electron's native window dragging. */
 html[data-codex-chat-look='true'] [data-window-top] > [data-panel-header]:has([data-zone-tabstrip]) > [data-window-drag-handle] {
   position: absolute !important;
-  inset: 0 !important;
+  inset: 0 0 auto !important;
+  height: 10px !important;
   pointer-events: none;
+}
+
+/* Page controls start at the shell's actual titlebar padding (currently 0px
+   plus 0.5rem), not Electron's 34px constant. Keep the native drag rectangle
+   above their hit areas; a cached hidden page must not shorten the chat band. */
+html[data-codex-chat-look='true'] [data-tree-group='grp-main'][data-window-top]:has([data-tour='page-tabs']:not([data-pane-hidden] *)) > [data-panel-header]:not(:has([data-zone-tabstrip])) > [data-window-drag-handle] {
+  height: min(48px, calc(var(--titlebar-height, 0px) + 0.5rem)) !important;
 }
 
 html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) > [data-panel-header]:has([data-zone-tabstrip]) {
