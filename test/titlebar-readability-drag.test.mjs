@@ -21,7 +21,7 @@ test('cramped native drag handle remains visible and strip gaps drag without swa
     await fixture(b)
     const result = await b.evaluate(`(()=>{const h=document.querySelector('[data-window-drag-handle]'),strip=document.querySelector('[data-zone-tabstrip]'),r=h.getBoundingClientRect(),s=strip.getBoundingClientRect(),tab=document.querySelector('[role=tab]'),t=tab.getBoundingClientRect(),gap=document.elementFromPoint(s.x+8,s.y+5);window.tabClicks=0;tab.onclick=()=>window.tabClicks++;return {display:getComputedStyle(h).display,region:getComputedStyle(h).webkitAppRegion,rect:{width:r.width,height:r.height},gapRegion:getComputedStyle(gap).webkitAppRegion,tabRegion:getComputedStyle(tab).webkitAppRegion,tabReachable:tab.contains(document.elementFromPoint(t.x+10,t.y+10)),controls:[...document.querySelectorAll('[data-titlebar-cluster] button')].every(n=>{const r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.x+12,r.y+12))})}})()`)
     assert.notEqual(result.display,'none','native window dragging must not disappear')
-    assert.ok(result.rect.width>0 && result.rect.height===48)
+    assert.ok(result.rect.width>0 && result.rect.height===10)
     assert.equal(result.region,'drag')
     assert.equal(result.gapRegion,'drag','the strip padding must be a real drag region, not only an underlying hidden handle')
     assert.equal(result.tabRegion,'no-drag')

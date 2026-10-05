@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Keep Sessions, Bots and pane tabs outside the native window-drag rectangle while preserving the fixed transparent header.
+- Confine the invisible drag handle above Skills, Tools, Connectors and Plugins using the page's actual padding. Hidden cached pages do not change the chat's drag area.
+
 ## [1.9.0] - 2026-10-04
 
 ### Added
