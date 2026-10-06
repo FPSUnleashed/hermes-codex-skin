@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Clear the Inbox's green completion indicator when the latest reply is visible in the focused chat, including replies followed by tool-only bubbles. Reading keeps the chat in Inbox until Settle; new work lights the indicator again after completion.
+- Remove the misleading "Could not return this chat to Inbox" notice when passive chat-opening metadata is temporarily unavailable. Opening alone still does not restore or admit a chat.
 - Keep Sessions, Bots and pane tabs outside the native window-drag rectangle while preserving the fixed transparent header.
 - Confine the invisible drag handle above Skills, Tools, Connectors and Plugins using the page's actual padding. Hidden cached pages do not change the chat's drag area.
 

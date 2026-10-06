@@ -509,18 +509,50 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
       const status = safety(session, true), newer = Number.isFinite(input.liveStatusAt) && input.liveStatusAt > (previous?.at || 0);
       // A terminal frame precedes backend cleanup. A late working snapshot
       // cannot cancel that receipt; a new positive work event can.
-      if (status === 'work' && previous?.phase !== 'completed' && (!previous || newer)) {
+      if (status === 'work' && !['completed', 'read'].includes(previous?.phase) && (!previous || newer)) {
         activityByKey.set(key, { phase: 'working', at: input.liveStatusAt || Date.now(), children: previous?.children || new Set() });
       } else if (status === 'idle' && previous?.phase === 'working' && !previous.children.size && newer) {
         activityByKey.set(key, { ...previous, phase: session.unread === true ? 'completed' : 'unknown', at: input.liveStatusAt });
       }
     }
   };
+  const viewedReply = session => {
+    const owner = codexInboxScope(host.state?.focusedSessionOwner?.get?.());
+    const stored = host.state?.focusedStoredSessionId?.get?.();
+    const runtime = host.state?.focusedSessionId?.get?.();
+    if (!owner || !stored || !runtime || JSON.stringify(owner) !== JSON.stringify(currentScope) ||
+        !runtimeAliases(session).has(stored) || doc.visibilityState !== 'visible' || !doc.hasFocus()) return false;
+    const anchors = new Set([...runtimeAliases(session)].map(id => `session-tile:${id}`));
+    if (host.state?.activeSessionId?.get?.() === runtime &&
+        host.state?.connectionId?.get?.() === owner.connectionId && host.state?.profile?.get?.() === owner.profile) anchors.add('workspace');
+    for (const surface of doc.querySelectorAll('[data-chat-surface][data-session-anchor]')) {
+      if (!anchors.has(surface.getAttribute('data-session-anchor')) ||
+          surface.closest('[data-pane-hidden], [inert], [aria-hidden="true"], [data-session-switching]')) continue;
+      const viewport = surface.querySelector('[data-slot="aui_thread-viewport"]');
+      if (!viewport || viewport.getAttribute('data-following') !== 'true') continue;
+      const pair = [...viewport.querySelectorAll('[data-slot="aui_turn-pair"]')].at(-1);
+      // Native footers belong to the last text reply, not a trailing tool-only bubble.
+      const reply = pair && [...pair.querySelectorAll('[data-slot="aui_assistant-message-root"]')]
+        .filter(root => root.closest('[data-slot="aui_turn-pair"]') === pair && root.querySelector('[data-slot="aui_msg-actions"]')).at(-1);
+      if (!reply) continue;
+      const bounds = viewport.getBoundingClientRect(), end = reply.getBoundingClientRect();
+      if (bounds.width > 0 && bounds.height > 0 && end.width > 0 && end.height > 0 &&
+          end.bottom > bounds.top && end.bottom <= bounds.bottom + 1 && end.right > bounds.left && end.left < bounds.right) return true;
+    }
+    return false;
+  };
   const workState = session => {
     if (input.loading || input.error) return 'unknown';
-    const status = safety(session, true), activity = activityByKey.get(model.key(currentScope, session));
+    const key = model.key(currentScope, session), status = safety(session, true), activity = activityByKey.get(key);
     if (status === 'unknown' || status === 'reading') return status;
-    if (activity?.phase === 'completed') return 'completed';
+    if (activity?.phase === 'read') return 'idle';
+    if (activity?.phase === 'completed' || status === 'idle' && session.unread === true) {
+      if (!viewedReply(session)) return 'completed';
+      // Reading acknowledges this reply's paint only. It never settles,
+      // snoozes or admits a thread, and fresh work resets the receipt.
+      activityByKey.set(key, { ...activity, phase: 'read', at: activity?.at || Date.now(), children: activity?.children || new Set() });
+      return 'idle';
+    }
     if (status === 'work' || activity?.phase === 'working') return 'working';
     if (activity?.phase === 'unknown') return 'unknown';
     // Native unread marks a completed reply. Merely idle/busy:false does not.
@@ -963,10 +995,11 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       return [...record.addedNodes, ...record.removedNodes].some(node => !owns(node));
     })) requestRender();
   });
-  observer.observe(doc.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-sessions-mode', 'aria-expanded', 'class', 'style'] });
+  observer.observe(doc.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-sessions-mode', 'aria-expanded', 'class', 'style', 'data-following', 'data-session-anchor', 'data-session-switching', 'data-pane-hidden'] });
   const offModel = model.subscribe(() => { refreshDeadline(); requestRender(); });
   const resume = () => { if (!disposed && on) { refreshDeadline(); requestRender(); } };
   doc.addEventListener('visibilitychange', resume);
+  doc.addEventListener('scroll', resume, true);
   win.addEventListener?.('focus', resume);
   const offActive = ['activeSessionId', 'focusedStoredSessionId', 'focusedSessionOwner', 'focusedSessionProfile', 'profile', 'connectionId'].map(name => host.state?.[name]?.subscribe?.(requestRender)).filter(Boolean);
   const api = {
@@ -1009,6 +1042,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         return api.reactivate({ type: 'work', scope: currentScope, session_id: event.session_id });
       }
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
+      if (event.type === 'message.complete' && previous?.phase === 'read') return false;
       const activity = { phase: previous?.phase || 'idle', at: Date.now(), children: new Set(previous?.children || []) };
       if (['subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type)) {
         const child = event.payload?.subagent_id;
@@ -1041,7 +1075,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
     dispose() {
       if (disposed) return;
       disposed = true; clearDeadline(); observer.disconnect(); offModel(); offActive.forEach(fn => fn());
-      doc.removeEventListener('visibilitychange', resume); win.removeEventListener?.('focus', resume);
+      doc.removeEventListener('visibilitychange', resume); doc.removeEventListener('scroll', resume, true); win.removeEventListener?.('focus', resume);
       if (raf !== null) win.cancelAnimationFrame(raf);
       cleanupDOM(); externalBindings.clear(); activityByKey.clear();
       if (doc[registryKey] === api.dispose) delete doc[registryKey];

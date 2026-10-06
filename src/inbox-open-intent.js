@@ -115,7 +115,8 @@ function bindCodexInboxNativeOpenIntent(row, sessionId, inbox, resolveGesture = 
       // not a failed open, and must never be admitted on behalf of this row.
       if (error?.code === 'OPEN_TARGET_NOT_FOCUSED' && key(thread) === pending.before) return
       if (stillCurrent()) {
-        host.notify?.({ kind: 'error', message: 'Could not return this chat to Inbox.' })
+        // This is passive metadata discovery, not a requested restore. A failed
+        // read must leave attention unchanged without announcing a failed action.
         reset()
       }
     } finally {
