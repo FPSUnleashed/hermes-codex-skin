@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Added
+
+- Two intermediate **Composer width** choices, **Codex +20 %** and **Codex +40 %**, between the original Codex and native Hermes widths. Existing preferences, the Codex default, responsive gutters and native floating-composer widths are preserved.
+
 ## [1.9.1] - 2026-10-06
 
 ### Fixed

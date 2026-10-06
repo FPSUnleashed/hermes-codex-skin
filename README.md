@@ -52,7 +52,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 | --- | --- | --- | --- |
 | Codex Skin | On / Off | On after installation | **Capabilities → Plugins** |
 | Theme | Codex Skin / any native Hermes theme | Hermes choice | **Settings → Appearance** |
-| Composer width | Codex / Hermes | Codex | Command palette |
+| Composer width | Codex / Codex +20 % / Codex +40 % / Hermes | Codex | Command palette |
 | Pinned user messages | Hermes / Off | Hermes | Command palette |
 | Clean transcript | On / Off | Off | Command palette |
 | Inbox | On / Off | On | Command palette |
@@ -69,12 +69,14 @@ Turning **Codex Skin** off restores Hermes' normal appearance.
 
 ### Composer width
 
-Open the command palette and run **Codex Skin: Composer width**. The row shows the active mode and the choice persists locally.
+Open the command palette and run **Codex Skin: Composer width**. Each run cycles **Codex → Codex +20 % → Codex +40 % → Hermes → Codex**. The row shows the active mode and the choice persists locally. Codex remains the default; existing choices are preserved.
 
 - **Codex** uses the measured Codex width of **736 CSS px**, with responsive 16 px minimum side gutters.
+- **Codex +20 %** uses **883.2 CSS px**, exactly 20% wider than Codex.
+- **Codex +40 %** uses **1030.4 CSS px**, exactly 40% wider than Codex.
 - **Hermes** restores Hermes' native full-width composer and conversation column.
 
-The `+` menu above the composer follows the rendered composer width in both modes.
+All Codex modes keep the same responsive gutters and shrink to fit narrow panes. Floating and popped-out composers retain their native Hermes width in every mode. The `+` menu above the composer follows the rendered composer width in all four modes.
 
 ### Pinned user messages
 
