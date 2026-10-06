@@ -10,6 +10,12 @@ const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
 const RUNTIME_HANDOFF_KEY = '__hermesCodexChatLookRuntimeHandoff'
 const COMPOSER_WIDTH_STORAGE_KEY = 'composer-width'
+const COMPOSER_WIDTH_MODES = {
+  codex: { label: 'Codex', next: 'codex-wide' },
+  'codex-wide': { label: 'Codex +20 %', next: 'codex-wider' },
+  'codex-wider': { label: 'Codex +40 %', next: 'hermes' },
+  hermes: { label: 'Hermes', next: 'codex' }
+}
 const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
 const CLEAN_TRANSCRIPT_STORAGE_KEY = 'clean-transcript'
 const CLEAN_TRANSCRIPT_EVENT = `${ID}:clean-transcript`
@@ -177,6 +183,14 @@ html[data-codex-chat-look='true'][data-hermes-theme='codex-chat']:not([data-herm
 
 html[data-codex-chat-look='true'][data-codex-composer-width='codex'] {
   --composer-width: 736px;
+}
+
+html[data-codex-chat-look='true'][data-codex-composer-width='codex-wide'] {
+  --composer-width: 883.2px;
+}
+
+html[data-codex-chat-look='true'][data-codex-composer-width='codex-wider'] {
+  --composer-width: 1030.4px;
 }
 
 html[data-codex-chat-look='true'] body,
@@ -1161,9 +1175,13 @@ html[data-codex-chat-look='true'] .coding-status-bar {
 }
 
 /* The Codex reference is 1472 Retina pixels wide at DPR 2: 736 CSS px.
+   Codex +20 % and +40 % raise that limit to 883.2 and 1030.4 CSS px.
+   All Codex modes shrink in narrow panes.
    Hermes keeps the 5px peel-out margin on each side, hence the +10px dock. */
-html[data-codex-chat-look='true'][data-codex-composer-width='codex'] [data-slot='composer-dock']:not([data-popped-out]) {
-  width: calc(min(736px, calc(100% - 2rem)) + 10px) !important;
+html[data-codex-chat-look='true'][data-codex-composer-width='codex'] [data-slot='composer-dock']:not([data-popped-out]),
+html[data-codex-chat-look='true'][data-codex-composer-width='codex-wide'] [data-slot='composer-dock']:not([data-popped-out]),
+html[data-codex-chat-look='true'][data-codex-composer-width='codex-wider'] [data-slot='composer-dock']:not([data-popped-out]) {
+  width: calc(min(var(--composer-width), calc(100% - 2rem)) + 10px) !important;
   max-width: calc(100% - 22px) !important;
 }
 
@@ -2554,7 +2572,7 @@ function clearComposerChromeDecorations() {
 function readComposerWidthMode() {
   try {
     const mode = pluginStorage?.get(COMPOSER_WIDTH_STORAGE_KEY, 'codex')
-    return mode === 'hermes' ? 'hermes' : 'codex'
+    return typeof mode === 'string' && Object.hasOwn(COMPOSER_WIDTH_MODES, mode) ? mode : 'codex'
   } catch {
     return 'codex'
   }
@@ -2568,7 +2586,7 @@ function syncComposerWidthRoot() {
 }
 
 function setComposerWidthMode(mode) {
-  const normalized = mode === 'hermes' ? 'hermes' : 'codex'
+  const normalized = typeof mode === 'string' && Object.hasOwn(COMPOSER_WIDTH_MODES, mode) ? mode : 'codex'
   pluginStorage?.set(COMPOSER_WIDTH_STORAGE_KEY, normalized)
   syncComposerWidthRoot()
   window.requestAnimationFrame(() => decorateComposerChrome())
@@ -3836,11 +3854,11 @@ export default {
       data: {
         id: 'codex-chat-look.toggle-composer-width',
         label: 'Codex Skin: Composer width',
-        detail: () => (readComposerWidthMode() === 'codex' ? 'Codex' : 'Hermes'),
+        detail: () => COMPOSER_WIDTH_MODES[readComposerWidthMode()].label,
         detailVariant: 'state',
         keepOpen: true,
         keywords: ['codex', 'skin', 'composer', 'width', 'narrow', 'full', 'hermes'],
-        run: () => setComposerWidthMode(readComposerWidthMode() === 'codex' ? 'hermes' : 'codex')
+        run: () => setComposerWidthMode(COMPOSER_WIDTH_MODES[readComposerWidthMode()].next)
       }
     })
     ctx.register({
