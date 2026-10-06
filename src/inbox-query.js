@@ -482,17 +482,21 @@ function startCodexInboxObserver(ctx, inbox) {
   }
   const project = () => {
     if (disposed || !sameInboxScope(scope, inboxOwnerScope())) return
-    const query = observer.getCurrentResult(), owner = { ...scope }, data = metadataPreview || query.data
-    const authoritative = !query.error && data?._codexInboxLiveAuthority === liveAuthority
-    const live = authoritative && Array.isArray(data?.rawLiveSessions)
-      ? resolveCodexInboxLiveSessions(owner, data.targetProfile, data.rawLiveSessions, data.sessions, liveOwners)
+    const query = observer.getCurrentResult(), owner = { ...scope }, snapshot = query.data, data = metadataPreview || snapshot
+    // Metadata can arrive before live RPCs. Retain this connection's last
+    // proof, but revalidate it against the newest metadata before projecting.
+    const authoritative = !query.error && snapshot?._codexInboxLiveAuthority === liveAuthority
+    const live = authoritative && Array.isArray(snapshot?.rawLiveSessions)
+      ? resolveCodexInboxLiveSessions(owner, snapshot.targetProfile, snapshot.rawLiveSessions, data.sessions, liveOwners)
       : { liveSessions: [], liveStatusKnown: false }
-    if (authoritative) for (const id of data.childUnknownSessionIds || []) {
+    if (authoritative) for (const id of snapshot.childUnknownSessionIds || []) {
       live.liveSessions.push({ id, session_key: id, _codexInboxCanonicalId: id, profile: owner.profile, connection_id: owner.connectionId, status: 'unknown' })
     }
     const verifiedRows = (live.liveSessions || []).filter(row =>
       row.profile === owner.profile && row.connection_id === owner.connectionId &&
-      codexInboxUniqueLiveRow(row.session_id || row.id, data.rawLiveSessions) && row.status !== 'unknown')
+      codexInboxUniqueLiveRow(row.session_id || row.id, snapshot.rawLiveSessions) && row.status !== 'unknown')
+    const childSnapshots = authoritative ? (snapshot.childSnapshots || []).filter(child =>
+      verifiedRows.some(row => row._codexInboxCanonicalId === child.session_id)) : []
     const busy = host.state.busyBySession?.get?.() || {}
     const busyBySession = {}, priority = { idle: 0, reading: 1, unknown: 2, work: 3 }
     for (const row of verifiedRows) {
@@ -503,19 +507,19 @@ function startCodexInboxObserver(ctx, inbox) {
           priority[codexInboxWorkStatus(value)] > priority[codexInboxWorkStatus(previous)]) busyBySession[storedId] = value
     }
     inbox.setMode(mode === 'on')
-    inbox.rowOwnerEvidence = mode === 'on' && !query.error && data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner)
+    inbox.rowOwnerEvidence = mode === 'on' && authoritative && snapshot?.rowOwnerScope && sameInboxScope(snapshot.rowOwnerScope, owner)
       ? { scope: owner, ids: data.sessions.flatMap(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)) }
       : null
     window.dispatchEvent(new CustomEvent(INBOX_ROWS_EVENT))
     inbox.update({
       scope: owner,
       sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
-      liveStatusKnown: authoritative && !!data?.liveStatusKnown && !!live?.liveStatusKnown,
-      liveStatusAt: data?.liveStatusAt,
-      childSnapshots: authoritative ? data?.childSnapshots || [] : [],
+      liveStatusKnown: authoritative && !!snapshot?.liveStatusKnown && !!live?.liveStatusKnown,
+      liveStatusAt: authoritative ? snapshot?.liveStatusAt : undefined,
+      childSnapshots,
       // ID-only busy flags borrow only independently verified runtime identity.
       busyBySession,
-      busyOwnerKnown: authoritative && !!data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner),
+      busyOwnerKnown: authoritative && !!snapshot?.rowOwnerScope && sameInboxScope(snapshot.rowOwnerScope, owner),
       focusedStoredSessionId: host.state.focusedStoredSessionId?.get?.() || null,
       explicitRequestedIds: data?.explicitRequestedIds,
       loading: !data && (query.isPending || query.isFetching),
@@ -569,9 +573,10 @@ function startCodexInboxObserver(ctx, inbox) {
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
         event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
         !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
-    const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, data.sessions, liveOwners)
+    const metadata = metadataPreview?.sessions || data.sessions
+    const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, metadata, liveOwners)
     if (!canonicalId) return null
-    const matches = data.sessions.filter(session => (session._lineage_root_id || session.id) === canonicalId)
+    const matches = metadata.filter(session => (session._lineage_root_id || session.id) === canonicalId)
     return matches.length ? { ...event, session_id: matches[0].id } : null
   }
   const verifyLiveEvent = event => !!resolveLiveEvent(event)

@@ -19,6 +19,7 @@ All notable changes to this project are documented here.
 - Preserve Settle and Snooze decisions when delayed activity arrives.
 - Restore active subagents after reload, keep queued work visible and track child completion separately from the parent.
 - Prevent completed subagents from reappearing and stale or failed background reads from showing false completion.
+- Busy status no longer flashes off during refresh or when switching chats; surviving rows keep animation across selection/title updates and reordering.
 
 ## [1.9.1] - 2026-10-06
 
