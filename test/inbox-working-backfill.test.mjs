@@ -15,7 +15,7 @@ test('positively owned work backfills its old durable thread outside the recent 
   f.stop()
   f.queryClient.removeQueries({ queryKey: f.key, exact: true })
   f.host.profileRoutes = async () => [A]
-  f.host.requestProfile = async () => ({ sessions: [{ id: 'runtime-old', session_key: 'old', profile: 'default', status: 'working' }] })
+  f.host.requestProfile = async (_route, method) => method === 'subagent.list' ? { subagents: [], delegations: [] } : ({ sessions: [{ id: 'runtime-old', session_key: 'old', profile: 'default', status: 'working' }] })
   const stop = f.startCodexInboxObserver({ onDispose() {} }, f.inbox)
   t.after(stop)
   await flush()
@@ -32,7 +32,7 @@ test('unowned or foreign work never fetches a durable thread into the current ow
   f.stop()
   f.queryClient.removeQueries({ queryKey: f.key, exact: true })
   f.host.profileRoutes = async () => [A]
-  f.host.requestProfile = async () => ({ sessions: [
+  f.host.requestProfile = async (_route, method) => method === 'subagent.list' ? { subagents: [], delegations: [] } : ({ sessions: [
     { id: 'unowned-runtime', session_key: 'unowned', status: 'working' },
     { id: 'foreign-runtime', session_key: 'foreign', profile: 'other', status: 'working' }
   ] })
@@ -53,7 +53,7 @@ test('failed owned-work metadata cannot preserve partial live authority', async 
   f.stop()
   f.queryClient.removeQueries({ queryKey: f.key, exact: true })
   f.host.profileRoutes = async () => [A]
-  f.host.requestProfile = async () => ({ sessions: [{ id: 'runtime-old', session_key: 'old', profile: 'default', status: 'working' }] })
+  f.host.requestProfile = async (_route, method) => method === 'subagent.list' ? { subagents: [], delegations: [] } : ({ sessions: [{ id: 'runtime-old', session_key: 'old', profile: 'default', status: 'working' }] })
   const stop = f.startCodexInboxObserver({ onDispose() {} }, f.inbox)
   t.after(stop)
   await flush()

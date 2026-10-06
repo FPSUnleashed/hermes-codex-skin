@@ -458,34 +458,43 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   };
   const inboxSessions = () => visibleSessions().filter(session => admission.isEligible(currentScope, session));
   const findSession = id => visibleSessions().find(s => codexInboxId(s) === id || s._lineage_root_id === id || s._lineage_ids?.includes(id));
+  const durableAliases = session => new Set([codexInboxId(session), session?._lineage_root_id, ...(session?._lineage_ids || [])].filter(Boolean));
+  const liveMatches = (session, live) => {
+    const ids = durableAliases(session);
+    if (Object.hasOwn(live, '_codexInboxCanonicalId')) return typeof live._codexInboxCanonicalId === 'string' && ids.has(live._codexInboxCanonicalId);
+    const stored = [live.session_key, live.stored_session_id, live._lineage_root_id, ...(live._lineage_ids || [])].filter(Boolean);
+    // Legacy authorized fixtures may omit stored fields. Once present, they
+    // identify the lineage; equality with a runtime ID is never a relationship.
+    if (stored.length) return stored.some(id => ids.has(id));
+    return [live.id, live.session_id].some(id => ids.has(id));
+  };
+  const eventSession = event => {
+    if (Object.hasOwn(event, 'canonicalSessionId')) return typeof event.canonicalSessionId === 'string' && event.canonicalSessionId
+      ? findSession(event.canonicalSessionId) : null;
+    const id = event.session_id || event.id || event.session_key;
+    return findSession(id) || visibleSessions().find(session => runtimeAliases(session).has(id));
+  };
   const runtimeAliases = session => {
-    const aliases = new Set([codexInboxId(session), session?._lineage_root_id, ...(session?._lineage_ids || [])].filter(Boolean));
-    const owner = codexInboxScope(host.state?.focusedSessionOwner?.get?.());
-    const stored = host.state?.focusedStoredSessionId?.get?.();
-    if (owner && JSON.stringify(owner) === JSON.stringify(currentScope) && aliases.has(stored)) {
-      const runtimeId = host.state?.focusedSessionId?.get?.();
-      if (typeof runtimeId === 'string' && runtimeId) aliases.add(runtimeId);
-    }
+    const aliases = durableAliases(session);
     for (const live of input.liveSessions || []) {
-      if (!codexInboxOwnedBy(currentScope, live)) continue;
-      const ids = [live.session_id, live.id, live.session_key, live.stored_session_id, live._lineage_root_id, ...(live._lineage_ids || [])].filter(Boolean);
-      if (ids.some(id => aliases.has(id))) ids.forEach(id => aliases.add(id));
+      if (!codexInboxOwnedBy(currentScope, live) || !liveMatches(session, live)) continue;
+      const runtimeId = live.session_id || live.id;
+      if (runtimeId) aliases.add(runtimeId);
     }
     return aliases;
   };
   const safety = (session, admissionCheck = false) => {
-    const ids = runtimeAliases(session);
     let unresolved = input.liveStatusKnown !== true;
     let reading = false;
     for (const live of input.liveSessions || []) {
       if (!codexInboxOwnedBy(currentScope, live)) continue;
-      if (![live.id, live.session_id, live.session_key, live.stored_session_id, live._lineage_root_id].some(id => ids.has(id))) continue;
+      if (!liveMatches(session, live)) continue;
       const status = codexInboxWorkStatus(live);
       if (status === 'work') return 'work';
       if (status === 'unknown') unresolved = true;
       if (status === 'reading') reading = true;
     }
-    for (const id of admissionCheck && input.busyOwnerKnown === false ? [] : ids) {
+    for (const id of admissionCheck && input.busyOwnerKnown === false ? [] : durableAliases(session)) {
       const busy = input.busyBySession instanceof Map ? input.busyBySession.get(id) : input.busyBySession?.[id];
       if (busy === undefined) continue;
       const status = codexInboxWorkStatus(busy);
@@ -495,11 +504,26 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     }
     return unresolved ? 'unknown' : reading ? 'reading' : 'idle';
   };
+  const freshChildSnapshot = snapshot => {
+    if (typeof snapshot?.session_id !== 'string' || !snapshot.session_id || !Number.isFinite(snapshot.at) || snapshot.at <= 0 ||
+        !Array.isArray(snapshot.childIds) || snapshot.childIds.some(id => typeof id !== 'string' || !id)) return null;
+    const session = findSession(snapshot.session_id);
+    if (!session) return null;
+    const key = model.key(currentScope, session), previous = activityByKey.get(key);
+    if (snapshot.at <= (previous?.childEventAt || 0) || snapshot.at <= (previous?.childSnapshotAt || 0)) return null;
+    const childIds = snapshot.childIds.filter(id => !previous?.terminalChildren?.has(id) &&
+      (!previous?.terminalChildrenOverflow || previous.children?.has(id) || previous.pendingChildren?.has(id)));
+    return { session, key, previous, childIds };
+  };
   const reconcileAdmission = () => {
     const sessions = visibleSessions(), working = input.loading || input.error || input.liveStatusKnown !== true ? [] : sessions.filter(session => safety(session, true) === 'work');
+    const childWorking = input.loading || input.error || input.liveStatusKnown !== true ? [] : (input.childSnapshots || [])
+      .map(freshChildSnapshot).filter(fresh => fresh?.childIds.length).map(fresh => fresh.session);
     // Rendering deduplicates lineage rows, never their source evidence. A late
     // cron ancestor/alias must taint the whole thread whichever row comes first.
-    admission.observe(currentScope, input.sessions, { workingSessions: working });
+    admission.observe(currentScope, input.sessions, { workingSessions: [...working, ...childWorking] });
+    // Child proof admits work, not a new attention decision. Parent work keeps
+    // its existing ingestion rules; child snapshots never clear Settle/Snooze.
     model.ingest(currentScope, sessions, { liveSessions: working.map(session => ({ ...session, status: 'working' })) });
   };
   const reconcileActivity = () => {
@@ -509,11 +533,26 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
       const status = safety(session, true), newer = Number.isFinite(input.liveStatusAt) && input.liveStatusAt > (previous?.at || 0);
       // A terminal frame precedes backend cleanup. A late working snapshot
       // cannot cancel that receipt; a new positive work event can.
-      if (status === 'work' && !['completed', 'read'].includes(previous?.phase) && (!previous || newer)) {
-        activityByKey.set(key, { phase: 'working', at: input.liveStatusAt || Date.now(), children: previous?.children || new Set() });
-      } else if (status === 'idle' && previous?.phase === 'working' && !previous.children.size && newer) {
+      if (status === 'work' && !previous?.parentFinished && !['completed', 'read'].includes(previous?.phase) && (!previous || newer)) {
+        activityByKey.set(key, { ...previous, phase: 'working', at: input.liveStatusAt || Date.now(), children: previous?.children || new Set() });
+      } else if (status === 'idle' && previous?.phase === 'working' && newer) {
         activityByKey.set(key, { ...previous, phase: session.unread === true ? 'completed' : 'unknown', at: input.liveStatusAt });
       }
+    }
+  };
+  const reconcileChildActivity = () => {
+    if (input.loading || input.error || input.liveStatusKnown !== true) return;
+    for (const snapshot of input.childSnapshots || []) {
+      // Request-start ordering fences in-flight reads against child lifecycle
+      // events. Parent snapshots and attention decisions have separate clocks.
+      const fresh = freshChildSnapshot(snapshot);
+      if (!fresh) continue;
+      const { key, previous, childIds } = fresh;
+      // Native rosters omit queued spawns until registration. A fresh empty
+      // roster cannot cancel that proved intent; start/complete can release it.
+      const pendingChildren = new Set([...(previous?.pendingChildren || [])].filter(id => !childIds.includes(id)));
+      activityByKey.set(key, { ...previous, phase: previous?.phase || 'unknown', at: previous?.at || 0,
+        children: new Set([...childIds, ...pendingChildren]), pendingChildren, childSnapshotAt: snapshot.at });
     }
   };
   const viewedReply = session => {
@@ -542,10 +581,14 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     return false;
   };
   const workState = session => {
-    if (input.loading || input.error) return 'unknown';
+    if (input.loading || input.error || input.liveStatusKnown !== true) return 'unknown';
     const key = model.key(currentScope, session), status = safety(session, true), activity = activityByKey.get(key);
-    if (status === 'unknown' || status === 'reading') return status;
+    if (status === 'unknown') return 'unknown';
+    if (activity?.children.size) return 'working';
+    if (status === 'reading') return 'reading';
+    if (activity?.phase === 'working') return 'working';
     if (activity?.phase === 'read') return 'idle';
+    if (activity?.phase === 'unknown' && activity.parentFinished) return 'unknown';
     if (activity?.phase === 'completed' || status === 'idle' && session.unread === true) {
       if (!viewedReply(session)) return 'completed';
       // Reading acknowledges this reply's paint only. It never settles,
@@ -553,7 +596,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
       activityByKey.set(key, { ...activity, phase: 'read', at: activity?.at || Date.now(), children: activity?.children || new Set() });
       return 'idle';
     }
-    if (status === 'work' || activity?.phase === 'working') return 'working';
+    if (status === 'work' && !activity?.parentFinished) return 'working';
     if (activity?.phase === 'unknown') return 'unknown';
     // Native unread marks a completed reply. Merely idle/busy:false does not.
     return session.unread === true ? 'completed' : 'idle';
@@ -894,7 +937,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
     const sessions = inboxSessions().filter(s => !model.isSettled(currentScope, s) && !model.isSnoozed(currentScope, s));
     const shown = sessions;
     const nextSignature = JSON.stringify([currentScope, inboxOpen, input.loading, !!input.error, model.error, admission.error, headerTemplate.fingerprint,
-      [...settleNotices.values()].map(item => [item.key, item.until]), sessions.length, shown.map(s => [model.key(currentScope, s), codexInboxId(s), s.title, safety(s), workState(s), active(s)])]);
+      [...settleNotices.values()].map(item => [item.key, item.until]), sessions.length, shown.map(s => [model.key(currentScope, s), codexInboxId(s), s.title, safety(s), workState(s), active(s), activityByKey.get(model.key(currentScope, s))?.children.size || 0])]);
     if (signature !== nextSignature) {
       signature = nextSignature;
       setAttr(island, 'data-codex-inbox-expanded', inboxOpen);
@@ -952,6 +995,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         binding.id = codexInboxId(session); binding.scope = { ...currentScope };
         const { row, clock, action } = binding;
         setAttr(row, 'data-codex-inbox-row', binding.id);
+        setAttr(row, 'data-codex-inbox-active-children', activityByKey.get(key)?.children.size || 0);
         const title = typeof session.title === 'string' && session.title ? session.title : 'Untitled thread';
         binding.update({
           title, selected: active(session), settleAction: true, workState: workState(session),
@@ -1013,8 +1057,9 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       const scope = codexInboxScope(next.scope);
       if (JSON.stringify(scope) !== JSON.stringify(currentScope)) { cleanupDOM(); activityByKey.clear(); inboxOpen = true; }
       currentScope = scope;
-      input = { ...next, sessions: Array.isArray(next.sessions) ? next.sessions : [], liveSessions: Array.isArray(next.liveSessions) ? next.liveSessions : [], liveStatusKnown: next.liveStatusKnown ?? Array.isArray(next.liveSessions) };
-      if (scope && on) { reconcileAdmission(); reconcileActivity(); }
+      input = { ...next, sessions: Array.isArray(next.sessions) ? next.sessions : [], liveSessions: Array.isArray(next.liveSessions) ? next.liveSessions : [],
+        childSnapshots: Array.isArray(next.childSnapshots) ? next.childSnapshots : [], liveStatusKnown: next.liveStatusKnown ?? Array.isArray(next.liveSessions) };
+      if (scope && on) { reconcileAdmission(); reconcileActivity(); reconcileChildActivity(); }
       refreshDeadline(); requestRender();
     },
     // Positive work/input events only. Callers must supply authoritative scope and ID.
@@ -1022,36 +1067,52 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
     reactivate(event) {
       if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || JSON.stringify(codexInboxScope(event.scope)) !== JSON.stringify(currentScope)) return false;
       if (!['work', 'input', 'busy'].includes(event.type) && codexInboxWorkStatus(event) !== 'work') return false;
-      const id = event.session_id || event.id || event.session_key;
-      const session = findSession(id) || visibleSessions().find(s => runtimeAliases(s).has(id));
+      const session = eventSession(event);
       if (!session || input.loading || input.error || input.liveStatusKnown !== true ||
           !admission.observe(currentScope, input.sessions, { workingSessions: [session] }) || !admission.isEligible(currentScope, session)) { requestRender(); return false; }
       if (model.isManualSettled(currentScope, session) && !model.unsettle(currentScope, session)) { requestRender(); return false; }
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
-      activityByKey.set(key, { phase: 'working', at: Date.now(), children: previous?.children || new Set() });
+      activityByKey.set(key, { ...previous, phase: 'working', parentFinished: false, at: Date.now(), children: previous?.children || new Set() });
       const result = model.ingest(currentScope, [session], { liveSessions: [{ ...session, status: 'working' }] });
       requestRender(); return result;
     },
     activity(event) {
-      if (disposed || !on || !currentScope || event?.replayed || !event?.session_id ||
+      if (disposed || !on || !currentScope || !event || event.replayed || !codexInboxOwnedBy(currentScope, event) ||
           !sameScope({ connectionId: event.connectionId, profile: event.profile })) return false;
-      const session = findSession(event.session_id) || visibleSessions().find(row => runtimeAliases(row).has(event.session_id));
+      const session = eventSession(event);
       if (!session) return false;
       if (['message.start', 'tool.start'].includes(event.type)) {
         if (event.type === 'tool.start' && model.isManualSettled(currentScope, session)) return false;
-        return api.reactivate({ type: 'work', scope: currentScope, session_id: event.session_id });
+        return api.reactivate({ type: 'work', scope: currentScope, session_id: codexInboxId(session), canonicalSessionId: codexInboxId(session) });
       }
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
       if (event.type === 'message.complete' && previous?.phase === 'read') return false;
-      const activity = { phase: previous?.phase || 'idle', at: Date.now(), children: new Set(previous?.children || []) };
+      const activity = { ...previous, phase: previous?.phase || 'unknown', at: previous?.at || 0,
+        children: new Set(previous?.children || []), pendingChildren: new Set(previous?.pendingChildren || []),
+        terminalChildren: new Set(previous?.terminalChildren || []) };
       if (['subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type)) {
         const child = event.payload?.subagent_id;
         if (typeof child !== 'string' || !child) return false;
-        if (event.type === 'subagent.complete') activity.children.delete(child);
-        else { activity.children.add(child); activity.phase = 'working'; }
+        if (event.type === 'subagent.complete') {
+          if (activity.terminalChildren.has(child) && !activity.children.has(child) && !activity.pendingChildren.has(child)) return true;
+          activity.children.delete(child); activity.pendingChildren.delete(child);
+          // Native completion is emitted before registry removal. Even a newer
+          // roster cannot revive this ID; only another proved spawn/start can.
+          // Cap per-thread terminal IDs without evicting safety evidence: on
+          // overflow, snapshots may sustain known children but not add IDs.
+          if (activity.terminalChildren.size < 256) activity.terminalChildren.add(child);
+          else activity.terminalChildrenOverflow = true;
+        } else {
+          activity.terminalChildren.delete(child);
+          if (event.type === 'subagent.spawn_requested') activity.pendingChildren.add(child);
+          else activity.pendingChildren.delete(child);
+          activity.children.add(child);
+        }
+        activity.childEventAt = Date.now();
       } else if (event.type === 'message.complete') {
-        activity.phase = activity.children.size ? 'working' : event.payload?.status === 'complete' && !event.payload.error ? 'completed' : 'unknown';
-      } else if (event.type === 'error') activity.phase = 'unknown';
+        activity.phase = activity.children.size ? 'unknown' : event.payload?.status === 'complete' && !event.payload.error ? 'completed' : 'unknown';
+        activity.parentFinished = true; activity.at = Date.now();
+      } else if (event.type === 'error') { activity.phase = 'unknown'; activity.parentFinished = true; activity.at = Date.now(); }
       else return false;
       activityByKey.set(key, activity);
       requestRender(); return true;

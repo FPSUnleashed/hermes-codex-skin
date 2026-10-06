@@ -21,7 +21,8 @@ async function fixture(t) {
   Object.assign(f.state, { gateway: atom('open'), focusedSessionId: atom(null) })
   let status = 'idle', reads = 0
   f.host.profileRoutes = async () => [A]
-  f.host.requestProfile = async () => {
+  f.host.requestProfile = async (_route, method) => {
+    if (method === 'subagent.list') return { subagents: [], delegations: [] }
     reads++
     return { sessions: [{ id: 'runtime-old', session_key: 'old', status }] }
   }
@@ -47,7 +48,7 @@ test('sending work in a previous chat refreshes native owner proof without waiti
   await flush()
   assert.ok(f.reads() > before, 'a new busy edge must refresh the owner-scoped live list')
   assert.equal(f.last().liveSessions.find(row => row.id === 'runtime-old')?.status, 'working')
-  assert.equal(f.last().busyBySession['runtime-old'], true)
+  assert.equal(f.last().busyBySession.old, true, 'busy activity projects onto the independently proved durable thread')
 })
 
 test('reopening old history verifies identity but never invents work', async t => {

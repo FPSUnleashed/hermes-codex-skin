@@ -28,7 +28,7 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
       window.eventHandlers = new Set(); window.opens=[]; window.ID='codex-chat-look';
       window.host = { state:{ focusedSessionId:atom('runtime-a'), focusedStoredSessionId:atom('a'), focusedSessionOwner:atom(scope), focusedSession:atom(null) },
         onEvent:(type,fn)=>{eventHandlers.add(fn);return ()=>eventHandlers.delete(fn)}, openSession:async(id,owner)=>opens.push({id,owner}) };
-      window.emit = (type,payload={},extra={}) => { clock++; const event={type,payload,session_id:'runtime-a',...scope,...extra}; for(const fn of eventHandlers)fn(event) };
+      window.emit = (type,payload={},extra={}) => { clock++; const event={type,payload,session_id:'a',...scope,...extra}; for(const fn of eventHandlers)fn(event) };
       window.native = document.getElementById('native'); window.nativeBefore = native.outerHTML;
     })()`)
     await browser.evaluate(source)
@@ -38,6 +38,7 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
       window.rows = [session];
       window.runtime = installCodexInboxRuntime({document,window,host,storage:{get:(key,fallback)=>storage.get(key)??fallback,set:(key,value)=>storage.set(key,value)}});
       window.model = runtime.model;
+      // The authorized sink receives canonical durable IDs from the resolver.
       // Exercise the runtime's authorized event sink. The actual SDK bridge
       // and observer ownership gate are exercised in inbox-owner-cache.test.mjs.
       window.offEvents = host.onEvent('*', event => runtime.activity(event));
@@ -63,7 +64,7 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
     assert.equal(await browser.evaluate('model.isSettled(scope,session)'), true, 'Settle is local attention even before the working-state paint')
     await browser.evaluate("document.querySelector('[data-codex-inbox-settle-notice] button').click()")
     state = await sample()
-    assert.equal(state.state, 'working', 'runtime ID maps to exact focused stored owner')
+    assert.equal(state.state, 'working', 'proved durable identity reaches the exact owner activity sink')
     assert.equal(state.arc, true)
     assert.equal(state.color, theme === 'light' ? 'rgb(36, 36, 36)' : 'rgb(238, 238, 238)')
     assert.equal(state.settleDisabled, false, 'positive work does not block a local Settle')

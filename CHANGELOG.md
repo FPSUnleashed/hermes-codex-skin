@@ -12,6 +12,14 @@ All notable changes to this project are documented here.
 
 - Two intermediate **Composer width** choices, **Codex +20 %** and **Codex +40 %**, between the original Codex and native Hermes widths. Existing preferences, the Codex default, responsive gutters and native floating-composer widths are preserved.
 
+### Fixed
+
+- Keep newly started and short-lived chats in Inbox when you leave before background checks finish.
+- Recognize active background chats and send their activity to the right conversation using verified identity.
+- Preserve Settle and Snooze decisions when delayed activity arrives.
+- Restore active subagents after reload, keep queued work visible and track child completion separately from the parent.
+- Prevent completed subagents from reappearing and stale or failed background reads from showing false completion.
+
 ## [1.9.1] - 2026-10-06
 
 ### Fixed

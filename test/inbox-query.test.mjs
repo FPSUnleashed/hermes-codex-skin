@@ -92,7 +92,8 @@ test('Inbox follows the exact focused owner and reads its live status through it
     request: async () => { throw new Error('Wrong foreground gateway') },
     requestProfile: async (route, method, params) => {
       requests.push({ route, method, params })
-      return { sessions: [{ id: 'opened-old', profile: 'default', status: 'running' }, { id: 'foreign', profile: 'other', status: 'running' }] }
+      if (method === 'subagent.list') return { subagents: [], delegations: [] }
+      return { sessions: [{ id: 'opened-old', session_key: 'opened-old', profile: 'default', status: 'running' }, { id: 'foreign', session_key: 'foreign', profile: 'other', status: 'running' }] }
     }
   } })
   const result = await f.readCodexInboxPage(focused, 1)
@@ -102,7 +103,7 @@ test('Inbox follows the exact focused owner and reads its live status through it
   assert.equal(result.liveSessions[0].id, 'opened-old')
   assert.equal(result.liveSessions[0].profile, focused.profile)
   assert.equal(result.liveSessions[0].connection_id, focused.connectionId)
-  assert.equal(requests.length, 1)
+  assert.equal(requests.length, 2)
   assert.equal(requests[0].route.connectionId, focused.connectionId)
   assert.equal(requests[0].route.profile, focused.profile)
   assert.equal(requests[0].method, 'session.active_list')
@@ -155,10 +156,10 @@ test('only positively verified fresh work wakes a thread; surface tags alone, re
   listener({ type: 'message.start', ...scope, session_id: 'one' })
   assert.equal(events.length, 0, 'source/profile tags do not prove the runtime owner')
   let verified = false
-  inbox.verifyLiveEvent = () => verified
+  inbox.resolveLiveEvent = event => verified ? { ...event, session_id: verified } : null
   listener({ type: 'message.start', ...scope, session_id: 'one' })
   assert.equal(events.length, 0)
-  verified = true
+  verified = 'one'
   listener({ type: 'message.start', ...scope, session_id: 'one', replayed: true })
   listener({ type: 'session.resumed', ...scope, session_id: 'one' })
   listener({ type: 'message.start', session_id: 'one' })

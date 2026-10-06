@@ -33,7 +33,8 @@ test('shipping observer and real browser: resend old/settled threads, fast repli
       window.events=new Set();window.disposals=[];window.calls=[];
       window.errors=[];addEventListener('error',e=>errors.push(String(e.error)));addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
       window.saved=new Map([['inbox','on']]);window.storage={get:(k,f)=>structuredClone(saved.get(k)??f),set:(k,v)=>saved.set(k,structuredClone(v))};
-      window.host={state,onEvent:(_,fn)=>{events.add(fn);return()=>events.delete(fn)},profileRoutes:async()=>[scope],requestProfile:async()=>{
+      window.host={state,onEvent:(_,fn)=>{events.add(fn);return()=>events.delete(fn)},profileRoutes:async()=>[scope],requestProfile:async(_,method)=>{
+        if(method==='subagent.list')return {subagents:[],delegations:[]};
         calls.push('live');if(window.holdLive)await new Promise(r=>window.releaseLive=r);
         return {sessions:[{id:'runtime-old',session_key:'old',status:window.liveStatus||'idle'}]}
       }};

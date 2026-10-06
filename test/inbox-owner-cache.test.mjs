@@ -25,7 +25,7 @@ async function fixture(t, { focused = false, empty = false } = {}) {
   let liveRead = async () => ({ sessions: empty ? [] : [{ id: 'R', session_key: 'shared-id', status: 'working' }] })
   f.host.onEvent = (_, fn) => { events.add(fn); return () => events.delete(fn) }
   f.host.profileRoutes = async () => [A, { ...A, profile: 'other' }]
-  f.host.requestProfile = (...args) => liveRead(...args)
+  f.host.requestProfile = (...args) => args[1] === 'subagent.list' ? { subagents: [], delegations: [] } : liveRead(...args)
   f.inbox.activity = event => receipts.push(event)
   const { connectCodexInboxEvents } = await loadPluginInternals(['connectCodexInboxEvents'], { host: f.host })
   const disconnectEvents = connectCodexInboxEvents(f.inbox)

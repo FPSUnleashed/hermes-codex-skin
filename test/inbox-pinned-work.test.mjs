@@ -36,7 +36,7 @@ async function fixture(t) {
     window.events=new Set();window.disposals=[];window.calls=[];window.errors=[];
     addEventListener('error',e=>errors.push(String(e.error)));addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
     window.saved=new Map([['inbox','on']]);window.storage={get:(k,f)=>structuredClone(saved.get(k)??f),set:(k,v)=>saved.set(k,structuredClone(v))};
-    window.host={state,onEvent:(_,fn)=>{events.add(fn);return()=>events.delete(fn)},profileRoutes:async()=>[scope],requestProfile:async()=>({sessions:[{id:'runtime-old',session_key:'old',status:window.liveStatus||'idle'}]})};
+    window.host={state,onEvent:(_,fn)=>{events.add(fn);return()=>events.delete(fn)},profileRoutes:async()=>[scope],requestProfile:async(_,method)=>method==='subagent.list'?{subagents:[],delegations:[]}:({sessions:[{id:'runtime-old',session_key:'old',status:window.liveStatus||'idle'}]})};
     window.hermesDesktop={api:async options=>{
       calls.push(options.path);
       if(options.path.includes('/latest-descendant?'))return {requested_session_id:'old',session_id:'old',path:['old']};
