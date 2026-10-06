@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.9.0'
+const BUILD_ID = 'v1.9.1'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -749,6 +749,7 @@ html[data-codex-chat-look='true']
   height: 28px !important;
   min-height: 28px !important;
 }
+
 
 /* Prefer the full sidebar toggle to partial minimization. Keep Restore
    available for layouts saved before this control was hidden. */
@@ -2073,8 +2074,8 @@ html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-se
 }
 
 /* Only PaneTabLabel text: preserve glyphs, dirty dots and close controls. */
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate,
-html[data-codex-chat-look='true'] [data-tree-group]:not([data-tree-group='grp-sessions']) [data-zone-tabstrip] [role='tab'] > .pane-tab-content > :is(span, button) > span.truncate {
+html[data-codex-chat-look='true'] [data-tree-group] [data-zone-tabstrip] [role='tab'] > :is(span, button) > span.truncate,
+html[data-codex-chat-look='true'] [data-tree-group] [data-zone-tabstrip] [role='tab'] > .pane-tab-content > :is(span, button) > span.truncate {
   font-size: 12px !important;
   font-weight: 400 !important;
   text-transform: none !important;
