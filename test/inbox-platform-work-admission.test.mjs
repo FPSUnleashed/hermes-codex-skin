@@ -49,6 +49,7 @@ test('shipping query verifies platform runtime ownership and browser renders wor
   const host = { state: { connectionId: atom(scope.connectionId), profile: atom(scope.profile) },
     profileRoutes: async () => [{ ...scope, targetProfile: scope.profile }],
     requestProfile: async (_route, method) => {
+      if (method === 'subagent.list') return { subagents: [], delegations: [] };
       assert.equal(method, 'session.active_list');
       return { sessions: live };
     }

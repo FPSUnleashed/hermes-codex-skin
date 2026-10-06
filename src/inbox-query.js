@@ -75,15 +75,48 @@ function codexInboxLiveFocus() {
 }
 
 function codexInboxLiveStoredIds(row) {
-  return [row.session_key, row.stored_session_id].filter(id => typeof id === 'string' && id)
+  const values = [row.session_key, row.stored_session_id]
+  if (values.some(id => id != null && typeof id !== 'string')) return []
+  return [...new Set(values.filter(id => typeof id === 'string' && id))]
 }
 
 function codexInboxLiveStoredMatch(storedId, row, metadata) {
   const stored = codexInboxLiveStoredIds(row)
-  return stored.includes(storedId) || metadata.some(session => {
+  if (!stored.length) return false
+  const touched = metadata.filter(session => {
     const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
-    return ids.includes(storedId) && stored.some(id => ids.includes(id))
+    return stored.some(id => ids.includes(id))
   })
+  const roots = new Set(touched.map(session => session._lineage_root_id || session.id))
+  if (!touched.length) return stored.length === 1 && stored[0] === storedId
+  return roots.size === 1 && touched.some(session => {
+    const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
+    return ids.includes(storedId) && stored.every(id => ids.includes(id))
+  })
+}
+
+function codexInboxUniqueLiveRow(runtimeId, rows) {
+  if (typeof runtimeId !== 'string' || !runtimeId) return null
+  const matching = rows.filter(row => row && [row.id, row.session_id].includes(runtimeId))
+  const row = matching.length === 1 ? matching[0] : null
+  return row && (!row.id || !row.session_id || row.id === row.session_id) ? row : null
+}
+
+function codexInboxCanonicalRuntime(scope, targetProfile, runtimeId, rawRows, metadata, owners) {
+  if (typeof runtimeId !== 'string' || !runtimeId) return null
+  const rows = rawRows.filter(row => row && [row.id, row.session_id].includes(runtimeId))
+  const row = codexInboxUniqueLiveRow(runtimeId, rawRows), proof = owners.get(JSON.stringify([scope.connectionId, runtimeId]))
+  if (rows.length && !row) return null
+  if (proof && (proof.conflicted || !sameInboxScope(proof, scope))) return null
+  if (row && (row.connection_id && row.connection_id !== scope.connectionId || row.profile && row.profile !== targetProfile)) return null
+  if (!proof && (!row || row.profile !== targetProfile)) return null
+  const stored = row ? codexInboxLiveStoredIds(row) : []
+  if (row && (!stored.length || !stored.every(id => codexInboxLiveStoredMatch(id, row, metadata)))) return null
+  const candidates = new Set(metadata.filter(session => {
+    const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
+    return (!proof || ids.includes(proof.storedId)) && stored.every(id => ids.includes(id))
+  }).map(session => session._lineage_root_id || session.id))
+  return candidates.size === 1 ? [...candidates][0] : null
 }
 
 function resolveCodexInboxLiveSessions(scope, targetProfile, rawRows, metadata, owners) {
@@ -94,12 +127,12 @@ function resolveCodexInboxLiveSessions(scope, targetProfile, rawRows, metadata, 
     if (row.connection_id && row.connection_id !== scope.connectionId) continue
     if (row.profile && row.profile !== targetProfile) continue
     const runtimeId = row.session_id || row.id
-    const proof = owners.get(JSON.stringify([scope.connectionId, runtimeId]))
-    if (row.profile || proof && !proof.conflicted && codexInboxLiveStoredMatch(proof.storedId, row, metadata)) {
-      if (!row.profile && proof.profile !== scope.profile) continue
-      liveSessions.push({ ...row, profile: scope.profile, connection_id: scope.connectionId })
+    const ids = codexInboxLiveStoredIds(row)
+    const canonicalId = codexInboxCanonicalRuntime(scope, targetProfile, runtimeId, rawRows, metadata, owners)
+    if (canonicalId) {
+      const session = metadata.find(session => (session._lineage_root_id || session.id) === canonicalId)
+      liveSessions.push({ ...row, session_key: session.id, stored_session_id: session.id, profile: scope.profile, connection_id: scope.connectionId, _codexInboxCanonicalId: canonicalId })
     } else {
-      const ids = codexInboxLiveStoredIds(row)
       if (!ids.length) liveStatusKnown = false
       ids.forEach(id => unresolved.add(id))
     }
@@ -110,13 +143,91 @@ function resolveCodexInboxLiveSessions(scope, targetProfile, rawRows, metadata, 
     if (liveSessions.some(row => codexInboxLiveStoredIds(row).some(id => ids.includes(id)))) continue
     // This guards a known durable row. Never give an unowned runtime an alias
     // into this profile or use its activity as an admission/completion signal.
-    liveSessions.push({ id: session.id, session_key: session.id, status: 'unknown', profile: scope.profile, connection_id: scope.connectionId })
+    liveSessions.push({ id: session.id, session_key: session.id, _codexInboxCanonicalId: session._lineage_root_id || session.id, status: 'unknown', profile: scope.profile, connection_id: scope.connectionId })
   }
   return { liveSessions, liveStatusKnown }
 }
 
 
-async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}) {
+async function readCodexInboxLiveIdentity(read, row) {
+  try {
+    const result = await read(row.session_id || row.id)
+    const lines = typeof result?.output === 'string' ? result.output.split('\n') : []
+    // The native status header is producer-owned. Never search titles or
+    // trailing text for a path that could impersonate a profile identity.
+    if (lines[0] !== 'Hermes TUI Status' || lines[1] !== '' ||
+        !lines[2]?.startsWith('Session ID: ') || !lines[3]?.startsWith('Path: ')) return null
+    const storedId = lines[2].slice(12), home = lines[3].slice(6)
+    return storedId && home && codexInboxLiveStoredIds(row).includes(storedId) ? { storedId, home } : null
+  } catch { return null }
+}
+
+async function proveCodexInboxBackgroundOwners(scope, targetProfile, rows, metadata, owners, focus, read, stillCurrent) {
+  const focusKey = focus && JSON.stringify([scope.connectionId, focus.runtimeId])
+  const anchor = focusKey && owners.get(focusKey)
+  if (!anchor || anchor.conflicted || !sameInboxScope(anchor, scope) || !stillCurrent()) return
+  const focusedRow = codexInboxUniqueLiveRow(focus.runtimeId, rows)
+  if (!focusedRow || focusedRow.profile && focusedRow.profile !== targetProfile ||
+      focusedRow.connection_id && focusedRow.connection_id !== scope.connectionId ||
+      !metadata.some(session => codexInboxLiveStoredMatch(session.id, focusedRow, metadata)) ||
+      !codexInboxLiveStoredMatch(focus.storedId, focusedRow, metadata) ||
+      !codexInboxLiveStoredMatch(anchor.storedId, focusedRow, metadata)) return
+  let home = anchor.home
+  if (!home) {
+    const identity = await readCodexInboxLiveIdentity(read, focusedRow)
+    if (!identity || !stillCurrent() || JSON.stringify(codexInboxLiveFocus()) !== JSON.stringify(focus)) return
+    home = identity.home
+    owners.set(focusKey, { ...anchor, home })
+  }
+  // A home shared by contradictory owner proofs cannot certify either owner.
+  if ([...owners.values()].some(proof => proof.home === home && (proof.conflicted || !sameInboxScope(proof, scope)))) return
+  const candidates = rows.filter(row => {
+    if (!row || row.profile || row.connection_id && row.connection_id !== scope.connectionId) return false
+    const runtimeId = row.session_id || row.id
+    if (!runtimeId || owners.has(JSON.stringify([scope.connectionId, runtimeId]))) return false
+    if (codexInboxUniqueLiveRow(runtimeId, rows) !== row) return false
+    return metadata.some(session => codexInboxLiveStoredMatch(session.id, row, metadata))
+  })
+  for (let offset = 0; offset < candidates.length; offset += 4) {
+    const batch = await Promise.all(candidates.slice(offset, offset + 4).map(async row => ({ row, identity: await readCodexInboxLiveIdentity(read, row) })))
+    if (!stillCurrent() || JSON.stringify(codexInboxLiveFocus()) !== JSON.stringify(focus)) return
+    for (const { row, identity } of batch) {
+      if (identity?.home !== home) continue
+      owners.set(JSON.stringify([scope.connectionId, row.session_id || row.id]), {
+        ...scope, runtimeId: row.session_id || row.id, storedId: identity.storedId, home
+      })
+    }
+  }
+}
+
+async function readCodexInboxChildSnapshots(scope, liveSessions, read, stillCurrent) {
+  const byThread = new Map(), unknown = new Set()
+  const rows = liveSessions.filter(row => row._codexInboxCanonicalId && row.status !== 'unknown')
+  const at = Date.now()
+  for (let offset = 0; offset < rows.length; offset += 4) {
+    const batch = await Promise.all(rows.slice(offset, offset + 4).map(async row => {
+      try {
+        const result = await read(row.session_id || row.id)
+        if (!Array.isArray(result?.subagents) || result.subagents.some(child =>
+          typeof child?.subagent_id !== 'string' || !child.subagent_id || typeof child.status !== 'string')) return { row, valid: false }
+        return { row, valid: true, ids: result.subagents.filter(child => ['running', 'pending', 'queued'].includes(child.status)).map(child => child.subagent_id) }
+      } catch { return { row, valid: false } }
+    }))
+    if (!stillCurrent()) throw new Error('Inbox child snapshot lost its owner.')
+    for (const result of batch) {
+      const id = result.row._codexInboxCanonicalId
+      if (!result.valid) { unknown.add(id); continue }
+      if (!byThread.has(id)) byThread.set(id, new Set())
+      result.ids.forEach(child => byThread.get(id).add(child))
+    }
+  }
+  return {
+    childSnapshots: [...byThread].filter(([id]) => !unknown.has(id)).map(([session_id, ids]) => ({ session_id, childIds: [...ids], at })),
+    childUnknownSessionIds: [...unknown]
+  }
+}
+
+async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}, nominations = () => []) {
   const bridge = globalThis.window?.hermesDesktop
   if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
   const focusedBefore = codexInboxLiveFocus()
@@ -173,7 +284,8 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   // the recent page. Discovery alone carries no attention authority.
   const pendingWorkIds = inbox?.pendingWorkSessionIds?.(scope) || []
   const listedIds = new Set([...sessions.values()].flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
-  const missing = [...new Set([...explicitRequestedIds, ...pendingWorkIds])].filter(id => !listedIds.has(id))
+  const nominatedIds = nominations().filter(focus => sameInboxScope(focus, scope)).map(focus => focus.storedId)
+  const missing = [...new Set([...explicitRequestedIds, ...pendingWorkIds, ...nominatedIds])].filter(id => !listedIds.has(id))
   for (let index = 0; index < missing.length; index += 4) {
     const rows = await Promise.all(missing.slice(index, index + 4).map(async id => {
       try {
@@ -194,20 +306,25 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   // This stage deliberately carries no authority for activity or Settle.
   onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
   let liveSessions = [], rawLiveSessions = [], liveStatusKnown = false, liveReadSucceeded = false, liveStatusAt = 0
+  let childSnapshots = [], childUnknownSessionIds = []
   try {
     if (!sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
-    let live
+    let live, readIdentity, readChildren
     if (typeof host.requestProfile === 'function' && typeof host.profileRoutes === 'function') {
       const routes = (await host.profileRoutes()).filter(route => sameInboxScope(route, scope))
       if (routes.length !== 1 || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
       if (typeof routes[0].targetProfile === 'string' && routes[0].targetProfile) targetProfile = routes[0].targetProfile
       liveStatusAt = Date.now()
       live = await host.requestProfile(routes[0], 'session.active_list', { profile: targetProfile })
+      readIdentity = sessionId => host.requestProfile(routes[0], 'session.status', { session_id: sessionId })
+      readChildren = sessionId => host.requestProfile(routes[0], 'subagent.list', { session_id: sessionId })
     } else {
       // A legacy ambient request is safe only for the gateway it actually uses.
       if (!sameInboxScope(scope, inboxGatewayScope())) throw new Error('Inbox requires explicit live-owner routing.')
       liveStatusAt = Date.now()
       live = await host.request('session.active_list', { profile: targetProfile })
+      readIdentity = sessionId => host.request('session.status', { session_id: sessionId })
+      readChildren = sessionId => host.request('subagent.list', { session_id: sessionId })
     }
     if (Array.isArray(live?.sessions)) {
       liveReadSucceeded = true
@@ -216,22 +333,38 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
       rawLiveSessions = live.sessions.map(row => row && typeof row === 'object'
         ? Object.fromEntries(fields.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]])) : null)
       const focusedAfter = codexInboxLiveFocus(), metadata = [...sessions.values()]
-      if (focusedBefore && JSON.stringify(focusedBefore) === JSON.stringify(focusedAfter) && sameInboxScope(focusedBefore, scope)) {
-        const matching = rawLiveSessions.filter(row => row && (row.session_id || row.id) === focusedBefore.runtimeId &&
-          (!row.profile || row.profile === targetProfile) && (!row.connection_id || row.connection_id === scope.connectionId) &&
-          codexInboxLiveStoredMatch(focusedBefore.storedId, row, metadata))
-        if (matching.length === 1) {
-          const key = JSON.stringify([scope.connectionId, focusedBefore.runtimeId]), previous = liveOwners.get(key)
-          const conflict = previous && (previous.conflicted || previous.profile !== focusedBefore.profile ||
-            !codexInboxLiveStoredMatch(previous.storedId, matching[0], metadata))
-          liveOwners.set(key, conflict ? { ...previous, conflicted: true } : focusedBefore)
+      const stableFocus = focusedBefore && JSON.stringify(focusedBefore) === JSON.stringify(focusedAfter) ? [focusedBefore] : []
+      // Departure preserves a nomination, not authority. The owner-routed
+      // durable row and exactly one matching live runtime must validate it.
+      for (const focus of [...stableFocus, ...nominations()]) {
+        if (!sameInboxScope(focus, scope)) continue
+        const row = codexInboxUniqueLiveRow(focus.runtimeId, rawLiveSessions)
+        if (!row || row.profile && row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId ||
+            !metadata.some(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].includes(focus.storedId)) ||
+            !codexInboxLiveStoredMatch(focus.storedId, row, metadata)) continue
+        const key = JSON.stringify([scope.connectionId, focus.runtimeId]), previous = liveOwners.get(key)
+        const conflict = previous && (previous.conflicted || previous.profile !== focus.profile ||
+          !codexInboxLiveStoredMatch(previous.storedId, row, metadata))
+        liveOwners.set(key, conflict ? { ...previous, conflicted: true } : focus)
+        if (!conflict && typeof previous?.home === 'string' && previous.home && sameInboxScope(previous, focus)) {
+          liveOwners.set(key, { ...focus, home: previous.home })
         }
+      }
+      if (stableFocus.length && sameInboxScope(focusedBefore, scope)) {
+        await proveCodexInboxBackgroundOwners(scope, targetProfile, rawLiveSessions, metadata, liveOwners, focusedBefore, readIdentity,
+          () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope()))
       }
       ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, metadata, liveOwners))
       // A send can start before SQLite moves the old thread into the recent
       // page. Backfill only positively owned work, never unowned runtime IDs.
       const knownIds = new Set(metadata.flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
-      const workingIds = [...new Set(liveSessions.filter(row => codexInboxWorkStatus(row) === 'work')
+      // Qualified producer rows can discover missing metadata, but receive no
+      // canonical activity authority until that exact-owner metadata is read.
+      const discovery = rawLiveSessions.filter(row => row && row.profile === targetProfile &&
+        (!row.connection_id || row.connection_id === scope.connectionId) &&
+        codexInboxUniqueLiveRow(row.session_id || row.id, rawLiveSessions) === row &&
+        new Set(codexInboxLiveStoredIds(row)).size === 1)
+      const workingIds = [...new Set([...liveSessions, ...discovery].filter(row => codexInboxWorkStatus(row) === 'work')
         .flatMap(codexInboxLiveStoredIds))].filter(id => !knownIds.has(id))
       for (let index = 0; index < workingIds.length; index += 4) {
         const rows = await Promise.all(workingIds.slice(index, index + 4).map(async id => {
@@ -249,15 +382,17 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
       if (workingIds.length) {
         ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, [...sessions.values()], liveOwners))
       }
+      ;({ childSnapshots, childUnknownSessionIds } = await readCodexInboxChildSnapshots(scope, liveSessions, readChildren,
+        () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())))
     }
   } catch {
     // A partial live read or failed work backfill must not authorize Settle.
-    liveSessions = []; rawLiveSessions = []; liveStatusKnown = false; liveReadSucceeded = false
+    liveSessions = []; rawLiveSessions = []; childSnapshots = []; childUnknownSessionIds = []; liveStatusKnown = false; liveReadSucceeded = false
   }
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
   const rowOwnerScope = await readCodexInboxRowOwner(scope)
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
-  return { sessions: [...sessions.values()], liveSessions, rawLiveSessions, targetProfile, liveStatusKnown, liveReadSucceeded, liveStatusAt, rowOwnerScope, explicitRequestedIds, hasMore: offset < total }
+  return { sessions: [...sessions.values()], liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile, liveStatusKnown, liveReadSucceeded, liveStatusAt, rowOwnerScope, explicitRequestedIds, hasMore: offset < total }
 }
 
 function startCodexInboxObserver(ctx, inbox) {
@@ -266,22 +401,38 @@ function startCodexInboxObserver(ctx, inbox) {
   if (!inbox) return () => {}
   let scope = inboxOwnerScope(), pageCount = 1, mode = readCodexInboxMode(), disposed = false
   const liveOwners = new Map()
+  const nominatedFocus = new Map()
   const pendingEvents = []
   let refreshVersion = 0, refreshing = false
   let lastFocus = JSON.stringify(codexInboxLiveFocus()), lastBusy = new Set()
   let metadataPreview = null
   let liveAuthority = Symbol('Inbox live connection')
+  const nominations = () => {
+    for (const [key, item] of nominatedFocus) if (Date.now() - item.at > 10_000) nominatedFocus.delete(key)
+    return [...nominatedFocus.values()].map(item => item.focus)
+  }
+  const rememberFocus = () => {
+    const focus = codexInboxLiveFocus()
+    const connected = !sameInboxScope(scope, inboxGatewayScope()) || !host.state.gateway || host.state.gateway.get() === 'open'
+    if (disposed || mode !== 'on' || !connected || !focus || !sameInboxScope(focus, scope)) return
+    nominations()
+    const key = JSON.stringify(focus)
+    nominatedFocus.delete(key)
+    nominatedFocus.set(key, { focus, at: Date.now() })
+    if (nominatedFocus.size > 64) nominatedFocus.delete(nominatedFocus.keys().next().value)
+  }
   const options = () => {
     const owner = { ...scope }, pages = pageCount
     return {
       queryKey: [ID, 'inbox', owner.connectionId, owner.profile, pages],
       queryFn: async ({ signal }) => {
         const authority = liveAuthority, proofs = new Map(liveOwners)
+        rememberFocus()
         const data = await readCodexInboxPage(owner, pages, signal, inbox, proofs, metadata => {
           if (disposed || signal.aborted || authority !== liveAuthority || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
           metadataPreview = metadata
           project()
-        })
+        }, nominations)
         // In-flight reads and native cache hits cannot carry authority across
         // a disconnect or a new plugin lifetime. Stage owner proofs likewise.
         const connected = !sameInboxScope(owner, inboxGatewayScope()) ||
@@ -299,6 +450,9 @@ function startCodexInboxObserver(ctx, inbox) {
   }
   const observer = new CodexInboxObserverVendor.QueryObserver(queryClient, options())
   const refreshLiveIdentity = () => {
+    // Capture transitions even while an older read awaits proof. A microtask
+    // sees only the final focus after a synchronous departure.
+    rememberFocus()
     refreshVersion++
     if (refreshing || disposed || mode !== 'on') return
     refreshing = true
@@ -308,6 +462,7 @@ function startCodexInboxObserver(ctx, inbox) {
       try {
         while (!disposed && mode === 'on') {
           const version = refreshVersion
+          rememberFocus()
           if (observer.getCurrentResult().isFetching) await observer.refetch({ cancelRefetch: false })
           if (disposed || mode !== 'on') break
           await observer.refetch()
@@ -316,8 +471,8 @@ function startCodexInboxObserver(ctx, inbox) {
       } finally { refreshing = false }
     })
   }
-  const pendingWorkSessionIds = owner => pendingEvents.filter(item => sameInboxScope(item.focus, owner) &&
-    Date.now() - item.at <= 10_000).map(item => item.focus.storedId)
+  const pendingWorkSessionIds = owner => [...new Set(pendingEvents.filter(item => sameInboxScope(item.focus, owner) &&
+    Date.now() - item.at <= 10_000).flatMap(item => item.storedIds))]
   inbox.pendingWorkSessionIds = pendingWorkSessionIds
   const markReady = () => {
     const query = observer.getCurrentResult()
@@ -332,12 +487,21 @@ function startCodexInboxObserver(ctx, inbox) {
     const live = authoritative && Array.isArray(data?.rawLiveSessions)
       ? resolveCodexInboxLiveSessions(owner, data.targetProfile, data.rawLiveSessions, data.sessions, liveOwners)
       : { liveSessions: [], liveStatusKnown: false }
-    const verifiedRuntimeIds = new Set((live.liveSessions || []).filter(row =>
+    if (authoritative) for (const id of data.childUnknownSessionIds || []) {
+      live.liveSessions.push({ id, session_key: id, _codexInboxCanonicalId: id, profile: owner.profile, connection_id: owner.connectionId, status: 'unknown' })
+    }
+    const verifiedRows = (live.liveSessions || []).filter(row =>
       row.profile === owner.profile && row.connection_id === owner.connectionId &&
-      data.rawLiveSessions.some(raw => raw && (raw.session_id || raw.id) === (row.session_id || row.id)))
-      .map(row => row.session_id || row.id))
-    const busyBySession = Object.fromEntries(Object.entries(host.state.busyBySession?.get?.() || {})
-      .filter(([id]) => verifiedRuntimeIds.has(id)))
+      codexInboxUniqueLiveRow(row.session_id || row.id, data.rawLiveSessions) && row.status !== 'unknown')
+    const busy = host.state.busyBySession?.get?.() || {}
+    const busyBySession = {}, priority = { idle: 0, reading: 1, unknown: 2, work: 3 }
+    for (const row of verifiedRows) {
+      const runtimeId = row.session_id || row.id, storedId = row.session_key
+      if (!storedId || !Object.hasOwn(busy, runtimeId)) continue
+      const value = busy[runtimeId], previous = busyBySession[storedId]
+      if (!Object.hasOwn(busyBySession, storedId) ||
+          priority[codexInboxWorkStatus(value)] > priority[codexInboxWorkStatus(previous)]) busyBySession[storedId] = value
+    }
     inbox.setMode(mode === 'on')
     inbox.rowOwnerEvidence = mode === 'on' && !query.error && data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner)
       ? { scope: owner, ids: data.sessions.flatMap(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)) }
@@ -348,6 +512,7 @@ function startCodexInboxObserver(ctx, inbox) {
       sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
       liveStatusKnown: authoritative && !!data?.liveStatusKnown && !!live?.liveStatusKnown,
       liveStatusAt: data?.liveStatusAt,
+      childSnapshots: authoritative ? data?.childSnapshots || [] : [],
       // ID-only busy flags borrow only independently verified runtime identity.
       busyBySession,
       busyOwnerKnown: authoritative && !!data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner),
@@ -367,15 +532,22 @@ function startCodexInboxObserver(ctx, inbox) {
       }
     })
     if (authoritative && pendingEvents.length) {
-      const focus = JSON.stringify(codexInboxLiveFocus())
       for (let index = 0; index < pendingEvents.length;) {
         const item = pendingEvents[index]
-        if (Date.now() - item.at > 10_000 || JSON.stringify(item.focus) !== focus) {
+        if (Date.now() - item.at > 10_000 || !sameInboxScope(item.focus, owner)) {
           pendingEvents.splice(index, 1); continue
         }
-        if (!verifyLiveEvent(item.event)) { index++; continue }
+        const resolved = resolveLiveEvent(item.event)
+        const session = resolved && data.sessions.find(session => session.id === resolved.session_id)
+        const ids = session && [session.id, session._lineage_root_id, ...(session._lineage_ids || [])]
+        if (!session || !item.storedIds.some(id => ids.includes(id))) { index++; continue }
+        const key = inbox.model.key(owner, session)
+        if (!key) { index++; continue }
         pendingEvents.splice(index, 1)
-        inbox.activity?.(item.event)
+        // Resolve decisions after lineage is known, not against a transitional
+        // focus tuple. An unrelated Settle must not discard this runtime's work.
+        if ([...item.settledKeys].some(settled => inbox.model.key(owner, JSON.parse(settled)[2]) === key)) continue
+        inbox.activity?.({ ...resolved, canonicalSessionId: resolved.session_id })
       }
     }
     markReady()
@@ -385,32 +557,31 @@ function startCodexInboxObserver(ctx, inbox) {
     const nextScope = inboxOwnerScope(), nextMode = readCodexInboxMode()
     if (sameInboxScope(scope, nextScope) && mode === nextMode) return
     pendingEvents.length = 0
+    nominatedFocus.clear()
     if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null }
     mode = nextMode
     observer.setOptions(options())
     project()
   }
   const stopQuery = observer.subscribe(project)
-  const verifyLiveEvent = event => {
+  const resolveLiveEvent = event => {
     const query = observer.getCurrentResult(), data = query.data
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
         event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
-        !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return false
-    const raw = data.rawLiveSessions.filter(row => row && (row.session_id || row.id) === event.session_id)
-    if (raw.some(row => row.profile && row.profile !== data.targetProfile || row.connection_id && row.connection_id !== scope.connectionId)) return false
-    const proof = liveOwners.get(JSON.stringify([scope.connectionId, event.session_id]))
-    if (proof && !proof.conflicted && proof.profile === scope.profile &&
-        (!raw.length || raw.length === 1 && codexInboxLiveStoredMatch(proof.storedId, raw[0], data.sessions)) &&
-        data.sessions.some(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].includes(proof.storedId))) return true
-    return raw.length === 1 && raw[0].profile === data.targetProfile &&
-      data.sessions.some(row => codexInboxLiveStoredMatch(row.id, raw[0], [row]))
+        !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
+    const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, data.sessions, liveOwners)
+    if (!canonicalId) return null
+    const matches = data.sessions.filter(session => (session._lineage_root_id || session.id) === canonicalId)
+    return matches.length ? { ...event, session_id: matches[0].id } : null
   }
+  const verifyLiveEvent = event => !!resolveLiveEvent(event)
   inbox.verifyLiveEvent = verifyLiveEvent
+  inbox.resolveLiveEvent = resolveLiveEvent
   const focusChanged = () => {
-    configure(); project()
+    configure(); rememberFocus(); project()
     const next = JSON.stringify(codexInboxLiveFocus())
     if (next !== lastFocus) {
-      pendingEvents.length = 0; lastFocus = next
+      lastFocus = next
       refreshLiveIdentity()
     }
   }
@@ -430,8 +601,9 @@ function startCodexInboxObserver(ctx, inbox) {
       // successful decision may restore attention; wall-clock order is unsafe.
       for (let index = pendingEvents.length - 1; index >= 0; index--) {
         const item = pendingEvents[index]
-        if (sameInboxScope(item.focus, event.scope) &&
-            inbox.model.key(item.focus, item.focus.storedId) === settledKey) pendingEvents.splice(index, 1)
+        if (!sameInboxScope(item.focus, event.scope)) continue
+        item.settledKeys.add(settledKey)
+        if (item.settledKeys.size > 64) pendingEvents.splice(index, 1)
       }
     }),
     ...['profile', 'connectionId', 'focusedSessionOwner', 'focusedStoredSessionId', 'focusedSessionId'].map(name => host.state[name]?.subscribe?.(focusChanged)),
@@ -441,6 +613,7 @@ function startCodexInboxObserver(ctx, inbox) {
         liveAuthority = Symbol('Inbox live connection')
         metadataPreview = null
         pendingEvents.length = 0
+        nominatedFocus.clear()
         liveOwners.clear()
         project()
       } else if (mode === 'on') {
@@ -452,17 +625,22 @@ function startCodexInboxObserver(ctx, inbox) {
   if (typeof host.onEvent === 'function') subscriptions.push(host.onEvent('*', event => {
     // SDK profile tags can describe the active surface, not the event producer.
     // They may trigger a scoped read; only that read can establish ownership.
-    if (!event.replayed && ['message.start', 'message.complete', 'error'].includes(event.type) &&
+    if (!event.replayed && ['message.start', 'message.complete', 'error', 'subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type) &&
         mode === 'on' && event.connectionId === scope.connectionId && event.profile === scope.profile) {
-      const focus = codexInboxLiveFocus()
-      if (!verifyLiveEvent(event) && focus && sameInboxScope(focus, scope) && focus.runtimeId === event.session_id) {
+      const currentFocus = codexInboxLiveFocus()
+      if (currentFocus?.runtimeId === event.session_id) rememberFocus()
+      const candidates = nominations().filter(focus => sameInboxScope(focus, scope) && focus.runtimeId === event.session_id)
+      if (!verifyLiveEvent(event) && candidates.length) {
         // Keep only lifecycle + the nominated identity, never message content.
-        // Release it only after a fresh connected read verifies that identity.
+        // Runtime/stored atoms are not atomic. Retain alternatives and require
+        // their independently proved durable lineage before releasing the event.
         const payload = {}
         if (typeof event.payload?.status === 'string') payload.status = event.payload.status
         if (event.payload?.error) payload.error = true
-        pendingEvents.push({ focus, at: Date.now(), event: {
-          type: event.type, ...scope, session_id: focus.runtimeId, payload
+        if (typeof event.payload?.subagent_id === 'string') payload.subagent_id = event.payload.subagent_id
+        pendingEvents.push({ focus: { ...scope }, storedIds: [...new Set(candidates.map(focus => focus.storedId))],
+          settledKeys: new Set(), at: Date.now(), event: {
+          type: event.type, ...scope, session_id: event.session_id, payload
         } })
         if (pendingEvents.length > 64) pendingEvents.splice(0, pendingEvents.length - 64)
       }
@@ -480,6 +658,7 @@ function startCodexInboxObserver(ctx, inbox) {
     if (disposed) return
     disposed = true
     pendingEvents.length = 0
+    nominatedFocus.clear()
     subscriptions.forEach(unsubscribe => unsubscribe())
     window.removeEventListener(INBOX_MODE_EVENT, configure)
     readiness?.disconnect()
@@ -487,6 +666,7 @@ function startCodexInboxObserver(ctx, inbox) {
     observer.destroy()
     liveOwners.clear()
     if (inbox.verifyLiveEvent === verifyLiveEvent) delete inbox.verifyLiveEvent
+    if (inbox.resolveLiveEvent === resolveLiveEvent) delete inbox.resolveLiveEvent
     if (inbox.pendingWorkSessionIds === pendingWorkSessionIds) delete inbox.pendingWorkSessionIds
     inbox.rowOwnerEvidence = null
     markReady()
@@ -548,10 +728,11 @@ function connectCodexInboxEvents(inbox) {
     // Presentation tags alone cannot prove ownership, even when populated.
     // Verify the runtime against the observer's connected owner evidence.
     if (!event.connectionId || !event.profile || !event.session_id) return
-    if (typeof inbox.verifyLiveEvent !== 'function' || !inbox.verifyLiveEvent(event)) return
-    if (typeof inbox.activity === 'function') inbox.activity(event)
+    const resolved = inbox.resolveLiveEvent?.(event)
+    if (!resolved) return
+    if (typeof inbox.activity === 'function') inbox.activity({ ...resolved, canonicalSessionId: resolved.session_id })
     else if (['message.start', 'tool.start'].includes(event.type)) {
-      inbox.reactivate({ type: 'work', scope: { connectionId: event.connectionId, profile: event.profile }, session_id: event.session_id })
+      inbox.reactivate({ type: 'work', scope: { connectionId: resolved.connectionId, profile: resolved.profile }, session_id: resolved.session_id, canonicalSessionId: resolved.session_id })
     }
   })
 }
