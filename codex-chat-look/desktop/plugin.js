@@ -97,8 +97,6 @@ const BROWSER_PALETTE_CSS = `
 html[data-codex-chat-look='true'][data-hermes-theme='codex-chat'][data-hermes-mode='dark'] {
   --codex-browser-background: var(--codex-color-chat);
   --codex-browser-tab: #1d1d1d;
-  --codex-browser-address: transparent;
-  --codex-browser-border: transparent;
   --codex-browser-divider: #232323;
   --codex-sidebar-divider: #2c2c2c;
 }
@@ -2154,22 +2152,40 @@ html[data-codex-chat-look='true']
 
 html[data-codex-chat-look='true'] aside[data-preview-browser] {
   background: var(--codex-browser-background) !important;
+  container-type: inline-size;
+  container-name: codex-browser;
+  --codex-browser-shadow-ink: var(--ui-text-primary);
+  --codex-browser-shadow: 0 1px 2px color-mix(in srgb, var(--codex-browser-shadow-ink) 9%, transparent),
+    0 2px 6px color-mix(in srgb, var(--codex-browser-shadow-ink) 7%, transparent);
+}
+
+/* Keep custom-theme controls in the same color family as their backdrop. */
+html[data-codex-chat-look='true']:not([data-hermes-theme='codex-chat']) aside[data-preview-browser] {
+  --codex-browser-address: color-mix(in srgb, var(--codex-browser-background) 97%, var(--ui-text-primary));
+  --codex-browser-border: color-mix(in srgb, var(--ui-text-primary) 10%, var(--codex-browser-address));
+}
+
+html[data-codex-chat-look='true'][data-hermes-mode='dark'] aside[data-preview-browser] {
+  --codex-browser-shadow-ink: var(--theme-background-seed, var(--codex-browser-background));
 }
 
 /* Width responds to the pane, not the whole window. Keep every native action
    reachable when a split narrows: wrap instead of clipping the address. */
 html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) {
+  position: relative !important;
+  isolation: isolate;
+  anchor-scope: --codex-browser-tools-start, --codex-browser-tools-end;
   height: auto !important;
-  min-height: 40px !important;
+  min-height: 45px !important;
   flex: 0 0 auto !important;
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: center !important;
   box-sizing: border-box !important;
-  padding: 5px 8px 6px !important;
+  padding: 6px 10px !important;
   gap: 4px !important;
   border: 0 !important;
-  border-bottom: 1px solid var(--codex-browser-divider) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--codex-browser-divider) 35%, transparent) !important;
   border-radius: 0 !important;
   background: var(--codex-browser-background) !important;
   box-shadow: none !important;
@@ -2182,18 +2198,18 @@ html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child 
 
 html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) input[data-slot='input'] {
   width: 100% !important;
-  height: 28px !important;
-  min-height: 28px !important;
+  height: 32px !important;
+  min-height: 32px !important;
   box-sizing: border-box !important;
-  border-radius: 10px !important;
+  border-radius: 999px !important;
   border-width: 1px !important;
   border-style: solid !important;
   background: var(--codex-browser-address) !important;
   color: var(--ui-text-primary) !important;
-  padding-left: 10px !important;
+  padding-left: 12px !important;
   padding-right: 28px !important;
   font-size: 12px !important;
-  box-shadow: none !important;
+  box-shadow: var(--codex-browser-shadow) !important;
 }
 
 html[data-codex-chat-look='true'] aside[data-preview-browser] input[data-slot='input']:not([aria-invalid='true']) {
@@ -2225,12 +2241,99 @@ html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child 
   color: var(--ui-text-primary) !important;
 }
 
-/* Shared tabs retain the screenshot's 28px pills and 10px vertical margins.
-   Keep the browser navigation row compact without changing native actions. */
-html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) {
-  min-height: 39px !important;
-  padding: 5px 10px !important;
-  gap: 5px !important;
+/* A shared capsule behind the three native navigation buttons. No reparenting:
+   tooltips, disabled states and React's handlers remain on their own nodes. */
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input'])::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  width: 96px;
+  height: 32px;
+  box-sizing: border-box;
+  border: 1px solid var(--codex-browser-border);
+  border-radius: 999px;
+  background: var(--codex-browser-address);
+  box-shadow: var(--codex-browser-shadow);
+  z-index: -1;
+  pointer-events: none;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:nth-child(-n+3) {
+  position: relative;
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) input[data-slot='input'].pl-6 {
+  padding-left: 24px !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:nth-child(3) {
+  margin-inline-end: 6px !important;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:nth-child(3)::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 7px;
+  width: 1px;
+  height: 14px;
+  background: var(--codex-browser-border);
+  pointer-events: none;
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button {
+  border-radius: 999px !important;
+}
+
+/* Paint shared chrome without moving React-owned controls. Narrow panes keep
+   ungrouped actions so native wrapping remains usable. */
+@supports (anchor-name: --codex-browser-tools-start) {
+  @container codex-browser (min-width: 520px) {
+    html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > div:has(> input[data-slot='input']) + button {
+      anchor-name: --codex-browser-tools-start;
+      margin-inline-start: 10px;
+    }
+    html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:nth-last-child(2) {
+      anchor-name: --codex-browser-tools-end;
+    }
+    html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input'])::after {
+      content: '';
+      position: absolute;
+      left: calc(anchor(--codex-browser-tools-start left) - 4px);
+      right: calc(anchor(--codex-browser-tools-end right) - 4px);
+      top: calc(anchor(--codex-browser-tools-start top) - 4px);
+      height: 32px;
+      box-sizing: border-box;
+      border: 1px solid var(--codex-browser-border);
+      border-radius: 999px;
+      background: var(--codex-browser-address);
+      box-shadow: var(--codex-browser-shadow);
+      pointer-events: none;
+      z-index: -1;
+    }
+    html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:last-child {
+      width: 32px !important;
+      min-width: 32px !important;
+      height: 32px !important;
+      min-height: 32px !important;
+      margin-inline-start: 8px;
+      border: 1px solid var(--codex-browser-border) !important;
+      background: var(--codex-browser-address) !important;
+      box-shadow: var(--codex-browser-shadow) !important;
+    }
+    html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) > button:last-child:is(:hover, :focus-visible):not(:disabled) {
+      background: var(--ui-row-hover-background) !important;
+    }
+  }
+}
+
+html[data-codex-chat-look='true'] aside[data-preview-browser] > div:first-child > div:has(> div > input[data-slot='input']) button:not(:disabled) {
+  color: var(--ui-text-primary) !important;
 }
 
 /* Paint the reference hairlines without narrowing native resize hit targets. */

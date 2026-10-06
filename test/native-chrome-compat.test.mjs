@@ -53,7 +53,7 @@ const enabled=measure();by('reload').click();by('queue-remove-one').click();by('
     assert.equal(r.enabled.tabHeight,28);assert.equal(r.enabled.stripHeight,48)
     assert.ok(r.enabled.headerHeight>=48,'header contains its tabstrip')
     assert.equal(r.enabled.corner,'0px','integrated header owns the upper corner')
-    assert.equal(r.enabled.addressRadius,'10px');assert.ok(r.enabled.toolbarHeight>=39)
+    assert.equal(r.enabled.addressRadius,'999px');assert.ok(r.enabled.toolbarHeight>=45)
     assert.equal(r.enabled.cardMarked,'true');assert.equal(r.enabled.secondCard,'true')
     assert.equal(r.enabled.frameRadius,'20px');assert.equal(r.enabled.frameBorder,'0px')
     assert.equal(r.enabled.frameBackground,'rgba(0, 0, 0, 0)')
