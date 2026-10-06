@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## [1.10.0] - 2026-10-06
+
 ### Improved
 
 - Refine browser controls with rounded capsules, theme-derived surfaces, subtle shadows and a softer header divider, preserving native actions and narrow-pane wrapping.

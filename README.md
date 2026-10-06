@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-Version 1.9.1 fixes upper-button clicks on macOS, clears Inbox completion dots when the latest reply is visible, and matches sidebar captions to chat tabs. Inbox still keeps chats that need attention until you settle them, with Snooze for temporary hiding. New work brings older, settled and pinned chats back. Cron sessions are excluded. It retains the stable top bar, native theme support, release-history images and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
+Version 1.10.0 fixes upper-button clicks on macOS, clears Inbox completion dots when the latest reply is visible, and matches sidebar captions to chat tabs. Inbox still keeps chats that need attention until you settle them, with Snooze for temporary hiding. New work brings older, settled and pinned chats back. Cron sessions are excluded. It retains the stable top bar, native theme support, release-history images and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
 
 > [!IMPORTANT]
 > This version targets the updated Hermes Desktop layout. If you are keeping the previous layout, use [Codex Skin v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) instead. Use a pinned download for that version, not `main`. See [Compatibility](#compatibility).
