@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Improved
+
+- Refine browser controls with rounded capsules, theme-derived surfaces, subtle shadows and a softer header divider, preserving native actions and narrow-pane wrapping.
+
 ### Added
 
 - Two intermediate **Composer width** choices, **Codex +20 %** and **Codex +40 %**, between the original Codex and native Hermes widths. Existing preferences, the Codex default, responsive gutters and native floating-composer widths are preserved.
