@@ -9,7 +9,7 @@ Codex Skin gives Hermes Desktop a Codex-inspired chat layout while preserving He
 
 ## Status
 
-Version 1.9.0 adds Inbox: chats enter when verified work starts and stay until you settle them, with Snooze for temporary hiding. New work brings older, settled and pinned chats back. Cron sessions are excluded. It retains the stable top bar, native theme support, release-history images and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
+Version 1.9.1 fixes upper-button clicks on macOS, clears Inbox completion dots when the latest reply is visible, and matches sidebar captions to chat tabs. Inbox still keeps chats that need attention until you settle them, with Snooze for temporary hiding. New work brings older, settled and pinned chats back. Cron sessions are excluded. It retains the stable top bar, native theme support, release-history images and one-click skin updates. The plugin uses Hermes' desktop entry point, but some styling and the local update bridge depend on Desktop interfaces that can change between Hermes releases.
 
 > [!IMPORTANT]
 > This version targets the updated Hermes Desktop layout. If you are keeping the previous layout, use [Codex Skin v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0) instead. Use a pinned download for that version, not `main`. See [Compatibility](#compatibility).
@@ -121,6 +121,8 @@ Native row badges require a verified single connection/profile and a matching ad
 Settling or snoozing the current thread opens the next Inbox thread, or a new chat if none remains in the loaded list. Acting on another thread does not navigate. Inbox scrolls without manual pagination controls. Previously work-admitted threads remain available even beyond the first history page. Pinned and Sessions stay below Inbox, including when expanded; neither section must be closed to expose Inbox. Turning Inbox Off restores native section controls and hides the Inbox badges without erasing settled state or snooze deadlines.
 
 **Snooze** is on the left and appears only on hover or keyboard focus. The **Settle** check is on the right and stays visible at rest regardless of activity; its reserved slot keeps the title and Snooze in place. Real work uses a theme-foreground dot and the installed Hermes segmented contour around the whole row, not a rotating arc around the dot. Idle, reading and unknown activity states show no activity indicator. A successful terminal reply or the native unread marker produces the green completed dot; errors, interruptions and missing live status do not imply success. A parent handoff while observed subagents remain active also does not imply completion. Activity events require the exact source/profile and a verified stored/runtime identity; replayed and foreign-owner events are ignored. Reduced-motion keeps the working marker and a static contour.
+
+Viewing the latest completed reply clears its green completion dot without settling the chat or removing it from Inbox. Reading an earlier reply does not clear a newer one. Fresh work re-arms the indicator for the next completion.
 
 Session listing uses Hermes' native endpoint and follows its configured retention policy. Settle and Snooze themselves write only the plugin's local state and never archive a session.
 
