@@ -245,7 +245,14 @@ for (const mode of ['fallback', 'dark', 'light']) {
       assert.deepEqual(await browser.evaluate('events'), ['settle'], 'visible check invokes the same parent callback')
       assert.equal(await browser.evaluate('bubbled'), 0)
       await browser.call('Input.dispatchMouseEvent', { type:'mouseMoved', x:600, y:400 })
-      await browser.evaluate(`document.activeElement.blur();ui.menu.focus();ui.update({menuDisabled:true});new Promise(r=>setTimeout(r,130))`)
+      await browser.evaluate(`(async()=>{
+        document.activeElement.blur();ui.menu.focus();ui.update({menuDisabled:true});
+        const deadline=performance.now()+1500;
+        while(document.activeElement===ui.menu || visible().some(control=>control.opacity!=='0')) {
+          if(performance.now()>deadline)throw Error('disabled action opacity did not settle');
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+        }
+      })()`)
       assert.equal(await browser.evaluate('document.activeElement===ui.menu'), false, 'disabling Settle releases focus before hiding it')
       assert.equal(await browser.evaluate('ui.menu.disabled'), true)
       assert.deepEqual(await browser.evaluate('visible()'), [{ opacity:'0', pointerEvents:'none' }, { opacity:'0', pointerEvents:'none' }])

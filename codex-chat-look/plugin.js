@@ -4944,17 +4944,21 @@ function startCodexInboxObserver(ctx, inbox) {
   }
   const project = () => {
     if (disposed || !sameInboxScope(scope, inboxOwnerScope())) return
-    const query = observer.getCurrentResult(), owner = { ...scope }, data = metadataPreview || query.data
-    const authoritative = !query.error && data?._codexInboxLiveAuthority === liveAuthority
-    const live = authoritative && Array.isArray(data?.rawLiveSessions)
-      ? resolveCodexInboxLiveSessions(owner, data.targetProfile, data.rawLiveSessions, data.sessions, liveOwners)
+    const query = observer.getCurrentResult(), owner = { ...scope }, snapshot = query.data, data = metadataPreview || snapshot
+    // Metadata can arrive before live RPCs. Retain this connection's last
+    // proof, but revalidate it against the newest metadata before projecting.
+    const authoritative = !query.error && snapshot?._codexInboxLiveAuthority === liveAuthority
+    const live = authoritative && Array.isArray(snapshot?.rawLiveSessions)
+      ? resolveCodexInboxLiveSessions(owner, snapshot.targetProfile, snapshot.rawLiveSessions, data.sessions, liveOwners)
       : { liveSessions: [], liveStatusKnown: false }
-    if (authoritative) for (const id of data.childUnknownSessionIds || []) {
+    if (authoritative) for (const id of snapshot.childUnknownSessionIds || []) {
       live.liveSessions.push({ id, session_key: id, _codexInboxCanonicalId: id, profile: owner.profile, connection_id: owner.connectionId, status: 'unknown' })
     }
     const verifiedRows = (live.liveSessions || []).filter(row =>
       row.profile === owner.profile && row.connection_id === owner.connectionId &&
-      codexInboxUniqueLiveRow(row.session_id || row.id, data.rawLiveSessions) && row.status !== 'unknown')
+      codexInboxUniqueLiveRow(row.session_id || row.id, snapshot.rawLiveSessions) && row.status !== 'unknown')
+    const childSnapshots = authoritative ? (snapshot.childSnapshots || []).filter(child =>
+      verifiedRows.some(row => row._codexInboxCanonicalId === child.session_id)) : []
     const busy = host.state.busyBySession?.get?.() || {}
     const busyBySession = {}, priority = { idle: 0, reading: 1, unknown: 2, work: 3 }
     for (const row of verifiedRows) {
@@ -4965,19 +4969,19 @@ function startCodexInboxObserver(ctx, inbox) {
           priority[codexInboxWorkStatus(value)] > priority[codexInboxWorkStatus(previous)]) busyBySession[storedId] = value
     }
     inbox.setMode(mode === 'on')
-    inbox.rowOwnerEvidence = mode === 'on' && !query.error && data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner)
+    inbox.rowOwnerEvidence = mode === 'on' && authoritative && snapshot?.rowOwnerScope && sameInboxScope(snapshot.rowOwnerScope, owner)
       ? { scope: owner, ids: data.sessions.flatMap(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)) }
       : null
     window.dispatchEvent(new CustomEvent(INBOX_ROWS_EVENT))
     inbox.update({
       scope: owner,
       sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
-      liveStatusKnown: authoritative && !!data?.liveStatusKnown && !!live?.liveStatusKnown,
-      liveStatusAt: data?.liveStatusAt,
-      childSnapshots: authoritative ? data?.childSnapshots || [] : [],
+      liveStatusKnown: authoritative && !!snapshot?.liveStatusKnown && !!live?.liveStatusKnown,
+      liveStatusAt: authoritative ? snapshot?.liveStatusAt : undefined,
+      childSnapshots,
       // ID-only busy flags borrow only independently verified runtime identity.
       busyBySession,
-      busyOwnerKnown: authoritative && !!data?.rowOwnerScope && sameInboxScope(data.rowOwnerScope, owner),
+      busyOwnerKnown: authoritative && !!snapshot?.rowOwnerScope && sameInboxScope(snapshot.rowOwnerScope, owner),
       focusedStoredSessionId: host.state.focusedStoredSessionId?.get?.() || null,
       explicitRequestedIds: data?.explicitRequestedIds,
       loading: !data && (query.isPending || query.isFetching),
@@ -5031,9 +5035,10 @@ function startCodexInboxObserver(ctx, inbox) {
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
         event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
         !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
-    const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, data.sessions, liveOwners)
+    const metadata = metadataPreview?.sessions || data.sessions
+    const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, metadata, liveOwners)
     if (!canonicalId) return null
-    const matches = data.sessions.filter(session => (session._lineage_root_id || session.id) === canonicalId)
+    const matches = metadata.filter(session => (session._lineage_root_id || session.id) === canonicalId)
     return matches.length ? { ...event, session_id: matches[0].id } : null
   }
   const verifyLiveEvent = event => !!resolveLiveEvent(event)
@@ -6637,7 +6642,6 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       const focusedHeader = focusedElement?.hasAttribute('data-codex-inbox-header');
       const oldHeader = island.querySelector('[data-codex-inbox-header]');
       const scrollTop = island.querySelector('[data-slot="sidebar-group-content"]')?.scrollTop || 0;
-      island.replaceChildren();
       const reuseHeader = oldHeader?.__codexInboxTemplate === headerTemplate.fingerprint;
       const header = reuseHeader ? oldHeader : headerTemplate.header;
       const wrapper = reuseHeader ? oldHeader.parentElement : headerTemplate.wrapper;
@@ -6654,9 +6658,17 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       }
       header.setAttribute('aria-expanded', String(inboxOpen)); header.setAttribute('data-codex-inbox-header', '');
       header.querySelector('.codicon-chevron-right').classList.toggle('rotate-90', inboxOpen);
-      island.appendChild(wrapper);
-      const content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade'; content.hidden = !inboxOpen;
-      island.appendChild(content);
+      // Selection/title updates must not detach working rows and restart their
+      // CSS animation. Keep their content owner mounted between projections.
+      if (!reuseHeader) oldHeader?.parentElement?.remove();
+      if (wrapper.parentElement !== island) island.insertBefore(wrapper, island.firstChild);
+      let content = island.querySelector('[data-slot="sidebar-group-content"]');
+      if (!content) {
+        content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade';
+        island.appendChild(content);
+      }
+      content.hidden = !inboxOpen;
+      for (const child of [...content.children]) if (!child.hasAttribute('data-codex-inbox-row')) child.remove();
       const status = text => { const el = doc.createElement('div'); el.setAttribute('data-codex-inbox-status', ''); el.setAttribute('role', 'status'); el.textContent = text; content.appendChild(el); };
       if (input.error) {
         status('Inbox could not be loaded. Refresh Sessions to retry.');
@@ -6667,6 +6679,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       if (admission.error) status(admission.error);
       if (!input.loading && !input.error && !model.error && !admission.error && !sessions.length) status('Inbox is clear. Settled and snoozed threads remain in Sessions and Pinned.');
       const kept = new Set();
+      let cursor = content.firstChild;
       for (const session of shown) {
         const key = model.key(currentScope, session);
         if (kept.has(key)) continue;
@@ -6697,7 +6710,11 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         setAttr(action, 'aria-label', `Settle ${title}`); setAttr(clock, 'aria-label', `Snooze ${title}`);
         // Opening stays enabled as before; Snooze does not depend on work status.
         clock.disabled = !!input.loading || !!input.error; clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
-        content.appendChild(row);
+        if (row !== cursor) {
+          if (row.isConnected && row.parentElement === content && typeof content.moveBefore === 'function') content.moveBefore(row, cursor);
+          else content.insertBefore(row, cursor);
+        }
+        cursor = row.nextSibling;
       }
       for (const item of settleNotices.values()) {
         const notice = doc.createElement('div');
@@ -6710,7 +6727,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         progress.style.animationDelay = `-${Math.max(0, 3000 - (item.until - Date.now()))}ms`;
         track.appendChild(progress); notice.append(label, undo, track); content.appendChild(notice);
       }
-      for (const key of rowBindings.keys()) if (!kept.has(key)) rowBindings.delete(key);
+      for (const [key, binding] of rowBindings) if (!kept.has(key)) { binding.row.remove(); rowBindings.delete(key); }
       if (snoozePopup && !snoozePopup.anchor.isConnected) closeSnoozePopup(false);
 
       content.scrollTop = scrollTop;

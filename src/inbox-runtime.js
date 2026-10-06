@@ -945,7 +945,6 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       const focusedHeader = focusedElement?.hasAttribute('data-codex-inbox-header');
       const oldHeader = island.querySelector('[data-codex-inbox-header]');
       const scrollTop = island.querySelector('[data-slot="sidebar-group-content"]')?.scrollTop || 0;
-      island.replaceChildren();
       const reuseHeader = oldHeader?.__codexInboxTemplate === headerTemplate.fingerprint;
       const header = reuseHeader ? oldHeader : headerTemplate.header;
       const wrapper = reuseHeader ? oldHeader.parentElement : headerTemplate.wrapper;
@@ -962,9 +961,17 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       }
       header.setAttribute('aria-expanded', String(inboxOpen)); header.setAttribute('data-codex-inbox-header', '');
       header.querySelector('.codicon-chevron-right').classList.toggle('rotate-90', inboxOpen);
-      island.appendChild(wrapper);
-      const content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade'; content.hidden = !inboxOpen;
-      island.appendChild(content);
+      // Selection/title updates must not detach working rows and restart their
+      // CSS animation. Keep their content owner mounted between projections.
+      if (!reuseHeader) oldHeader?.parentElement?.remove();
+      if (wrapper.parentElement !== island) island.insertBefore(wrapper, island.firstChild);
+      let content = island.querySelector('[data-slot="sidebar-group-content"]');
+      if (!content) {
+        content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade';
+        island.appendChild(content);
+      }
+      content.hidden = !inboxOpen;
+      for (const child of [...content.children]) if (!child.hasAttribute('data-codex-inbox-row')) child.remove();
       const status = text => { const el = doc.createElement('div'); el.setAttribute('data-codex-inbox-status', ''); el.setAttribute('role', 'status'); el.textContent = text; content.appendChild(el); };
       if (input.error) {
         status('Inbox could not be loaded. Refresh Sessions to retry.');
@@ -975,6 +982,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       if (admission.error) status(admission.error);
       if (!input.loading && !input.error && !model.error && !admission.error && !sessions.length) status('Inbox is clear. Settled and snoozed threads remain in Sessions and Pinned.');
       const kept = new Set();
+      let cursor = content.firstChild;
       for (const session of shown) {
         const key = model.key(currentScope, session);
         if (kept.has(key)) continue;
@@ -1005,7 +1013,11 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         setAttr(action, 'aria-label', `Settle ${title}`); setAttr(clock, 'aria-label', `Snooze ${title}`);
         // Opening stays enabled as before; Snooze does not depend on work status.
         clock.disabled = !!input.loading || !!input.error; clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
-        content.appendChild(row);
+        if (row !== cursor) {
+          if (row.isConnected && row.parentElement === content && typeof content.moveBefore === 'function') content.moveBefore(row, cursor);
+          else content.insertBefore(row, cursor);
+        }
+        cursor = row.nextSibling;
       }
       for (const item of settleNotices.values()) {
         const notice = doc.createElement('div');
@@ -1018,7 +1030,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         progress.style.animationDelay = `-${Math.max(0, 3000 - (item.until - Date.now()))}ms`;
         track.appendChild(progress); notice.append(label, undo, track); content.appendChild(notice);
       }
-      for (const key of rowBindings.keys()) if (!kept.has(key)) rowBindings.delete(key);
+      for (const [key, binding] of rowBindings) if (!kept.has(key)) { binding.row.remove(); rowBindings.delete(key); }
       if (snoozePopup && !snoozePopup.anchor.isConnected) closeSnoozePopup(false);
 
       content.scrollTop = scrollTop;
