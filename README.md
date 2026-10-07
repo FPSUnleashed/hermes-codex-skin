@@ -1,10 +1,10 @@
 # Codex Skin for Hermes Desktop
 
 <p>
-  <a href="docs/images/skin-cream.jpg"><img src="docs/images/skin-cream.jpg" width="180" alt="Codex Skin with a cream theme and status bar"></a>
-  <a href="docs/images/skin-dark.jpg"><img src="docs/images/skin-dark.jpg" width="180" alt="Codex Skin with a dark blue theme"></a>
-  <a href="docs/images/skin-light.jpg"><img src="docs/images/skin-light.jpg" width="180" alt="Codex Skin with a light cream theme"></a>
-  <a href="docs/images/skin-white.jpg"><img src="docs/images/skin-white.jpg" width="180" alt="Codex Skin with a white theme"></a>
+  <a href="docs/images/skin-cream.jpg"><img src="docs/images/skin-cream.jpg" width="360" alt="Codex Skin with a cream theme and status bar"></a>
+  <a href="docs/images/skin-dark.jpg"><img src="docs/images/skin-dark.jpg" width="360" alt="Codex Skin with a dark blue theme"></a>
+  <a href="docs/images/skin-light.jpg"><img src="docs/images/skin-light.jpg" width="360" alt="Codex Skin with a light cream theme"></a>
+  <a href="docs/images/skin-white.jpg"><img src="docs/images/skin-white.jpg" width="360" alt="Codex Skin with a white theme"></a>
 </p>
 
 Codex-inspired chat layout for Hermes Desktop, with native theme colors, Glass/Clear backgrounds, history previews and an optional task Inbox. Native model menus, voice controls and Queue behavior remain Hermes-owned.
