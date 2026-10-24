@@ -68,6 +68,7 @@ Open the command palette and search for **Codex Skin:**. Choices persist locally
 | Pinned user messages | Hermes / Off | Hermes |
 | Clean transcript | On / Off | Off |
 | Inbox | On / Off | On |
+| Floating sidebar | On / Off | On |
 
 
 Enable or disable the skin under **Capabilities → Plugins**. Under **Settings → Appearance**, choose **Codex Skin** for the original Codex palette, or keep your native Hermes theme. Installing the plugin does not select its theme.

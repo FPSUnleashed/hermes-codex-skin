@@ -19,6 +19,7 @@ const COMPOSER_WIDTH_MODES = {
 const PINNED_USER_MESSAGES_STORAGE_KEY = 'pinned-user-messages'
 const CLEAN_TRANSCRIPT_STORAGE_KEY = 'clean-transcript'
 const CLEAN_TRANSCRIPT_EVENT = `${ID}:clean-transcript`
+const FLOATING_SIDEBAR_STORAGE_KEY = 'floating-sidebar'
 
 const PLAYBACK_CLOSE_GRACE_MS = 250
 const PLAYBACK_MOTION_MS = 240
@@ -2738,6 +2739,36 @@ function setCleanTranscriptMode(mode) {
   window.dispatchEvent(new window.Event(CLEAN_TRANSCRIPT_EVENT))
 }
 
+function readFloatingSidebarMode() {
+  try {
+    return pluginStorage?.get(FLOATING_SIDEBAR_STORAGE_KEY, 'on') === 'off' ? 'off' : 'on'
+  } catch {
+    return 'off'
+  }
+}
+
+function syncFloatingSidebarRoot() {
+  const mode = readFloatingSidebarMode()
+  globalThis.document?.documentElement?.setAttribute?.('data-codex-floating-sidebar', mode)
+  return mode
+}
+
+function setFloatingSidebarMode(mode) {
+  const normalized = mode === 'off' ? 'off' : 'on'
+  try {
+    // Do not replace an unreadable preference or apply an unverified save.
+    if (typeof pluginStorage?.get !== 'function' || typeof pluginStorage?.set !== 'function') throw Error('Storage unavailable')
+    pluginStorage.get(FLOATING_SIDEBAR_STORAGE_KEY, 'on')
+    pluginStorage.set(FLOATING_SIDEBAR_STORAGE_KEY, normalized)
+    if (pluginStorage.get(FLOATING_SIDEBAR_STORAGE_KEY, null) !== normalized) throw Error('Setting was not saved')
+  } catch {
+    host.notify?.({ kind: 'error', message: 'Floating sidebar setting could not be saved. Layout was not changed.' })
+    return false
+  }
+  syncFloatingSidebarRoot()
+  return true
+}
+
 function clearCleanTranscriptDecorations(scope = document) {
   const pairs = scope?.matches?.('[data-slot="aui_turn-pair"]')
     ? [scope]
@@ -3916,6 +3947,7 @@ function installChatStyleRuntime() {
   syncComposerWidthRoot()
   syncPinnedUserMessagesRoot()
   syncCleanTranscriptRoot()
+  syncFloatingSidebarRoot()
   const uninstallTitlebarAlignment = installTitlebarAlignment()
   const uninstallBehavior = installBehaviorRuntime(() => {
     style?.remove()
@@ -3923,6 +3955,7 @@ function installChatStyleRuntime() {
     root.removeAttribute('data-codex-composer-width')
     root.removeAttribute('data-codex-pinned-user-messages')
     root.removeAttribute('data-codex-clean-transcript')
+    root.removeAttribute('data-codex-floating-sidebar')
     if (root.dataset.codexChatLookBuild === BUILD_ID) delete root.dataset.codexChatLookBuild
     if (root.dataset.codexChatLookRuntime === BUILD_ID) delete root.dataset.codexChatLookRuntime
   })
@@ -4005,6 +4038,19 @@ export default {
         keepOpen: true,
         keywords: ['codex', 'skin', 'clean', 'transcript', 'tool', 'calls', 'interim', 'messages'],
         run: () => setCleanTranscriptMode(readCleanTranscriptMode() === 'on' ? 'off' : 'on')
+      }
+    })
+    ctx.register({
+      id: 'toggle-floating-sidebar',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.toggle-floating-sidebar',
+        label: 'Codex Skin: Floating sidebar',
+        detail: () => readFloatingSidebarMode() === 'on' ? 'On' : 'Off',
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'floating', 'sidebar', 'inbox', 'pinned', 'sessions', 'layout'],
+        run: () => setFloatingSidebarMode(readFloatingSidebarMode() === 'on' ? 'off' : 'on')
       }
     })
     ctx.register({
@@ -6588,6 +6634,12 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   const ensureStyle = () => {
     if (style?.isConnected) return;
     style = doc.createElement('style'); style.setAttribute(own, 'style');
+    // The host conditionally mounts direct content bodies for Pinned/Sessions.
+    // Keep the bottom layout when both are closed, without copying React state.
+    const topLayout = `html[data-codex-chat-look='true']:not([data-codex-floating-sidebar='off']) [data-sessions-mode]:is(
+  :has(> [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']),
+  :has(> [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content'])
+)`;
     style.textContent = CODEX_INBOX_ROW_UI_CSS + `
 /* Native Sessions keeps a growing, minimum-height viewport even when closed.
    Allocate the remaining height to Inbox; cap native lists without moving or
@@ -6600,6 +6652,17 @@ html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] { flex:1 1 0
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'][data-codex-inbox-expanded='false'] { flex:0 0 auto; min-height:0; padding-bottom:0; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'][hidden] { display:none!important; }
+
+/* Expanded native lists follow the content-sized Inbox; closed lists retain
+   the original bottom layout. Leave native nodes and scroll owners intact. */
+${topLayout} { justify-content:flex-start!important; }
+${topLayout} > [data-codex-inbox-owned='island'] { box-sizing:border-box; flex:0 1 auto!important; min-height:0!important; max-height:max(35%,4rem); }
+${topLayout} > [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:0 1 auto!important; }
+${topLayout} > [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] { margin-top:0!important; }
+/* Double the native spacing unit only when all three sections are open. */
+${topLayout} > [data-codex-inbox-owned='island'][data-codex-inbox-expanded='true']:has(+ [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']):has(+ [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']) { padding-bottom:calc(2 * var(--spacing,4px))!important; }
+${topLayout} > [data-slot='sidebar-group'][class~='flex-1']:not([data-codex-inbox-owned]):has(> [data-slot='sidebar-group-content']) { flex:1 1 0!important; max-height:none!important; }
+
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)) { color:inherit; background:transparent; border:0; cursor:pointer; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):not([data-codex-inbox-header]):hover { background:var(--ui-control-hover-background); }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):focus-visible { outline:1px solid var(--ui-accent); }

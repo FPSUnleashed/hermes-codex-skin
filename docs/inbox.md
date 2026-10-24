@@ -27,6 +27,15 @@ Inbox is **enabled by default**, but you can turn it off whenever you want: open
 
 I recommend keeping **Pinned** and **Sessions** collapsed so you can focus on your Inbox. Expand them whenever you need to find an older or pinned chat.
 
+**Codex Skin: Floating sidebar** toggles the adaptive layout and displays its current On/Off state in the command palette.
+It defaults to On; the choice persists locally and takes effect immediately without changing Inbox admissions, Settle/Snooze records or native disclosure state.
+Off uses the original Codex Skin sidebar layout, including its bottom-oriented section placement and ordinary spacing.
+With Floating sidebar On, when Pinned and Sessions are both collapsed, their headings stay at the bottom of the sidebar.
+Opening either section moves both directly below Inbox, without leaving unused space above them.
+This alignment follows Pinned and Sessions independently of whether Inbox is open.
+With all three sections expanded, the gap below Inbox uses two native spacing units instead of one.
+Long lists remain scrollable, and an expanded Sessions list uses the remaining height.
+
 Inbox opens by default above Pinned and Sessions. Its heading and disclosure match the native sections. A chat enters Inbox when fresh, owner-verified agent work is observed, even in an older chat. Cron sessions never enter Inbox: the filter uses Hermes' session `source` and, when present, immutable `created_source`, not titles or IDs. Known non-cron sources may differ when a chat moves between interfaces; missing or unknown provenance and conflicting ownership stay excluded. Creating an empty chat, opening or focusing a chat, reading history, pagination, unread marks and timestamps do not admit it. Admitted non-cron threads remain after work completes until **Settle**; **Snooze** hides them temporarily. Admission persists separately for each connection and profile, including threads older than the recent history page. Disconnected, stale or failed live reads cannot admit new work.
 
 **Settle** removes a thread from Inbox without stopping work, archiving, deleting or unpinning it. A **Settled** badge on an already admitted, verified native session row offers **Un-settle** on hover or keyboard focus. The Settle check stays available on every admitted Inbox row, including while working, waiting for input, reading history, or when activity or metadata is unavailable. A compact **Settled** notice below the remaining threads offers **Undo** for **3000 ms**, with a theme-aware left-to-right progress bar. Only the latest successful settlement has a notice and Undo handle; earlier settlements remain saved. Undo restores that exact thread's attention without navigating. Failed storage writes do not hide the row or show a success notice. A subsequent verified new message/work event can reactivate a settled non-cron chat. Merely opening it, passive polling of the same running task, message-count growth, ongoing tool starts and completion cannot undo a manual Settle. Turning Inbox Off, changing connection/profile, unmounting or hot-reloading clears the temporary notice, not saved settlement.

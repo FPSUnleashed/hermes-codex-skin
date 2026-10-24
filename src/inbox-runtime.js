@@ -867,6 +867,12 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   const ensureStyle = () => {
     if (style?.isConnected) return;
     style = doc.createElement('style'); style.setAttribute(own, 'style');
+    // The host conditionally mounts direct content bodies for Pinned/Sessions.
+    // Keep the bottom layout when both are closed, without copying React state.
+    const topLayout = `html[data-codex-chat-look='true']:not([data-codex-floating-sidebar='off']) [data-sessions-mode]:is(
+  :has(> [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']),
+  :has(> [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content'])
+)`;
     style.textContent = CODEX_INBOX_ROW_UI_CSS + `
 /* Native Sessions keeps a growing, minimum-height viewport even when closed.
    Allocate the remaining height to Inbox; cap native lists without moving or
@@ -879,6 +885,17 @@ html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] { flex:1 1 0
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'][data-codex-inbox-expanded='false'] { flex:0 0 auto; min-height:0; padding-bottom:0; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'][hidden] { display:none!important; }
+
+/* Expanded native lists follow the content-sized Inbox; closed lists retain
+   the original bottom layout. Leave native nodes and scroll owners intact. */
+${topLayout} { justify-content:flex-start!important; }
+${topLayout} > [data-codex-inbox-owned='island'] { box-sizing:border-box; flex:0 1 auto!important; min-height:0!important; max-height:max(35%,4rem); }
+${topLayout} > [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:0 1 auto!important; }
+${topLayout} > [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] { margin-top:0!important; }
+/* Double the native spacing unit only when all three sections are open. */
+${topLayout} > [data-codex-inbox-owned='island'][data-codex-inbox-expanded='true']:has(+ [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']):has(+ [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']) { padding-bottom:calc(2 * var(--spacing,4px))!important; }
+${topLayout} > [data-slot='sidebar-group'][class~='flex-1']:not([data-codex-inbox-owned]):has(> [data-slot='sidebar-group-content']) { flex:1 1 0!important; max-height:none!important; }
+
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)) { color:inherit; background:transparent; border:0; cursor:pointer; }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):not([data-codex-inbox-header]):hover { background:var(--ui-control-hover-background); }
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)):focus-visible { outline:1px solid var(--ui-accent); }

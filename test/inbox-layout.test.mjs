@@ -7,16 +7,24 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 const source = (await Promise.all(['inbox-row-ui.js', 'inbox-runtime.js'].map(file => readFile(new URL('../src/' + file, import.meta.url), 'utf8')))).join('\n')
 // The packaged renderer was inspected read-only. Its section keeps flex-1 and
 // min-h-32 even when closed; an open Pinned section has intrinsic row height.
-const utilities = `.flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1}.shrink-0{flex-shrink:0}.min-h-0{min-height:0}.min-h-32{min-height:8rem}.w-full{width:100%}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.p-0{padding:0}.pb-1{padding-bottom:4px}.gap-px{gap:1px}.relative{position:relative}`
+const utilities = `.flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1}.shrink-0{flex-shrink:0}.min-h-0{min-height:0}.min-h-32{min-height:8rem}.w-full{width:100%}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.p-0{padding:0}.pb-1{padding-bottom:var(--spacing,4px)}.gap-px{gap:1px}.relative{position:relative}`
 const installedCSS = process.env.CODEX_INBOX_NATIVE_CSS ? await readFile(process.env.CODEX_INBOX_NATIVE_CSS, 'utf8') : utilities
 
-for (const height of [520, 260, 150]) {
-  test(`Inbox remains usable above bottom-anchored native sections at ${height}px`, async t => {
+test('published plugin copies contain the current Inbox source', async () => {
+  const main = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
+  const desktop = await readFile(new URL('../codex-chat-look/desktop/plugin.js', import.meta.url), 'utf8')
+  const runtime = await readFile(new URL('../src/inbox-runtime.js', import.meta.url), 'utf8')
+  assert.equal(desktop, main)
+  assert.ok(main.includes(runtime.trim()), 'rebuild the published Inbox runtime after editing its source')
+})
+
+for (const mode of ['light', 'dark']) for (const height of [520, 260, 150]) {
+  test(`Inbox adapts to native disclosure while preserving scroll and controls at ${height}px (${mode})`, async t => {
     const browser = await chromium()
     try {
-      const { CSS } = await loadPluginInternals(['CSS'])
+      const { CSS, readFloatingSidebarMode, syncFloatingSidebarRoot, setFloatingSidebarMode } = await loadPluginInternals(['CSS', 'readFloatingSidebarMode', 'syncFloatingSidebarRoot', 'setFloatingSidebarMode'])
       await browser.call('Emulation.setDeviceMetricsOverride', { width: 640, height: 640, deviceScaleFactor: 1, mobile: false })
-      const html = `<!doctype html><html data-codex-chat-look="true" data-hermes-theme="codex-chat" data-hermes-mode="light"><head><style>${installedCSS}</style><style>${CSS}</style><style>
+      const html = `<!doctype html><html data-codex-chat-look="true" data-hermes-theme="codex-chat" data-hermes-mode="${mode}"><head><style>${installedCSS}</style><style>${CSS}</style><style>
         :root{font-size:16px;--spacing:.25rem;--ui-text-primary:#222;--ui-text-secondary:#555;--ui-text-tertiary:#777;--ui-text-quaternary:#888;--ui-success:#168b52;--ui-accent:#222;--ui-bg-elevated:#fff;--ui-sidebar-surface-background:#eee;--ui-chat-surface-background:#eee;--theme-foreground:#222;--theme-sidebar-seed:#eee;--theme-background-seed:#eee;--theme-accent-soft:#ddd;--theme-card-seed:#fff;--theme-elevated-seed:#fff}
         body{margin:20px;font:14px system-ui}#pane{height:${height}px;width:280px;display:flex;flex-direction:column;overflow:hidden}button{font:inherit}#native-groups{padding:0}#native-groups>div>[class~='group/section']{display:flex;flex:0 0 auto;height:24px}#native-groups>div>[class~='group/section']>button{height:24px}#native-groups .native-row{height:26px;flex:0 0 26px}
       </style></head><body><div data-tree-group="grp-sessions"><aside data-slot="sidebar"><div id="pane"><div id="native-groups" data-sessions-mode="sessions" class="flex min-h-0 flex-1 flex-col overflow-y-auto"></div></div></aside></div><button id="outside">Outside</button></body></html>`
@@ -54,14 +62,35 @@ for (const height of [520, 260, 150]) {
         const g = await geometry()
         assert.ok(g.content.height >= 26, 'opening a native section cannot squeeze the Inbox out')
         assert.ok(g.inbox.bottom <= g.native[0].top + 1, 'Inbox precedes native sections without overlap')
+        assert.ok(Math.abs(g.native[0].top - g.content.bottom - (header === 1 ? 8 : 4)) <= 1, 'expanded native sections follow Inbox content without reserved blank space')
         assert.ok(g.native[0].bottom <= g.native[1].top + 1, 'native sections do not overlap')
         assert.ok(g.native.at(-1).bottom <= g.root.bottom + 1, 'native sections stay inside the pane')
+        assert.ok(g.native[1].height >= 24, 'Sessions header remains fully visible in a small pane')
         assert.equal(g.hit, true, 'Inbox row is visible and hit-testable while native sections are open')
       }
       assert.equal(await browser.evaluate('nativeToggles'), 2)
       assert.equal(await browser.evaluate("nativeGroups.every(group=>group.querySelector('[data-slot=\"sidebar-group-content\"]').scrollHeight>group.querySelector('[data-slot=\"sidebar-group-content\"]').clientHeight)"), true, 'each expanded native list remains scrollable')
       await browser.evaluate("nativeGroups[1].querySelector('[data-slot=\"sidebar-group-content\"]').lastElementChild.click()")
       assert.equal(await browser.evaluate('nativeClicks'), 1, 'native handlers remain functional')
+      await browser.evaluate(`
+        const FLOATING_SIDEBAR_STORAGE_KEY='floating-sidebar';
+        const pluginStorage=storage;
+        ${readFloatingSidebarMode.toString()}
+        ${syncFloatingSidebarRoot.toString()}
+        ${setFloatingSidebarMode.toString()}
+        window.toggleFloating=()=>setFloatingSidebarMode(readFloatingSidebarMode()==='on'?'off':'on');
+        syncFloatingSidebarRoot();
+        window.beforeToggleHTML=nativeGroups.map(group=>group.outerHTML);
+        window.beforeToggleRows=[...island().querySelectorAll('[data-codex-inbox-row]')];
+        toggleFloating();flush();
+      `)
+      assert.equal(await browser.evaluate('store.get("floating-sidebar")'), 'off')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).flexGrow'), '1', 'Off must restore the original growing Inbox')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '4px', 'Off must remove the doubled section gap')
+      assert.equal(await browser.evaluate('nativeGroups.every((g,i)=>g.outerHTML===beforeToggleHTML[i])&&beforeToggleRows.every(row=>row.isConnected)'), true, 'setting changes layout only, never native markup or Inbox admissions')
+      await browser.evaluate('toggleFloating();flush()')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).flexGrow'), '0', 'On restores the floating layout immediately')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '8px')
       await browser.evaluate("rows=Array.from({length:205},(_,i)=>({id:'inbox-'+i,title:'Inbox '+i,message_count:1,started_at:(Date.now()+60000)/1000}));update();flush()")
       assert.equal(await browser.evaluate("island().querySelectorAll('[data-codex-inbox-row]').length"), 205, 'all admitted rows are reachable by scrolling, not pagination controls')
       assert.equal(await browser.evaluate("[...island().querySelectorAll('button')].some(el=>/^(Load more|Next|Previous) threads$/.test(el.textContent))"), false)
@@ -86,6 +115,7 @@ for (const height of [520, 260, 150]) {
       assert.equal(collapsedInbox.content.height, 0, 'collapsed Inbox content occupies no height')
       assert.ok(Math.abs(collapsedInbox.inbox.height - collapsedInbox.header.height) <= 1, 'collapsed Inbox shrinks to its intrinsic header height')
       assert.ok(collapsedInbox.inbox.bottom <= collapsedInbox.native[0].top + 1, 'collapsed Inbox stays above native sections')
+      assert.ok(Math.abs(collapsedInbox.inbox.bottom - collapsedInbox.native[0].top) <= 1, 'open native sections follow even a collapsed Inbox immediately')
       assert.ok(collapsedInbox.native[0].bottom <= collapsedInbox.native[1].top + 1, 'native sections do not overlap while Inbox is collapsed')
       assert.ok(Math.abs(collapsedInbox.native.at(-1).bottom - collapsedInbox.root.bottom) <= 1, 'native sections remain bottom-anchored while Inbox is collapsed')
       assert.equal(await browser.evaluate('nativeUnchanged()&&nativeMutations.length===0&&nativeToggles===2'), true, 'Inbox collapse does not mutate native markup, nodes or handlers')
@@ -100,14 +130,42 @@ for (const height of [520, 260, 150]) {
       assert.equal(await browser.evaluate(`(()=>{const r=rect(island().querySelector('[data-codex-inbox-row="inbox-204"]')),c=rect(content());return r.bottom<=c.bottom+1&&r.top>=c.top-1})()`), true, 'the last admitted Inbox row is visible after re-expansion')
       assert.ok(reopenedInbox.inbox.bottom <= reopenedInbox.native[0].top + 1 && reopenedInbox.native[0].bottom <= reopenedInbox.native[1].top + 1, 'native sections remain below the re-expanded Inbox without overlap')
       assert.ok(Math.abs(reopenedInbox.native.at(-1).bottom - reopenedInbox.root.bottom) <= 1, 'native sections remain bottom-anchored after re-expansion')
+      assert.ok(reopenedInbox.native[1].height >= 24, 'long Inbox cannot clip the Sessions header in a small pane')
       assert.equal(await browser.evaluate('nativeUnchanged()&&nativeMutations.length===0&&nativeToggles===2'), true, 'Inbox re-expansion does not mutate native markup, nodes or handlers')
       await browser.evaluate("nativeObserver.disconnect();nativeGroups[1].querySelector('[data-slot=\"sidebar-group-content\"]').lastElementChild.click()")
       assert.equal(await browser.evaluate('nativeClicks'), 2, 'native row handlers still work after Inbox collapse and re-expansion')
+      await browser.evaluate('nativeHeaders[0].click();flush()')
+      const sessionsOnly = await geometry()
+      assert.ok(Math.abs(sessionsOnly.native[0].top - sessionsOnly.content.bottom - 4) <= 1, 'Sessions alone selects compact top alignment')
+      await browser.evaluate('nativeHeaders[1].click();flush()')
+      const bothClosed = await geometry()
+      assert.deepEqual(bothClosed.native, collapsed.native, 'closing the last open native section restores original bottom alignment')
+      await browser.evaluate("island().querySelector('[data-codex-inbox-header]').click();flush()")
+      const allClosed = await geometry()
+      assert.deepEqual(allClosed.native, collapsed.native, 'both native sections remain bottom-aligned independently of Inbox disclosure')
+      await browser.evaluate('nativeHeaders[1].click();flush()')
+      const sessionsOnlyInboxClosed = await geometry()
+      assert.ok(Math.abs(sessionsOnlyInboxClosed.inbox.bottom - sessionsOnlyInboxClosed.native[0].top) <= 1, 'Sessions alone moves up below a collapsed Inbox')
+      await browser.evaluate('nativeHeaders[1].click();flush()')
+      await browser.evaluate('nativeHeaders[0].click();flush()')
+      const pinsOnlyInboxClosed = await geometry()
+      assert.ok(Math.abs(pinsOnlyInboxClosed.inbox.bottom - pinsOnlyInboxClosed.native[0].top) <= 1, 'Pinned alone moves up below a collapsed Inbox')
+      await browser.evaluate('nativeHeaders[0].click();flush()')
+
+      // Spacing follows the host token, not an assumed 16px root font.
+      await browser.evaluate("rows=[{id:'fresh',title:'Inbox task',message_count:1}];update();island().querySelector('[data-codex-inbox-header]').click();nativeHeaders.forEach(button=>button.click());flush();document.documentElement.style.fontSize='14px';document.documentElement.style.setProperty('--spacing','3.5px')")
+      assert.equal(await browser.evaluate("getComputedStyle(island()).paddingBottom"), '7px', 'all-open gap scales to two native spacing units')
+      await browser.evaluate('nativeHeaders[1].click();flush()')
+      assert.equal(await browser.evaluate("getComputedStyle(island()).paddingBottom"), '3.5px', 'partly closed state keeps one native spacing unit')
+      await browser.evaluate('nativeHeaders[0].click();flush();document.documentElement.style.removeProperty("font-size");document.documentElement.style.removeProperty("--spacing")')
+      await browser.evaluate("window.extra=document.createElement('div');extra.dataset.slot='sidebar-group';extra.innerHTML='<div data-slot=\"sidebar-group-content\">Other section</div>';root.append(extra);flush()")
+      assert.equal(await browser.evaluate("getComputedStyle(island()).flexGrow"), '1', 'unrelated expanded sections must not activate Pinned/Sessions top alignment')
+      await browser.evaluate('extra.remove();flush()')
       if (process.env.CODEX_INBOX_LAYOUT_PREVIEW) {
         const { data } = await browser.call('Page.captureScreenshot', { format: 'png' })
-        await writeFile(`${process.env.CODEX_INBOX_LAYOUT_PREVIEW}-${height}.png`, Buffer.from(data, 'base64'))
+        await writeFile(`${process.env.CODEX_INBOX_LAYOUT_PREVIEW}-${mode}-${height}.png`, Buffer.from(data, 'base64'))
       }
-      await browser.evaluate('nativeHeaders.forEach(button=>button.click());flush();runtime.setMode(false);flush()')
+      await browser.evaluate('runtime.setMode(false);flush()')
       assert.deepEqual(await browser.evaluate('nativeGroups.map(rect)'), await browser.evaluate('nativeBefore'), 'disable restores native layout without restoring mutated host styles')
       assert.equal(await browser.evaluate('nativeGroups.every((group,i)=>group.outerHTML===nativeHTML[i])&&nativeHeaders.every((header,i)=>header===nativeGroups[i].firstElementChild.firstElementChild)'), true)
       await browser.evaluate('runtime.dispose();flush()')
