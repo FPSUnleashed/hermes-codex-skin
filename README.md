@@ -1,5 +1,7 @@
 # Codex Skin for Hermes Desktop
 
+**Have an idea, a bug report or an improvement? Please open an [issue](https://github.com/FPSUnleashed/hermes-codex-skin/issues) or a [pull request](https://github.com/FPSUnleashed/hermes-codex-skin/pulls).** If you've improved your own fork, I'd love for you to share it here so everyone can benefit. I'm happy to review contributions and include those that fit the project, with credit to you.
+
 <p>
   <a href="docs/images/skin-cream.jpg"><img src="docs/images/skin-cream.jpg" width="360" alt="Codex Skin with a cream theme and status bar"></a>
   <a href="docs/images/skin-dark.jpg"><img src="docs/images/skin-dark.jpg" width="360" alt="Codex Skin with a dark blue theme"></a>
