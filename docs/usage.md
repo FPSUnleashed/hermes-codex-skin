@@ -33,6 +33,14 @@ Clean transcript defaults to **Off**. An existing **Off** or **On** choice is pr
 
 Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. The plugin leaves uncertain content visible rather than risk hiding a real final answer.
 
+### Floating sidebar (unreleased)
+
+Open the command palette and run **Codex Skin: Floating sidebar**. The setting defaults to **On** and persists locally.
+
+Opening Pinned or Sessions moves both sections directly below Inbox. Closing both returns them to the bottom of the sidebar. Turning the option **Off** restores the original layout without changing chats or Inbox state.
+
+Contributed by [@subhead](https://github.com/subhead).
+
 ## History navigation
 
 History ticks use quieter theme-aware colors and more vertical spacing. The current-message marker gives way to the hovered marker without dimming ordinary idle ticks. The pointer-driven wave responds without a trailing width animation, and the rail hides when its own chat pane is 862 CSS pixels wide or narrower. Native click targets, keyboard navigation and virtualized scrolling remain intact.

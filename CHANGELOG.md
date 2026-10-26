@@ -4,6 +4,10 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Added
+
+- Add an optional Floating sidebar layout, enabled by default: opening Pinned or Sessions moves both sections directly below Inbox; closing both restores bottom alignment. The setting persists locally. Contributed by [@subhead](https://github.com/subhead) in [89cfa2a](https://github.com/subhead/hermes-codex-skin/commit/89cfa2a6c8ce5f02a87083f437dcc8a679e87363).
+
 ## [1.11.0] - 2026-10-26
 
 ### Added
