@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+## [1.11.0] - 2026-10-26
+
+### Added
+
+- Group running threads under a collapsible Working section inside Inbox, enabled with Inbox and collapsed by default. Count each thread once, including those with active subagents; preserve Settle and Snooze exclusions.
+- Show an amber Needs input dot for questions and approval requests, returning those threads to the main list even while subagents run.
+
+### Improved
+
+- Use the active theme's accent color for working dots, retaining green completion indicators.
+- Simplify the README, add a four-theme gallery and an Inbox screenshot, and keep detailed usage and Inbox guidance in dedicated pages.
+- Clarify installation, updater verification, privacy and security information, with version-pinned stable manual downloads.
+
+### Fixed
+
+- Preserve unread completion indicators across metadata refreshes, connection/profile changes and reloads until the latest completed reply is visibly read in its focused chat, without settling the thread.
+- Retain live work and completion indicators when receipt persistence fails, retry writes on later updates and avoid self-triggered repaint loops.
+- Hide completed subagent summaries after the final answer when Clean transcript is enabled, including late arrivals, while preserving active work, final answers and alerts.
+
 ## [1.10.0] - 2026-10-06
 
 ### Improved

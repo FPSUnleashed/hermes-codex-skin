@@ -62,6 +62,7 @@ test('shipping Inbox preserves live paint across metadata refresh and rejects re
       window.watchFrames=async()=>{const frames=[];for(let i=0;i<8;i++){await new Promise(resolve=>requestAnimationFrame(resolve));frames.push(['parent','child'].map(paint))}return frames};
     })()`)
     await browser.evaluate('flush()')
+    await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush()`)
     assert.deepEqual(await browser.evaluate("['parent','child'].map(paint)"), [
       { state: 'working', opacity: '1', animation: 'codex-inbox-row-contour' },
       { state: 'working', opacity: '1', animation: 'codex-inbox-row-contour' }

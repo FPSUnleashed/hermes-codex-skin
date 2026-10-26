@@ -57,6 +57,7 @@ async function fixture(theme = 'light', unread = false, collision = false, admit
 
 async function paint(browser, expected, theme = 'light', id = 'a') {
   await browser.evaluate('flush()')
+  await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush()`)
   const first = await browser.evaluate(`sample(${JSON.stringify(id)})`)
   assert.equal(first.state, expected)
   assert.equal(first.height, 26, 'activity preserves the row contour geometry')

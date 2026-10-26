@@ -62,6 +62,10 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
           settledAt: Number.isFinite(record.settledAt) && record.settledAt > 0 ? record.settledAt : null, watermarks,
           snoozeUntil: validTimestamp(record.snoozeUntil) ? record.snoozeUntil : null,
           snoozedAt: validTimestamp(record.snoozedAt) ? record.snoozedAt : validTimestamp(record.snoozeUntil) ? 1 : null,
+          ...(record.reply && ['completed', 'read', 'none'].includes(record.reply.state) && validTimestamp(record.reply.at) &&
+            typeof record.reply.sessionId === 'string' && record.reply.sessionId &&
+            (record.reply.messageCount === null || Number.isSafeInteger(record.reply.messageCount) && record.reply.messageCount >= 0)
+            ? { reply: { ...record.reply } } : {}),
           ...(record.manualSettled === true ? { manualSettled: true } : {})
         };
       }
@@ -104,6 +108,8 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
       if (prior && prior !== record) {
         record.settledAt = Math.max(record.settledAt || 0, prior.settledAt || 0) || null;
         if (prior.settledAt && prior.manualSettled === true) record.manualSettled = true;
+        if (prior.reply && (!record.reply || prior.reply.at > record.reply.at ||
+            prior.reply.at === record.reply.at && prior.reply.state === 'read')) record.reply = prior.reply;
         // Keep the most recent explicit duration/cancellation when lineage arrives late.
         if ((prior.snoozedAt || 0) > (record.snoozedAt || 0) ||
             (prior.snoozedAt && prior.snoozedAt === record.snoozedAt && !prior.snoozeUntil)) {
@@ -126,7 +132,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
     for (const record of Object.values(draft.records)) at = Math.max(at, (record.snoozedAt || 0) + 1);
     return Math.min(at, 8640000000000000);
   };
-  const transaction = (change, event) => {
+  const transaction = (change, event, publish = true) => {
     const draft = JSON.parse(JSON.stringify(state));
     const result = change(draft);
     if (result === false) return false;
@@ -148,16 +154,39 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
       if (canonical(parsed) !== canonical(draft)) throw Error('Inbox storage readback failed');
       state = draft;
       error = null;
-      notify(event);
+      if (publish) notify(event);
       return result;
     } catch {
       error = 'Inbox state could not be saved. No Inbox changes were applied.';
-      notify();
+      if (publish) notify();
       return false;
     }
   };
   return {
     key: (scope, session) => rootKey(state, scope, session),
+    replyState(scope, session) {
+      const reply = state.records[rootKey(state, scope, session)]?.reply;
+      // A new native unread reply can arrive while no lifecycle events were
+      // observed. Only positive unread evidence plus a newer count releases read.
+      if (reply?.state === 'read' && session?.unread === true && reply.sessionId === codexInboxId(session) &&
+          Number.isSafeInteger(reply.messageCount) && Number.isSafeInteger(session.message_count) && session.message_count > reply.messageCount) return null;
+      return reply?.state === 'none' ? null : reply?.state || null;
+    },
+    recordReply(scope, session, phase) {
+      if (!['completed', 'read', 'none'].includes(phase)) return false;
+      return transaction(draft => {
+        const item = associate(draft, scope, session);
+        if (!item) return false;
+        const messageCount = Number.isSafeInteger(session?.message_count) && session.message_count >= 0 ? session.message_count : null;
+        if (item.record.reply?.state === phase && item.record.reply.sessionId === item.id && item.record.reply.messageCount === messageCount) return true;
+        let at = Date.now();
+        for (const record of Object.values(draft.records)) at = Math.max(at, (record.reply?.at || 0) + 1);
+        item.record.reply = { state: phase, at, sessionId: item.id, messageCount };
+        return true;
+      // Receipt writes can originate while painting. Do not schedule another
+      // paint from their own storage failure and spin while storage is full.
+      }, undefined, false);
+    },
     isSettled(scope, session) { const key = rootKey(state, scope, session); return !!(key && state.records[key]?.settledAt); },
     isManualSettled(scope, session) { const key = rootKey(state, scope, session); return !!(key && state.records[key]?.settledAt && state.records[key].manualSettled === true); },
     snoozedUntil(scope, session) { const key = rootKey(state, scope, session); return key && state.records[key]?.snoozeUntil || null; },
@@ -419,6 +448,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   admission = createCodexInboxAdmission(storage, model);
   let on = false;
   try { on = storage?.get?.('inbox', 'on') !== 'off'; } catch { /* Fail closed until the parent supplies a mode. */ }
+  let workingShelfOpen = false;
   let disposed = false, raf = null, island = null, style = null, container = null;
   let deadlineTimer = null, armingDeadline = false, snoozePopup = null;
   const rowBindings = new Map();
@@ -530,13 +560,15 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     if (input.loading || input.error) return;
     for (const session of inboxSessions()) {
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
+      const phase = previous?.phase || model.replyState(currentScope, session);
       const status = safety(session, true), newer = Number.isFinite(input.liveStatusAt) && input.liveStatusAt > (previous?.at || 0);
       // A terminal frame precedes backend cleanup. A late working snapshot
       // cannot cancel that receipt; a new positive work event can.
-      if (status === 'work' && !previous?.parentFinished && !['completed', 'read'].includes(previous?.phase) && (!previous || newer)) {
+      if (status === 'work' && !previous?.parentFinished && !['completed', 'read'].includes(phase) && (!previous || newer)) {
         activityByKey.set(key, { ...previous, phase: 'working', at: input.liveStatusAt || Date.now(), children: previous?.children || new Set() });
       } else if (status === 'idle' && previous?.phase === 'working' && newer) {
         activityByKey.set(key, { ...previous, phase: session.unread === true ? 'completed' : 'unknown', at: input.liveStatusAt });
+        if (session.unread === true) model.recordReply(currentScope, session, 'completed');
       }
     }
   };
@@ -551,7 +583,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
       // Native rosters omit queued spawns until registration. A fresh empty
       // roster cannot cancel that proved intent; start/complete can release it.
       const pendingChildren = new Set([...(previous?.pendingChildren || [])].filter(id => !childIds.includes(id)));
-      activityByKey.set(key, { ...previous, phase: previous?.phase || 'unknown', at: previous?.at || 0,
+      activityByKey.set(key, { ...previous, phase: previous?.phase || model.replyState(currentScope, fresh.session) || 'unknown', at: previous?.at || 0,
         children: new Set([...childIds, ...pendingChildren]), pendingChildren, childSnapshotAt: snapshot.at });
     }
   };
@@ -583,16 +615,29 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   const workState = session => {
     if (input.loading || input.error || input.liveStatusKnown !== true) return 'unknown';
     const key = model.key(currentScope, session), status = safety(session, true), activity = activityByKey.get(key);
+    const phase = activity?.phase === 'read' ? model.replyState(currentScope, session) : activity?.phase || model.replyState(currentScope, session);
     if (status === 'unknown') return 'unknown';
+    if (waitingForInput(session)) return 'needs-input';
     if (activity?.children.size) return 'working';
     if (status === 'reading') return 'reading';
-    if (activity?.phase === 'working') return 'working';
-    if (activity?.phase === 'read') return 'idle';
-    if (activity?.phase === 'unknown' && activity.parentFinished) return 'unknown';
-    if (activity?.phase === 'completed' || status === 'idle' && session.unread === true) {
+    if (activity?.phase === 'working') {
+      if (model.replyState(currentScope, session)) model.recordReply(currentScope, session, 'none');
+      return 'working';
+    }
+    if (phase === 'read') return 'idle';
+    if (activity?.phase === 'unknown' && activity.parentFinished) {
+      if (model.replyState(currentScope, session)) model.recordReply(currentScope, session, 'none');
+      return 'unknown';
+    }
+    if (phase === 'completed' || status === 'idle' && session.unread === true) {
+      // Live paint must not depend on disk availability. Retain the receipt
+      // in this controller and retry its durable write when storage recovers.
+      if (phase !== 'completed') activityByKey.set(key, { ...activity, phase: 'completed', at: activity?.at || Date.now(), children: activity?.children || new Set() });
+      if (model.replyState(currentScope, session) !== 'completed') model.recordReply(currentScope, session, 'completed');
       if (!viewedReply(session)) return 'completed';
       // Reading acknowledges this reply's paint only. It never settles,
       // snoozes or admits a thread, and fresh work resets the receipt.
+      if (!model.recordReply(currentScope, session, 'read')) return 'completed';
       activityByKey.set(key, { ...activity, phase: 'read', at: activity?.at || Date.now(), children: activity?.children || new Set() });
       return 'idle';
     }
@@ -600,6 +645,16 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     if (activity?.phase === 'unknown') return 'unknown';
     // Native unread marks a completed reply. Merely idle/busy:false does not.
     return session.unread === true ? 'completed' : 'idle';
+  };
+  const waitingForInput = session => {
+    const activity = activityByKey.get(model.key(currentScope, session));
+    // Busy includes paused turns. A newer native read recovers legacy requests
+    // and reloads; a read begun before an input event cannot overwrite it.
+    if (!activity?.inputEventAt || input.liveStatusAt > activity.inputEventAt) {
+      return !activity?.parentFinished && input.liveSessions.some(live => codexInboxOwnedBy(currentScope, live) &&
+        liveMatches(session, live) && ['waiting', 'needs-input'].includes(live.status ?? live.state));
+    }
+    return activity.awaitingInput === true;
   };
   const requestRender = () => {
     if (!disposed && raf === null) raf = win.requestAnimationFrame(() => { raf = null; render(); });
@@ -763,6 +818,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
   };
   const cleanupDOM = () => {
     closeSnoozePopup(false); clearSettleNotices(); rowBindings.clear();
+    workingShelfOpen = false;
     island?.remove(); island = null; signature = null; container = null;
     style?.remove(); style = null;
     for (const badge of badgeBindings.values()) badge.remove();
@@ -935,9 +991,12 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       if (Date.now() >= item.until || !model.isManualSettled(item.scope, item.session)) clearSettleNotice(item);
     }
     const sessions = inboxSessions().filter(s => !model.isSettled(currentScope, s) && !model.isSnoozed(currentScope, s));
-    const shown = sessions;
-    const nextSignature = JSON.stringify([currentScope, inboxOpen, input.loading, !!input.error, model.error, admission.error, headerTemplate.fingerprint,
-      [...settleNotices.values()].map(item => [item.key, item.until]), sessions.length, shown.map(s => [model.key(currentScope, s), codexInboxId(s), s.title, safety(s), workState(s), active(s), activityByKey.get(model.key(currentScope, s))?.children.size || 0])]);
+    const workStates = new Map(sessions.map(s => [model.key(currentScope, s), workState(s)]));
+    const working = sessions.filter(s => workStates.get(model.key(currentScope, s)) === 'working');
+    const workingKeys = new Set(working.map(s => model.key(currentScope, s)));
+    const shown = sessions.filter(s => !workingKeys.has(model.key(currentScope, s)));
+    const nextSignature = JSON.stringify([currentScope, inboxOpen, workingShelfOpen, input.loading, !!input.error, model.error, admission.error, headerTemplate.fingerprint,
+      [...settleNotices.values()].map(item => [item.key, item.until]), sessions.length, sessions.map(s => [model.key(currentScope, s), codexInboxId(s), s.title, safety(s), workStates.get(model.key(currentScope, s)), active(s), activityByKey.get(model.key(currentScope, s))?.children.size || 0])]);
     if (signature !== nextSignature) {
       signature = nextSignature;
       setAttr(island, 'data-codex-inbox-expanded', inboxOpen);
@@ -971,7 +1030,33 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         island.appendChild(content);
       }
       content.hidden = !inboxOpen;
-      for (const child of [...content.children]) if (!child.hasAttribute('data-codex-inbox-row')) child.remove();
+      for (const child of [...content.children]) if (!child.matches('[data-codex-inbox-row], [data-codex-inbox-working-toggle], [data-codex-inbox-working-rows]')) child.remove();
+      let shelfToggle = content.querySelector('[data-codex-inbox-working-toggle]');
+      let shelfRows = content.querySelector('[data-codex-inbox-working-rows]');
+      if (!shelfToggle) {
+        shelfToggle = button('', event => {
+          stop(event);
+          if (disposed || !on || shelfToggle.hidden || !shelfToggle.isConnected || !island?.contains(shelfToggle)) return;
+          workingShelfOpen = !workingShelfOpen; requestRender();
+        });
+        shelfToggle.setAttribute('data-codex-inbox-working-toggle', '');
+        shelfToggle.setAttribute('aria-controls', 'codex-inbox-working-rows');
+        shelfToggle.style.cssText = 'display:block;width:100%;padding:6px 8px;background:transparent;text-align:left;font:inherit;font-size:11px;line-height:16px;font-weight:400;color:var(--ui-text-tertiary);cursor:pointer';
+        shelfRows = doc.createElement('div');
+        shelfRows.id = 'codex-inbox-working-rows'; shelfRows.setAttribute('data-codex-inbox-working-rows', '');
+        content.append(shelfToggle, shelfRows);
+      }
+      shelfToggle.textContent = `Working ${working.length}`;
+      shelfToggle.hidden = !working.length;
+      // The inline display value must not override the native hidden contract.
+      shelfToggle.style.display = working.length ? 'block' : 'none';
+      shelfToggle.setAttribute('aria-expanded', String(workingShelfOpen));
+      shelfRows.hidden = !working.length || !workingShelfOpen;
+      const place = (node, parent, before) => {
+        if (node === before) return;
+        if (node.isConnected && typeof parent.moveBefore === 'function') parent.moveBefore(node, before);
+        else parent.insertBefore(node, before);
+      };
       const status = text => { const el = doc.createElement('div'); el.setAttribute('data-codex-inbox-status', ''); el.setAttribute('role', 'status'); el.textContent = text; content.appendChild(el); };
       if (input.error) {
         status('Inbox could not be loaded. Refresh Sessions to retry.');
@@ -983,7 +1068,8 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       if (!input.loading && !input.error && !model.error && !admission.error && !sessions.length) status('Inbox is clear. Settled and snoozed threads remain in Sessions and Pinned.');
       const kept = new Set();
       let cursor = content.firstChild;
-      for (const session of shown) {
+      let workingCursor, lastMainRow = null;
+      for (const session of [...shown, ...working]) {
         const key = model.key(currentScope, session);
         if (kept.has(key)) continue;
         kept.add(key);
@@ -1006,19 +1092,22 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         setAttr(row, 'data-codex-inbox-active-children', activityByKey.get(key)?.children.size || 0);
         const title = typeof session.title === 'string' && session.title ? session.title : 'Untitled thread';
         binding.update({
-          title, selected: active(session), settleAction: true, workState: workState(session),
+          title, selected: active(session), settleAction: true, workState: workStates.get(key),
           menuDisabled: false,
           menuTitle: 'Remove from Inbox only. Work continues.'
         });
         setAttr(action, 'aria-label', `Settle ${title}`); setAttr(clock, 'aria-label', `Snooze ${title}`);
         // Opening stays enabled as before; Snooze does not depend on work status.
         clock.disabled = !!input.loading || !!input.error; clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
-        if (row !== cursor) {
-          if (row.isConnected && row.parentElement === content && typeof content.moveBefore === 'function') content.moveBefore(row, cursor);
-          else content.insertBefore(row, cursor);
+        if (workingKeys.has(key)) {
+          if (workingCursor === undefined) workingCursor = shelfRows.firstChild;
+          place(row, shelfRows, workingCursor); workingCursor = row.nextSibling;
+        } else {
+          place(row, content, cursor); cursor = row.nextSibling; lastMainRow = row;
         }
-        cursor = row.nextSibling;
       }
+      place(shelfToggle, content, lastMainRow ? lastMainRow.nextSibling : content.firstChild);
+      place(shelfRows, content, shelfToggle.nextSibling);
       for (const item of settleNotices.values()) {
         const notice = doc.createElement('div');
         notice.setAttribute('data-codex-inbox-settle-notice', codexInboxId(item.session)); notice.setAttribute('role', 'status');
@@ -1083,8 +1172,10 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       if (!session || input.loading || input.error || input.liveStatusKnown !== true ||
           !admission.observe(currentScope, input.sessions, { workingSessions: [session] }) || !admission.isEligible(currentScope, session)) { requestRender(); return false; }
       if (model.isManualSettled(currentScope, session) && !model.unsettle(currentScope, session)) { requestRender(); return false; }
+      model.recordReply(currentScope, session, 'none');
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
-      activityByKey.set(key, { ...previous, phase: 'working', parentFinished: false, at: Date.now(), children: previous?.children || new Set() });
+      activityByKey.set(key, { ...previous, phase: 'working', parentFinished: false, at: Date.now(), children: previous?.children || new Set(),
+        ...(event.type === 'input' ? { awaitingInput: true, inputEventAt: Date.now() } : {}) });
       const result = model.ingest(currentScope, [session], { liveSessions: [{ ...session, status: 'working' }] });
       requestRender(); return result;
     },
@@ -1093,13 +1184,35 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
           !sameScope({ connectionId: event.connectionId, profile: event.profile })) return false;
       const session = eventSession(event);
       if (!session) return false;
+      if (['clarify.request', 'approval.request'].includes(event.type)) {
+        const promptId = event.payload?.prompt_id ?? event.payload?.request_id;
+        if (typeof promptId !== 'string' || !promptId) return false;
+        const key = model.key(currentScope, session), previous = activityByKey.get(key);
+        const pendingInputs = new Set(waitingForInput(session) ? previous?.pendingInputs || [] : []);
+        pendingInputs.add(promptId);
+        if (!api.reactivate({ type: 'input', scope: currentScope, canonicalSessionId: codexInboxId(session) })) return false;
+        activityByKey.set(key, { ...activityByKey.get(key), pendingInputs });
+        requestRender(); return true;
+      }
+      if (['clarify.settled', 'approval.settled'].includes(event.type)) {
+        const promptId = event.payload?.prompt_id ?? event.payload?.request_id;
+        const key = model.key(currentScope, session), previous = activityByKey.get(key);
+        if (typeof promptId !== 'string' || !previous?.pendingInputs?.has(promptId)) return false;
+        const pendingInputs = new Set(previous.pendingInputs); pendingInputs.delete(promptId);
+        activityByKey.set(key, { ...previous, pendingInputs, awaitingInput: pendingInputs.size > 0, inputEventAt: Date.now() });
+        requestRender(); return true;
+      }
       if (['message.start', 'tool.start'].includes(event.type)) {
         if (event.type === 'tool.start' && model.isManualSettled(currentScope, session)) return false;
+        if (event.type === 'message.start') {
+          const key = model.key(currentScope, session), previous = activityByKey.get(key);
+          if (previous) activityByKey.set(key, { ...previous, awaitingInput: false, pendingInputs: new Set(), inputEventAt: Date.now() });
+        }
         return api.reactivate({ type: 'work', scope: currentScope, session_id: codexInboxId(session), canonicalSessionId: codexInboxId(session) });
       }
       const key = model.key(currentScope, session), previous = activityByKey.get(key);
-      if (event.type === 'message.complete' && previous?.phase === 'read') return false;
-      const activity = { ...previous, phase: previous?.phase || 'unknown', at: previous?.at || 0,
+      if (event.type === 'message.complete' && (previous?.phase || model.replyState(currentScope, session)) === 'read') return false;
+      const activity = { ...previous, phase: previous?.phase || model.replyState(currentScope, session) || 'unknown', at: previous?.at || 0,
         children: new Set(previous?.children || []), pendingChildren: new Set(previous?.pendingChildren || []),
         terminalChildren: new Set(previous?.terminalChildren || []) };
       if (['subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type)) {
@@ -1126,6 +1239,10 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         activity.parentFinished = true; activity.at = Date.now();
       } else if (event.type === 'error') { activity.phase = 'unknown'; activity.parentFinished = true; activity.at = Date.now(); }
       else return false;
+      if (['message.complete', 'error'].includes(event.type)) {
+        model.recordReply(currentScope, session, activity.phase === 'completed' ? 'completed' : 'none');
+        activity.awaitingInput = false; activity.pendingInputs = new Set(); activity.inputEventAt = Date.now();
+      }
       activityByKey.set(key, activity);
       requestRender(); return true;
     },

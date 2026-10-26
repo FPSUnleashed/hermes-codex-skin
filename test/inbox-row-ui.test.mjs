@@ -142,7 +142,7 @@ async function activityFixture(browser, mode = 'fallback') {
   window.geometry=()=>({row:rect(ui.row),go:rect(ui.go),lead:rect(ui.lead),label:rect(ui.label),slots:[...ui.actions.children].map(rect)});
   window.visible=()=>[ui.menu,ui.clock].map(e=>({opacity:getComputedStyle(e).opacity,pointerEvents:getComputedStyle(e).pointerEvents}));
   window.probe=()=>{const dot=ui.lead.querySelector('[data-codex-inbox-work-dot]'),arc=ui.row.querySelector('[data-codex-inbox-running-arc]');if(!dot||!arc)return null;const d=getComputedStyle(dot),a=getComputedStyle(arc),p=getComputedStyle(arc,'::before');return {state:ui.row.dataset.workState,dot:rect(dot),dotOpacity:d.opacity,background:d.backgroundColor,color:d.color,borderWidth:d.borderTopWidth,arcSize:rect(arc).slice(2),arcParent:arc.parentElement===ui.row,arcOpacity:a.opacity,animation:p.animationName,duration:p.animationDuration,timing:p.animationTimingFunction,iterations:p.animationIterationCount,transform:p.transform,gradient:p.backgroundImage,mask:a.maskComposite,layer:[p.width,p.height],pointerEvents:a.pointerEvents,arcColor:a.getPropertyValue('--codex-inbox-arc-c1').trim()}};
-  window.theme=()=>{const e=document.createElement('span');ui.row.append(e);const color=v=>{e.style.color='var('+v+')';return getComputedStyle(e).color};const result={foreground:color('--ui-text-primary'),success:color('--ui-success'),neutral:color('--ui-text-quaternary')};e.remove();return result};`)
+  window.theme=()=>{const e=document.createElement('span');ui.row.append(e);const color=v=>{e.style.color='var('+v+')';return getComputedStyle(e).color};const result={foreground:color('--ui-text-primary'),accent:color('--ui-accent'),success:color('--ui-success'),neutral:color('--ui-text-quaternary')};e.remove();return result};`)
 }
 
 async function assertNativeUntouched(browser) {
@@ -183,7 +183,7 @@ for (const mode of ['fallback', 'dark', 'light']) {
         assert.deepEqual(current.arcSize, [300, 26], 'zero-standoff contour follows the complete row')
         assert.equal(current.pointerEvents, 'none', 'outline never steals Settle/Snooze presses')
         if (state === 'working') {
-          assert.equal(current.background, colors.foreground)
+          assert.equal(current.background, colors.accent)
           assert.notEqual(current.animation, 'none')
           assert.equal(current.duration, '2.23s', 'native arc-row clock')
           assert.equal(current.timing, 'linear')
@@ -200,14 +200,14 @@ for (const mode of ['fallback', 'dark', 'light']) {
       const before = await browser.evaluate('probe().transform')
       await browser.evaluate('new Promise(r=>setTimeout(r,140))')
       assert.notEqual(await browser.evaluate('probe().transform'), before, 'real Chromium advances the running arc')
-      await browser.evaluate(`document.documentElement.style.setProperty('--ui-text-primary','#101010');document.documentElement.style.setProperty('--ui-success','#329b51')`)
-      assert.equal((await browser.evaluate('probe()')).background, (await browser.evaluate('theme()')).foreground, 'working follows theme foreground rather than fixed black')
+      await browser.evaluate(`document.documentElement.style.setProperty('--ui-accent','#8855ee');document.documentElement.style.setProperty('--ui-success','#329b51')`)
+      assert.equal((await browser.evaluate('probe()')).background, (await browser.evaluate('theme()')).accent, 'working follows the live theme accent')
       await browser.evaluate(`ui.update({workState:'completed'});ui.update({title:'Renamed'})`)
       assert.equal((await browser.evaluate('probe()')).state, 'completed', 'partial updates preserve work state')
       assert.equal((await browser.evaluate('probe()')).background, (await browser.evaluate('theme()')).success, 'completion follows the live success token')
       await browser.evaluate(`ui.update({workState:'not-a-status'})`)
       assert.equal((await browser.evaluate('probe()')).state, 'unknown', 'invalid work states fail neutral, never success')
-      await browser.evaluate(`document.documentElement.style.removeProperty('--ui-text-primary');document.documentElement.style.removeProperty('--ui-success')`)
+      await browser.evaluate(`document.documentElement.style.removeProperty('--ui-accent');document.documentElement.style.removeProperty('--ui-success')`)
       await assertNativeUntouched(browser)
       console.log(JSON.stringify({ mode, workStates: ['idle','working','completed','reading','unknown'], geometry, nativeUntouched: true }))
     } finally { browser.close() }
@@ -315,7 +315,7 @@ test('running arc respects real Chromium reduced-motion preference without dropp
     const reduced = await browser.evaluate('probe()')
     assert.ok(reduced, 'work indicator exists under reduced motion')
     assert.equal(reduced.state, 'working')
-    assert.equal(reduced.background, (await browser.evaluate('theme()')).foreground)
+    assert.equal(reduced.background, (await browser.evaluate('theme()')).accent)
     assert.equal(reduced.arcOpacity, '1', 'motionless contour retains the working cue')
     assert.equal(reduced.animation, 'none')
     await browser.evaluate('new Promise(r=>setTimeout(r,140))')

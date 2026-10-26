@@ -52,6 +52,7 @@ for (const mode of ['standalone', 'dark', 'light']) {
         window.row=id=>document.querySelector('[data-codex-inbox-row="'+id+'"]');window.controls=id=>[...row(id).querySelector('[data-row-actions]').children];window.settle=id=>row(id).querySelector('[data-codex-inbox-settle]');window.snooze=id=>row(id).querySelector('[data-codex-inbox-snooze]');window.visibility=id=>controls(id).map(el=>({opacity:getComputedStyle(el).opacity,pointerEvents:getComputedStyle(el).pointerEvents,disabled:el.disabled}));
         update({liveSessions:rows.map(r=>({session_id:r.id,status:'working'}))});update();flush();
       `)
+      await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush()`)
       assert.equal(await browser.evaluate("row('a').hasAttribute('data-codex-inbox-row-ui')"), true, 'production renderer must use the helper shell')
       const initial = await browser.evaluate("({geometry:measure(row('a')),native:measure(nativeRow),nativeBefore,nativeUnchanged:nativeRow.outerHTML===nativeHTML,order:controls('a').map(el=>el.hasAttribute('data-codex-inbox-settle')?'settle':el.hasAttribute('data-codex-inbox-snooze')?'snooze':'unexpected'),key:row('a').getAttribute('data-codex-inbox-key'),selected:row('a').getAttribute('aria-current'),display:getComputedStyle(row('a')).display})")
       assert.deepEqual(initial.native, initial.nativeBefore, 'scoped renderer CSS does not restyle native rows')

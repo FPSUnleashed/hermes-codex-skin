@@ -32,6 +32,7 @@ async function fixture(run) {
       window.popup=()=>document.querySelector('[data-codex-inbox-snooze-popup]');
     })()`);
     await browser.evaluate('flush()');
+    await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush()`);
     const click = async selector => {
       const p = await browser.evaluate(`(() => {const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2}})()`);
       await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...p });

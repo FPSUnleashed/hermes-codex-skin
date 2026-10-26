@@ -9,8 +9,9 @@ const CODEX_INBOX_ROW_UI_CSS = `
 [data-codex-inbox-row-ui] > [data-slot='row-button'] { box-sizing:border-box; display:flex; height:100%; min-width:0; align-items:center; align-self:stretch; gap:.375rem; padding:.125rem .5rem; border:0; background:transparent; text-align:left; color:inherit; font:inherit; cursor:pointer; z-index:0; }
 [data-codex-inbox-row-ui] [data-codex-inbox-lead] { display:grid; width:.875rem; height:.875rem; flex-shrink:0; place-items:center; overflow:hidden; position:relative; }
 [data-codex-inbox-row-ui] [data-codex-inbox-work-dot] { box-sizing:border-box; width:6px; height:6px; border-radius:50%; background:var(--ui-text-quaternary,currentColor); color:var(--ui-text-quaternary,currentColor); opacity:0; }
-[data-codex-inbox-row-ui][data-work-state='working'] [data-codex-inbox-work-dot] { background:var(--ui-text-primary,currentColor); opacity:1; }
+[data-codex-inbox-row-ui][data-work-state='working'] [data-codex-inbox-work-dot] { background:var(--ui-accent,var(--ui-text-primary,currentColor)); opacity:1; }
 [data-codex-inbox-row-ui][data-work-state='completed'] [data-codex-inbox-work-dot] { background:var(--ui-success,var(--ui-text-quaternary,currentColor)); opacity:1; }
+[data-codex-inbox-row-ui][data-work-state='needs-input'] [data-codex-inbox-work-dot] { background:var(--color-amber-500); opacity:1; }
 /* Plugin-owned transcription of the installed host's private arc-border arc-row:
    styles.css:1111-1157,1202-1231,1246-1261,1274-1277. The installed SDK has
    no RunningBorder export; native session-row.tsx paints an aria-hidden span.
@@ -113,7 +114,7 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   // callers opting in get a Settle check rather than the generic options menu.
   let settleAction = false;
   let menuTitle = null;
-  const workStates = new Set(['working', 'completed', 'reading', 'unknown', 'idle']);
+  const workStates = new Set(['needs-input', 'working', 'completed', 'reading', 'unknown', 'idle']);
   const update = (state = {}) => {
     if ('title' in state) { text.textContent = String(state.title ?? ''); go.title = text.textContent; }
     if ('selected' in state) {
@@ -132,6 +133,11 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
       // Rendering consumes an explicit state; it never guesses completion from
       // inactivity, selection or a missing runtime slice.
       row.setAttribute('data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
+      if (state.workState === 'needs-input') {
+        workDot.setAttribute('role', 'status'); workDot.setAttribute('aria-label', 'Needs input'); workDot.title = 'Waiting for your answer';
+      } else {
+        workDot.removeAttribute('role'); workDot.removeAttribute('aria-label'); workDot.removeAttribute('title');
+      }
     }
     if ('settleAction' in state) {
       settleAction = Boolean(state.settleAction);

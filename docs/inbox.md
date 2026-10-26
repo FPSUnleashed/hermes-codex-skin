@@ -2,10 +2,18 @@
 
 [Back to the README](../README.md)
 
-This note describes Inbox in Codex Skin v1.10.0. It keeps the detailed admission, ownership and attention-state rules out of the installation guide.
+This note describes Inbox in Codex Skin v1.11.0. It keeps the detailed admission, ownership and attention-state rules out of the installation guide.
 
 
 Open the command palette and run **Codex Skin: Inbox** to switch it On or Off. The preference persists locally; a missing preference defaults to On.
+
+## Working group
+
+Working belongs to Inbox and has no separate switch. **Codex Skin: Inbox** turns both On or Off together, defaulting to On. Existing explicit Inbox Off choices are preserved.
+
+While Inbox is On, only threads with verified **working** display state move out of the main Inbox list. A quiet **Working N** button appears after the main threads, inside Inbox. It counts unique eligible threads, not runtimes or subagents. Click it, or focus it and press Enter or Space, to reveal the grouped threads below the button. Activate it again to collapse them. It starts collapsed and is absent when the group is empty.
+
+Questions and approval requests take precedence over active work, including active subagents, so those threads return to the main list. Completion, failure, idle and unknown activity also belong in the main list. Existing ownership, admission, unread, Settle and Snooze rules remain unchanged. Settled or snoozed threads do not contribute to the count. Grouping never navigates away from an open chat or stops its work. Switching Inbox Off removes the whole Inbox, including Working, and restores the native sidebar. Switching it back On restores Working automatically, collapsed.
 
 #### How to use it
 
@@ -29,9 +37,9 @@ Native row badges require a verified single connection/profile and a matching ad
 
 Settling or snoozing the current thread opens the next Inbox thread, or a new chat if none remains in the loaded list. Acting on another thread does not navigate. Inbox scrolls without manual pagination controls. Previously work-admitted threads remain available even beyond the first history page. Pinned and Sessions stay below Inbox, including when expanded; neither section must be closed to expose Inbox. Turning Inbox Off restores native section controls and hides the Inbox badges without erasing settled state or snooze deadlines.
 
-**Snooze** is on the left and appears only on hover or keyboard focus. The **Settle** check is on the right and stays visible at rest regardless of activity; its reserved slot keeps the title and Snooze in place. Real work uses a theme-foreground dot and the installed Hermes segmented contour around the whole row, not a rotating arc around the dot. Idle, reading and unknown activity states show no activity indicator. A successful terminal reply or the native unread marker produces the green completed dot; errors, interruptions and missing live status do not imply success. A parent handoff while observed subagents remain active also does not imply completion. Activity events require the exact source/profile and a verified stored/runtime identity; replayed and foreign-owner events are ignored. Reduced-motion keeps the working marker and a static contour.
+**Snooze** is on the left and appears only on hover or keyboard focus. The **Settle** check is on the right and stays visible at rest regardless of activity; its reserved slot keeps the title and Snooze in place. Real work uses a theme-accent dot and the installed Hermes segmented contour around the whole row, not a rotating arc around the dot. Questions and approval requests show an amber Needs input dot instead of the working contour. Idle, reading and unknown activity states show no activity indicator. A successful terminal reply or the native unread marker produces the green completed dot; errors, interruptions and missing live status do not imply success. A parent handoff while observed subagents remain active also does not imply completion. Activity events require the exact source/profile and a verified stored/runtime identity; replayed and foreign-owner events are ignored. Reduced-motion keeps the working marker and a static contour.
 
-Viewing the latest completed reply clears its green completion dot without settling the chat or removing it from Inbox. Reading an earlier reply does not clear a newer one. Fresh work re-arms the indicator for the next completion.
+Viewing the latest completed reply clears its green completion dot without settling the chat or removing it from Inbox. Reading an earlier reply does not clear a newer one. Completed/read receipts persist locally across refreshes, connection/profile changes and plugin reloads; a metadata refresh alone does not acknowledge a reply. Fresh work or positively newer unread evidence re-arms the indicator. Failed read-receipt writes keep the completion indicator visible and are retried on later updates.
 
 Session listing uses Hermes' native endpoint and follows its configured retention policy. Settle and Snooze themselves write only the plugin's local state and never archive a session.
 

@@ -29,7 +29,7 @@ Open the command palette and run **Codex Skin: Clean transcript**. The row shows
 Clean transcript defaults to **Off**. An existing **Off** or **On** choice is preserved.
 
 - **Off** preserves Hermes' complete native transcript presentation.
-- **On** keeps all live progress visible, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices and interim replies after the final response mounts. User messages, final answers, generated images, artifacts and alerts stay visible.
+- **On** keeps all live progress visible, then hides safely identified settled tool calls, thinking chrome, changed-file summaries, system notices, completed subagent summaries and interim replies after the final response mounts. Late subagent summaries are cleaned up too. User messages, final answers, generated images, artifacts and alerts stay visible.
 
 Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. The plugin leaves uncertain content visible rather than risk hiding a real final answer.
 
@@ -41,7 +41,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 
 ## Older Desktop layout (v1.6.0)
 
-For the older Desktop layout, install the pinned v1.6.0 file instead of v1.10.0 or `main`. Keep v1.6.0 while staying on that layout; it predates the in-plugin updater.
+For the older Desktop layout, install the pinned v1.6.0 file instead of v1.11.0 or `main`. Keep v1.6.0 while staying on that layout; it predates the in-plugin updater.
 
 macOS / Linux:
 
@@ -83,7 +83,7 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 ## Historical screenshots
 
-These are historical captures, not screenshots of v1.10.0. They can show retired controls, including Titlebar autohide. The composer-width menu predates the two intermediate widths added in v1.10.0.
+These are historical captures, not screenshots of v1.11.0. They can show retired controls, including Titlebar autohide. The composer-width menu predates the two intermediate widths added in v1.10.0.
 
 ### Earlier native theme and Glass overview
 

@@ -3,7 +3,6 @@
 const INBOX_MODE_KEY = 'inbox'
 const INBOX_MODE_EVENT = `${ID}:inbox-mode`
 const INBOX_ROWS_EVENT = `${ID}:inbox-rows`
-
 function readCodexInboxMode() {
   try { return pluginStorage?.get(INBOX_MODE_KEY, 'on') === 'off' ? 'off' : 'on' }
   catch { return 'off' }
@@ -630,7 +629,7 @@ function startCodexInboxObserver(ctx, inbox) {
   if (typeof host.onEvent === 'function') subscriptions.push(host.onEvent('*', event => {
     // SDK profile tags can describe the active surface, not the event producer.
     // They may trigger a scoped read; only that read can establish ownership.
-    if (!event.replayed && ['message.start', 'message.complete', 'error', 'subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type) &&
+    if (!event.replayed && ['message.start', 'message.complete', 'error', 'clarify.request', 'clarify.settled', 'approval.request', 'approval.settled', 'tool.complete', 'subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type) &&
         mode === 'on' && event.connectionId === scope.connectionId && event.profile === scope.profile) {
       const currentFocus = codexInboxLiveFocus()
       if (currentFocus?.runtimeId === event.session_id) rememberFocus()
@@ -641,6 +640,8 @@ function startCodexInboxObserver(ctx, inbox) {
         // their independently proved durable lineage before releasing the event.
         const payload = {}
         if (typeof event.payload?.status === 'string') payload.status = event.payload.status
+        if (typeof event.payload?.prompt_id === 'string') payload.prompt_id = event.payload.prompt_id
+        if (typeof event.payload?.request_id === 'string') payload.request_id = event.payload.request_id
         if (event.payload?.error) payload.error = true
         if (typeof event.payload?.subagent_id === 'string') payload.subagent_id = event.payload.subagent_id
         pendingEvents.push({ focus: { ...scope }, storedIds: [...new Set(candidates.map(focus => focus.storedId))],

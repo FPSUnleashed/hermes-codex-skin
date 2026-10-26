@@ -53,6 +53,7 @@ test('exact shipping bundle keeps child-only cold-start chat animated through pa
       window.emit=(type,payload={},sid='runtime-a')=>events.forEach(fn=>fn({type,payload,...scope,session_id:sid}));
     })()`)
     await browser.evaluate('flush()')
+    await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush()`)
     let a = await browser.evaluate("sample('chat-a')")
     assert.equal(a?.state, 'working', 'child roster admits and animates cold-start conversation while parent idle/unread')
     assert.equal(a.opacity, '1')

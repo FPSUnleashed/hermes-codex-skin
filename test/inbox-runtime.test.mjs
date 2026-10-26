@@ -48,7 +48,7 @@ function fixture() {
     mount(); const root=document.querySelector('[data-sessions-mode]'),nativeA=document.getElementById('native-a'),nativePinned=document.getElementById('native-pin-a');
     const nativeClick=document.getElementById('native-open-a'),nativePin=document.getElementById('native-pin-action-a');
     runtime.bindNativeRow(nativeA,rows[0],scope);runtime.bindNativeRow(nativePinned,rows[0],scope);runtime.bindNativeRow(document.getElementById('native-b'),rows[1],scope);
-    await flush();
+    await flush();document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();await flush();
     check('island_before_native_groups',root.firstElementChild.getAttribute('data-codex-inbox-owned')==='island');
     check('initial_inbox_open',document.querySelector('[data-codex-inbox-header]').getAttribute('aria-expanded')==='true');
     document.querySelector('[data-codex-inbox-header]').focus();document.querySelector('[data-codex-inbox-header]').click();await flush();check('inbox_collapses_and_retains_header_focus',getComputedStyle(document.querySelector('[data-codex-inbox-owned="island"] > [data-slot="sidebar-group-content"]')).display==='none'&&document.activeElement.hasAttribute('data-codex-inbox-header'));document.querySelector('[data-codex-inbox-header]').click();await flush();
@@ -84,6 +84,7 @@ function fixture() {
     update(runtime,{error:new Error('failed'),sessions:[]});await flush();check('error_not_false_zero',document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('could not be loaded')&&!document.querySelector('[data-codex-inbox-header]').textContent.includes('(0)'));
     let loads=0;const many=Array.from({length:205},(_,i)=>({id:'page-'+i,title:'Row '+i,started_at:created,message_count:1}));
     update(runtime,{sessions:many,hasMore:true,loadMore:()=>loads++});await flush();check('all_admitted_rows_preserved',document.querySelectorAll('[data-codex-inbox-row]').length===many.length);
+    document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();await flush();
     const scroll=document.querySelector('[data-codex-inbox-owned="island"] > [data-slot="sidebar-group-content"]');check('bounded_inbox_scrolls_within_native_pane',scroll.clientHeight>0&&scroll.scrollHeight>scroll.clientHeight&&scroll.clientHeight<root.clientHeight);
     scroll.scrollTop=scroll.scrollHeight;await flush();check('scroll_reaches_last_admitted_row',inboxRow(many.at(-1).id).getBoundingClientRect().bottom<=scroll.getBoundingClientRect().bottom+1&&!!inboxRow('page-0'));
     check('no_manual_pagination_or_parent_callback',![...document.querySelectorAll('[data-codex-inbox-owned="island"] button')].some(el=>['Next threads','Previous threads','Load more threads'].includes(el.textContent))&&loads===0);
@@ -147,6 +148,7 @@ function snoozeFixture() {
   let runtime=installCodexInboxRuntime({storage,host,window:scheduler});
   (async()=>{
     update(runtime);runtime.bindNativeRow(document.getElementById('native-a'),rows[0],scope);runtime.bindNativeRow(document.getElementById('native-b'),rows[1],scope);await flush();
+    document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();await flush();
     check('clock_control_keyboard_label',trigger('a')?.getAttribute('aria-label')==='Snooze A');
     trigger('a').focus();trigger('a').click();await flush();
     check('popup_accessible_and_unclipped',popup()?.getAttribute('role')==='menu'&&popup().parentElement===document.body&&getComputedStyle(popup()).position==='fixed'&&popup().contains(document.activeElement));
@@ -159,6 +161,7 @@ function snoozeFixture() {
     trigger('a').click();const stalePreset=popup().querySelector('button'),staleRow=row('a');update(runtime,{scope:other});await flush();stalePreset.click();staleRow.querySelector('[data-codex-inbox-open]').click();staleRow.querySelector('[data-codex-inbox-settle]').click();staleRow.querySelector('[data-codex-inbox-snooze]').click();await flush();
     check('scope_switch_fences_detached_popup_and_row_actions',!popup()&&!runtime.model.isSnoozed(scope,'a')&&!runtime.model.isSnoozed(other,'a')&&!runtime.model.isSettled(other,'a')&&opens.length===0);
     update(runtime,{scope:third});await flush();check('profile_switch_unsnoozed',!!row('a'));update(runtime);await flush();
+    document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();await flush();
     const stableA=row('a'),stableTrigger=trigger('a');stableTrigger.focus();
     update(runtime,{sessions:[{...rows[0],title:'Renamed'},rows[1],rows[2]],liveSessions:[{session_id:'b',status:'working'}]});await flush();
     check('row_and_keyboard_identity_stable',row('a')===stableA&&trigger('a')===stableTrigger&&document.activeElement===stableTrigger);

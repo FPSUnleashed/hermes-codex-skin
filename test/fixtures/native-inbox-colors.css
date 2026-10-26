@@ -1,0 +1,26 @@
+/*
+ * Native Hermes CSS excerpt for the Inbox browser tests.
+ * Source: inbox-needs-input/installed-assets/index-B89n1Ils.css
+ * Source SHA-256: 0c606bb541bd9992e67aef7796478f70889a8fb31f75a0181092ffb5aca65b56
+ * Upstream preflight, token and utilities: Tailwind CSS v4.3.3 (MIT).
+ *
+ * Only the universal preflight reset, amber-500 declaration and the three
+ * reference background utilities are retained. Declarations/selectors are
+ * verbatim; the theme rule is reduced to the one token these tests consume.
+ * Original theme/base/utilities layer order is preserved. Tests supply their
+ * own light/dark theme values and exercise live accent/success changes.
+ *
+ * Run against a complete native stylesheet by setting HERMES_INSTALLED_ROW_CSS
+ * to its path. An explicit unreadable path must fail, not use this excerpt.
+ */
+@layer theme{
+:root,:host{--color-amber-500:oklch(76.9% .188 70.08);}
+}
+@layer base{
+*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}
+}
+@layer utilities{
+.bg-\(--ui-accent\),.bg-\(--ui-accent\)\/5{background-color:var(--ui-accent)}
+.bg-\(--ui-success\){background-color:var(--ui-success)}
+.bg-amber-500{background-color:var(--color-amber-500)}
+}

@@ -41,6 +41,8 @@ for (const height of [520, 260, 150]) {
         window.runtime=installCodexInboxRuntime({storage,host,window:scheduler});window.update=(extra={})=>runtime.update({scope,sessions:rows.map(r=>({...r,source:'desktop'})),liveSessions:rows.map(r=>({session_id:r.id,status:'working'})),liveStatusKnown:true,hasMore:true,loadMore:()=>loads++,...extra});window.island=()=>document.querySelector('[data-codex-inbox-owned="island"]');window.content=()=>island().querySelector('[data-slot="sidebar-group-content"]');update();flush();
       `)
       const geometry = () => browser.evaluate(`({root:rect(root),inbox:rect(island()),header:rect(island().firstElementChild),content:rect(content()),native:nativeGroups.map(rect),hit:document.elementFromPoint(rect(island()).width/2+20,rect(island()).top+38)?.closest('[data-codex-inbox-owned]')===island()})`)
+      assert.equal(await browser.evaluate("island().querySelector('[data-codex-inbox-working-rows]').hidden"), true, 'Working starts collapsed as part of Inbox')
+      await browser.evaluate("island().querySelector('[data-codex-inbox-working-toggle]').click();flush()")
       const collapsed = await geometry()
       assert.ok(Math.abs(collapsed.native.at(-1).bottom - collapsed.root.bottom) < 2, 'closed native sections sit at the bottom, not halfway down the pane')
       assert.ok(collapsed.native[1].height <= 26, 'collapsed Sessions cannot reserve a blank flex-1 viewport')
