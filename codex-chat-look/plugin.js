@@ -2657,16 +2657,22 @@ function decorateSentMessageEditors() {
     if (!editor || !send) continue
     let binding = sentEditBindings.get(root)
     if (!binding) {
+      let active = true
+      let retryFrame = null
       const cancel = document.createElement('button')
       cancel.type = 'button'
       cancel.setAttribute('data-codex-edit-cancel', '')
       cancel.onpointerdown = event => event.preventDefault()
       cancel.onclick = () => {
-        if (!root.isConnected) return
+        if (!active || !root.isConnected) return
+        if (retryFrame !== null) window.cancelAnimationFrame(retryFrame)
         const escape = () => editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
         escape()
         // The first Escape can close a native mention/file suggestion first.
-        window.requestAnimationFrame(() => { if (root.isConnected && editor.isConnected) escape() })
+        if (active) retryFrame = window.requestAnimationFrame(() => {
+          retryFrame = null
+          if (active && root.isConnected && editor.isConnected) escape()
+        })
       }
       panel.append(cancel)
       const resize = new ResizeObserver(() => {
@@ -2674,6 +2680,9 @@ function decorateSentMessageEditors() {
       })
       resize.observe(send)
       binding = { send, cancel, cleanup: () => {
+        active = false
+        if (retryFrame !== null) window.cancelAnimationFrame(retryFrame)
+        retryFrame = null
         resize.disconnect()
         cancel.remove()
         send.removeAttribute('data-codex-edit-send')
