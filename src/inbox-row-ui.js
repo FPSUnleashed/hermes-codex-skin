@@ -57,6 +57,29 @@ const CODEX_INBOX_ROW_UI_CSS = `
 }
 `;
 
+function codexInboxProfileColor(name, overrides) {
+  const key = String(name ?? '').trim();
+  if (!key || key === 'default') return null;
+  if (overrides && typeof overrides === 'object' && !Array.isArray(overrides) && typeof overrides[key] === 'string') return overrides[key];
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360} 68% 58%)`;
+}
+
+function codexInboxProfileShortLabel(name) {
+  const value = String(name ?? '');
+  try {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    for (const { segment } of segmenter.segment(value)) {
+      if (/^[\p{L}\p{N}\p{Extended_Pictographic}\p{Regional_Indicator}]+$/u.test(segment)) return segment;
+    }
+  } catch { /* Fall back below. */ }
+  for (const char of value) {
+    if (/[\p{L}\p{N}\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(char)) return char;
+  }
+  return '?';
+}
+
 function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   if (!doc || typeof doc.createElement !== 'function') throw new TypeError('document is required');
   const make = (tag, className, marker) => {
@@ -75,10 +98,15 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   const runningArc = make('span', '', 'data-codex-inbox-running-arc');
   runningArc.setAttribute('aria-hidden', 'true');
   lead.append(workDot);
+  const profileMark = make('span', 'grid size-4 shrink-0 place-items-center overflow-hidden', 'data-codex-inbox-profile-mark');
+  profileMark.hidden = true;
+  profileMark.setAttribute('aria-hidden', 'true');
+  profileMark.style.width = '16px';
+  profileMark.style.height = '16px';
   const wrap = make('span', 'min-w-0 flex-1 self-center', 'data-codex-inbox-title-wrap');
   const label = make('span', 'min-w-0 truncate text-[0.8125rem] text-(--ui-text-secondary) leading-[1.35] hover-marquee block font-normal group-hover:text-foreground group-data-[working=true]:text-foreground/90', 'data-codex-inbox-label');
   const text = make('span', 'hover-marquee-inner');
-  label.append(text); wrap.append(label); go.append(lead, wrap);
+  label.append(text); wrap.append(label); go.append(lead, profileMark, wrap);
   const actions = make('div', 'flex shrink-0 items-center self-stretch', 'data-row-actions');
   const glyphButton = (marker, name, paths) => {
     const button = make('button', 'inline-flex shrink-0 cursor-pointer items-center justify-center size-6 rounded-[4px] text-(--ui-text-secondary) bg-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100', marker);
@@ -159,6 +187,56 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
     if ('menuTitle' in state || 'settleAction' in state) {
       const name = menuTitle ?? (settleAction ? 'Settle' : 'Inbox row options');
       menu.title = name; menu.setAttribute('aria-label', name);
+    }
+    if ('profile' in state) {
+      const profile = state.profile == null ? '' : String(state.profile).trim();
+      while (profileMark.firstChild) profileMark.removeChild(profileMark.firstChild);
+      if (!profile) {
+        profileMark.hidden = true;
+        profileMark.setAttribute('aria-hidden', 'true');
+        profileMark.removeAttribute('title');
+        profileMark.removeAttribute('aria-label');
+        profileMark.style.color = '';
+        profileMark.style.background = '';
+        profileMark.style.borderRadius = '';
+        profileMark.style.fontSize = '';
+        profileMark.style.fontWeight = '';
+        profileMark.style.textTransform = '';
+      } else {
+        profileMark.hidden = false;
+        profileMark.removeAttribute('aria-hidden');
+        let overrides = null;
+        try {
+          const storage = globalThis.localStorage || globalThis.window?.localStorage;
+          const raw = storage?.getItem?.('hermes.desktop.profileColors');
+          const parsed = raw ? JSON.parse(raw) : null;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) overrides = parsed;
+        } catch { /* Malformed or unavailable storage falls back to deterministic colour. */ }
+        const color = codexInboxProfileColor(profile, overrides);
+        if (color === null) {
+          const icon = doc.createElement('i');
+          icon.className = 'codicon codicon-home';
+          icon.setAttribute('aria-hidden', 'true');
+          icon.style.color = 'var(--ui-text-quaternary)';
+          profileMark.append(icon);
+          profileMark.style.color = 'var(--ui-text-quaternary)';
+          profileMark.style.background = 'transparent';
+          profileMark.style.borderRadius = '';
+          profileMark.style.fontSize = '';
+          profileMark.style.fontWeight = '';
+          profileMark.style.textTransform = '';
+        } else {
+          profileMark.textContent = codexInboxProfileShortLabel(profile);
+          profileMark.style.color = color;
+          profileMark.style.background = `color-mix(in srgb, ${color} 22%, transparent)`;
+          profileMark.style.borderRadius = '3px';
+          profileMark.style.fontSize = '0.5rem';
+          profileMark.style.fontWeight = '600';
+          profileMark.style.textTransform = 'uppercase';
+        }
+        profileMark.title = `Profile: ${profile}`;
+        profileMark.setAttribute('aria-label', `Profile: ${profile}`);
+      }
     }
   };
   update({ title: '', selected: false, disabled: false, menuDisabled: false, workState: 'idle' });

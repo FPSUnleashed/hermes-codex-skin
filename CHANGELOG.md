@@ -6,6 +6,7 @@ All notable changes to this project are documented here.
 
 ### Added
 
+- Aggregate several profiles in Inbox: choose one profile, an explicit list, or every profile from the palette command. Aggregated rows carry the owning profile's mark — the `home` icon for `default`, the profile's short label in its own colour for named profiles — and Settle, Snooze and undo keep per-profile records. Opt-in: with no selection stored, Inbox behaves exactly as before.
 - Add an optional Floating sidebar layout, enabled by default: opening Pinned or Sessions moves both sections directly below Inbox; closing both restores bottom alignment. The setting persists locally. Contributed by [@subhead](https://github.com/subhead) in [89cfa2a](https://github.com/subhead/hermes-codex-skin/commit/89cfa2a6c8ce5f02a87083f437dcc8a679e87363).
 
 ### Improved

@@ -7,6 +7,14 @@ This note describes Inbox in Codex Skin v1.12.0. It keeps the detailed admission
 
 Open the command palette and run **Codex Skin: Inbox** to switch it On or Off. The preference persists locally; a missing preference defaults to On.
 
+## Aggregated profiles
+
+Inbox reads one profile by default — the gateway's current one. Run **Codex Skin: Inbox profiles** to aggregate instead: pick an explicit list, or "All profiles". The choice persists locally, like the Inbox switch, and an absent choice keeps the single-profile behaviour.
+
+Aggregated rows carry the owning profile's mark, the same identity the sidebar uses: `default` shows the home icon, and a named profile shows its short label in its own colour. Settle, Snooze and undo keep resolving to the thread's real profile, so switching between aggregated and single-profile never mixes or loses records.
+
+Only profiles in the selection are read, admitted or woken by live events. A profile that fails to answer is skipped instead of blanking the others, and a thread whose profile is still unknown is resolved by its own owner-verified read before it can appear.
+
 ## Working group
 
 Working belongs to Inbox and has no separate switch. **Codex Skin: Inbox** turns both On or Off together, defaulting to On. Existing explicit Inbox Off choices are preserved.

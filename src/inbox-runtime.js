@@ -13,8 +13,36 @@ function codexInboxId(session) {
   return typeof id === 'string' && id ? id : null;
 }
 
+// Session id (and lineage root) to its real profile, for the aggregated Inbox
+// paths that only receive an id (badges, reactivation, live identity). Rebuilt
+// from each read; a plugin reload starts empty.
+const codexInboxProfileCache = new Map();
+function codexInboxRememberProfile(scope, session) {
+  const valid = codexInboxScope(scope);
+  const id = codexInboxId(session);
+  const profile = typeof session === 'object' ? session?.profile : null;
+  if (!valid || !id || valid.profile !== '*' || typeof profile !== 'string' || !profile || profile === '*') return;
+  const selected = typeof globalThis.readCodexInboxProfiles === 'function' ? globalThis.readCodexInboxProfiles() : (typeof readCodexInboxProfiles === 'function' ? readCodexInboxProfiles() : []);
+  if (Array.isArray(selected) && selected.length && !selected.includes('*') && !selected.includes(profile)) return;
+  const key = JSON.stringify([valid.connectionId, id]);
+  if (codexInboxProfileCache.size >= 1024) {
+    const first = codexInboxProfileCache.keys().next().value;
+    if (first !== undefined) codexInboxProfileCache.delete(first);
+  }
+  codexInboxProfileCache.set(key, profile);
+}
+function codexInboxCachedProfile(connectionId, id) {
+  return codexInboxProfileCache.get(JSON.stringify([connectionId, id])) || null;
+}
+
 function codexInboxOwnedBy(scope, session) {
-  return !!scope && (!session?.profile || session.profile === scope.profile) &&
+  if (scope?.profile === '*') {
+    const profile = typeof session?.profile === 'string' ? session.profile : null;
+    if (profile && profile !== '*' && !codexInboxProfileSelected(profile)) return false;
+  }
+  const profileMatches = !session?.profile || session.profile === scope?.profile ||
+    (scope?.profile === '*' && (!session?.profile || session.profile === '*' || codexInboxProfileSelected(session.profile)));
+  return !!scope && profileMatches &&
     (session?._connection_id == null || session._connection_id === scope.connectionId) &&
     (session?.connectionId == null || session.connectionId === scope.connectionId) &&
     (session?.connection_id == null || session.connection_id === scope.connectionId);
@@ -23,7 +51,16 @@ function codexInboxOwnedBy(scope, session) {
 function codexInboxKey(scope, durableId) {
   const valid = codexInboxScope(scope);
   const id = codexInboxId(durableId);
-  return valid && id ? JSON.stringify([valid.connectionId, valid.profile, id]) : null;
+  if (!valid || !id) return null;
+  let profile = valid.profile;
+  if (profile === '*') {
+    let real = null;
+    if (typeof durableId === 'object' && durableId && typeof durableId.profile === 'string' && durableId.profile && durableId.profile !== '*') real = durableId.profile;
+    else real = codexInboxCachedProfile(valid.connectionId, id);
+    if (!real) return null;
+    profile = real;
+  }
+  return JSON.stringify([valid.connectionId, profile, id]);
 }
 
 function codexInboxWorkStatus(value) {
@@ -93,6 +130,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
     return draft.aliases[declared] || declared || draft.aliases[own] || own;
   };
   const associate = (draft, scope, session) => {
+    codexInboxRememberProfile(scope, session);
     const key = rootKey(draft, scope, session);
     if (!key) return null;
     const own = codexInboxKey(scope, session);
@@ -1176,16 +1214,21 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       currentScope = scope;
       input = { ...next, sessions: Array.isArray(next.sessions) ? next.sessions : [], liveSessions: Array.isArray(next.liveSessions) ? next.liveSessions : [],
         childSnapshots: Array.isArray(next.childSnapshots) ? next.childSnapshots : [], liveStatusKnown: next.liveStatusKnown ?? Array.isArray(next.liveSessions) };
+      if (currentScope?.profile === '*') for (const session of input.sessions) codexInboxRememberProfile(currentScope, session);
       if (scope && on) { reconcileAdmission(); reconcileActivity(); reconcileChildActivity(); }
       refreshDeadline(); requestRender();
     },
     // Positive work/input events only. Callers must supply authoritative scope and ID.
     // Background reads/resuming and explicit UI opens do nothing.
     reactivate(event) {
-      if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || JSON.stringify(codexInboxScope(event.scope)) !== JSON.stringify(currentScope)) return false;
+      const eventScope = codexInboxScope(event?.scope);
+    const scopeMatches = !!eventScope && eventScope.connectionId === currentScope.connectionId && (
+      currentScope.profile === '*' ? (eventScope.profile === '*' || codexInboxProfileSelected(eventScope.profile)) : eventScope.profile === currentScope.profile
+    );
+    if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || !scopeMatches) return false;
       if (!['work', 'input', 'busy'].includes(event.type) && codexInboxWorkStatus(event) !== 'work') return false;
       const session = eventSession(event);
-      if (!session || input.loading || input.error || input.liveStatusKnown !== true ||
+      if (!session || (currentScope?.profile === '*' && session.profile && session.profile !== '*' && !codexInboxProfileSelected(session.profile)) || input.loading || input.error || input.liveStatusKnown !== true ||
           !admission.observe(currentScope, input.sessions, { workingSessions: [session] }) || !admission.isEligible(currentScope, session)) { requestRender(); return false; }
       if (model.isManualSettled(currentScope, session) && !model.unsettle(currentScope, session)) { requestRender(); return false; }
       model.recordReply(currentScope, session, 'none');
@@ -1196,10 +1239,12 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       requestRender(); return result;
     },
     activity(event) {
+      const eventScopeMatches = currentScope.profile === '*' ? codexInboxProfileSelected(event?.profile) : event?.profile === currentScope.profile;
       if (disposed || !on || !currentScope || !event || event.replayed || !codexInboxOwnedBy(currentScope, event) ||
-          !sameScope({ connectionId: event.connectionId, profile: event.profile })) return false;
+          event.connectionId !== currentScope.connectionId || !eventScopeMatches) return false;
       const session = eventSession(event);
       if (!session) return false;
+      if (currentScope?.profile === '*' && session.profile && session.profile !== '*' && !codexInboxProfileSelected(session.profile)) return false;
       if (['clarify.request', 'approval.request'].includes(event.type)) {
         const promptId = event.payload?.prompt_id ?? event.payload?.request_id;
         if (typeof promptId !== 'string' || !promptId) return false;

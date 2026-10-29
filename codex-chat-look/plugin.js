@@ -4158,6 +4158,125 @@ export default {
         run: () => setCodexInboxMode(readCodexInboxMode() === 'on' ? 'off' : 'on', inbox)
       }
     })
+    ctx.register({
+      id: 'inbox-profiles',
+      area: PALETTE_AREA,
+      data: {
+        id: 'codex-chat-look.inbox-profiles',
+        label: 'Codex Skin: Inbox profiles',
+        detail: () => {
+          const selected = readCodexInboxProfiles()
+          if (!selected.length) return 'Current profile'
+          if (selected.length === 1 && selected[0] === '*') return 'All profiles'
+          return selected.join(', ')
+        },
+        detailVariant: 'state',
+        keepOpen: true,
+        keywords: ['codex', 'skin', 'inbox', 'profiles', 'aggregated'],
+        run: async () => {
+          const routes = typeof host.profileRoutes === 'function' ? await host.profileRoutes() : []
+          const profiles = [...new Set(routes.map(route => route?.profile).filter(profile => typeof profile === 'string' && profile))].sort()
+          const selected = readCodexInboxProfiles()
+          const doc = globalThis.document
+          if (!doc?.body) return
+          const overlay = doc.createElement('div')
+          overlay.style.position = 'fixed'
+          overlay.style.inset = '0'
+          overlay.style.zIndex = '100000'
+          overlay.style.display = 'flex'
+          overlay.style.alignItems = 'center'
+          overlay.style.justifyContent = 'center'
+          overlay.style.background = 'color-mix(in srgb, var(--ui-text-primary) 20%, transparent)'
+          const panel = doc.createElement('div')
+          panel.style.background = 'var(--codex-color-card, var(--ui-editor-surface-background))'
+          panel.style.border = '1px solid var(--ui-stroke-secondary)'
+          panel.style.borderRadius = '8px'
+          panel.style.color = 'var(--ui-text-primary)'
+          panel.style.padding = '16px'
+          panel.style.minWidth = '280px'
+          panel.style.maxWidth = '420px'
+          panel.style.boxSizing = 'border-box'
+          const title = doc.createElement('div')
+          title.textContent = 'Inbox profiles'
+          title.style.fontWeight = '600'
+          title.style.marginBottom = '12px'
+          panel.append(title)
+          const allLabel = doc.createElement('label')
+          allLabel.style.display = 'flex'
+          allLabel.style.alignItems = 'center'
+          allLabel.style.gap = '8px'
+          allLabel.style.padding = '4px 0'
+          const allCheckbox = doc.createElement('input')
+          allCheckbox.type = 'checkbox'
+          allCheckbox.checked = selected.includes('*')
+          allLabel.append(allCheckbox, doc.createTextNode('All profiles'))
+          panel.append(allLabel)
+          const profileRows = []
+          for (const profile of profiles) {
+            const label = doc.createElement('label')
+            label.style.display = 'flex'
+            label.style.alignItems = 'center'
+            label.style.gap = '8px'
+            label.style.padding = '4px 0'
+            const checkbox = doc.createElement('input')
+            checkbox.type = 'checkbox'
+            checkbox.value = profile
+            checkbox.checked = selected.includes(profile) || selected.includes('*')
+            checkbox.disabled = allCheckbox.checked
+            label.append(checkbox, doc.createTextNode(profile))
+            panel.append(label)
+            profileRows.push({ label, checkbox })
+          }
+          const syncDisabled = () => {
+            for (const { checkbox } of profileRows) checkbox.disabled = allCheckbox.checked
+            if (allCheckbox.checked) for (const { checkbox } of profileRows) checkbox.checked = false
+          }
+          allCheckbox.addEventListener('change', syncDisabled)
+          const footer = doc.createElement('div')
+          footer.style.display = 'flex'
+          footer.style.justifyContent = 'flex-end'
+          footer.style.gap = '8px'
+          footer.style.marginTop = '12px'
+          const cancelButton = doc.createElement('button')
+          cancelButton.type = 'button'
+          cancelButton.textContent = 'Cancel'
+          cancelButton.style.color = 'var(--ui-text-primary)'
+          cancelButton.style.background = 'transparent'
+          cancelButton.style.border = '1px solid var(--ui-stroke-secondary)'
+          cancelButton.style.borderRadius = '6px'
+          cancelButton.style.padding = '4px 10px'
+          cancelButton.style.cursor = 'pointer'
+          const saveButton = doc.createElement('button')
+          saveButton.type = 'button'
+          saveButton.textContent = 'Save'
+          saveButton.style.color = 'var(--ui-text-primary)'
+          saveButton.style.background = 'transparent'
+          saveButton.style.border = '1px solid var(--ui-stroke-secondary)'
+          saveButton.style.borderRadius = '6px'
+          saveButton.style.padding = '4px 10px'
+          saveButton.style.cursor = 'pointer'
+          footer.append(cancelButton, saveButton)
+          panel.append(footer)
+          overlay.append(panel)
+          const close = () => {
+            overlay.remove()
+            doc.removeEventListener('keydown', onKeyDown, true)
+          }
+          const onKeyDown = event => {
+            if (event.key === 'Escape') { event.preventDefault(); close() }
+          }
+          cancelButton.addEventListener('click', close)
+          saveButton.addEventListener('click', () => {
+            const next = allCheckbox.checked ? ['*'] : profileRows.filter(({ checkbox }) => checkbox.checked).map(({ checkbox }) => checkbox.value)
+            setCodexInboxProfiles(next, inbox)
+            close()
+          })
+          overlay.addEventListener('click', event => { if (event.target === overlay) close() })
+          doc.addEventListener('keydown', onKeyDown, true)
+          doc.body.append(overlay)
+        }
+      }
+    })
   }
 }
 
@@ -4619,6 +4738,8 @@ var CodexInboxObserverVendor=(()=>{var I=Object.defineProperty;var st=Object.get
 // refresh, deduplication and cancellation across renderer/plugin lifetimes.
 const INBOX_MODE_KEY = 'inbox'
 const INBOX_MODE_EVENT = `${ID}:inbox-mode`
+const INBOX_PROFILES_KEY = 'inbox-profiles'
+const INBOX_PROFILES_EVENT = `${ID}:inbox-profiles`
 const INBOX_ROWS_EVENT = `${ID}:inbox-rows`
 function readCodexInboxMode() {
   try { return pluginStorage?.get(INBOX_MODE_KEY, 'on') === 'off' ? 'off' : 'on' }
@@ -4640,10 +4761,42 @@ function setCodexInboxMode(mode, inbox) {
   return next
 }
 
+function readCodexInboxProfiles() {
+  try {
+    const raw = pluginStorage?.get(INBOX_PROFILES_KEY)
+    const saved = typeof raw === 'string' ? JSON.parse(raw) : raw
+    return Array.isArray(saved) ? saved.filter(value => typeof value === 'string') : []
+  } catch { return [] }
+}
+
+function setCodexInboxProfiles(profiles, inbox) {
+  const next = Array.isArray(profiles) ? profiles.filter(value => typeof value === 'string') : []
+  try {
+    pluginStorage?.set(INBOX_PROFILES_KEY, next)
+    const saved = pluginStorage?.get(INBOX_PROFILES_KEY, null)
+    const parsed = typeof saved === 'string' ? JSON.parse(saved) : saved
+    if (JSON.stringify(parsed) !== JSON.stringify(next)) throw new Error('Inbox profiles were not saved.')
+  }
+  catch {
+    host.notify?.({ kind: 'error', message: 'Could not save the Inbox profile selection.' })
+    return readCodexInboxProfiles()
+  }
+  globalThis.window?.dispatchEvent?.(new CustomEvent(INBOX_PROFILES_EVENT, { detail: next }))
+  return next
+}
+
+function codexInboxProfileSelected(profile) {
+  if (typeof profile !== 'string' || !profile || profile === '*') return false
+  const selected = readCodexInboxProfiles()
+  if (!selected.length) return false
+  return selected.includes('*') || selected.includes(profile)
+}
+
 function inboxGatewayScope() {
+  const selected = readCodexInboxProfiles()
   return {
     connectionId: String(host.state.connectionId?.get?.() || host.activeConnectionId?.() || ''),
-    profile: String(host.state.profile?.get?.() || 'default')
+    profile: selected.length ? '*' : String(host.state.profile?.get?.() || 'default')
   }
 }
 
@@ -4652,7 +4805,9 @@ function inboxOwnerScope() {
 }
 
 function sameInboxScope(left, right) {
-  return left.connectionId === right.connectionId && left.profile === right.profile
+  if (!left || !right || left.connectionId !== right.connectionId) return false
+  if (left.profile === '*' || right.profile === '*') return true
+  return left.profile === right.profile
 }
 
 async function readCodexInboxRowOwner(scope) {
@@ -4724,8 +4879,8 @@ function codexInboxCanonicalRuntime(scope, targetProfile, runtimeId, rawRows, me
   const row = codexInboxUniqueLiveRow(runtimeId, rawRows), proof = owners.get(JSON.stringify([scope.connectionId, runtimeId]))
   if (rows.length && !row) return null
   if (proof && (proof.conflicted || !sameInboxScope(proof, scope))) return null
-  if (row && (row.connection_id && row.connection_id !== scope.connectionId || row.profile && row.profile !== targetProfile)) return null
-  if (!proof && (!row || row.profile !== targetProfile)) return null
+  if (row && (row.connection_id && row.connection_id !== scope.connectionId || (targetProfile && targetProfile !== '*' && row.profile && row.profile !== targetProfile))) return null
+  if (!proof && targetProfile && targetProfile !== '*' && (!row || row.profile !== targetProfile)) return null
   const stored = row ? codexInboxLiveStoredIds(row) : []
   if (row && (!stored.length || !stored.every(id => codexInboxLiveStoredMatch(id, row, metadata)))) return null
   const candidates = new Set(metadata.filter(session => {
@@ -4741,13 +4896,15 @@ function resolveCodexInboxLiveSessions(scope, targetProfile, rawRows, metadata, 
   for (const row of rawRows) {
     if (!row || typeof row !== 'object') { liveStatusKnown = false; continue }
     if (row.connection_id && row.connection_id !== scope.connectionId) continue
-    if (row.profile && row.profile !== targetProfile) continue
+    if (targetProfile && targetProfile !== '*' && row.profile && row.profile !== targetProfile) continue
     const runtimeId = row.session_id || row.id
     const ids = codexInboxLiveStoredIds(row)
     const canonicalId = codexInboxCanonicalRuntime(scope, targetProfile, runtimeId, rawRows, metadata, owners)
     if (canonicalId) {
       const session = metadata.find(session => (session._lineage_root_id || session.id) === canonicalId)
-      liveSessions.push({ ...row, session_key: session.id, stored_session_id: session.id, profile: scope.profile, connection_id: scope.connectionId, _codexInboxCanonicalId: canonicalId })
+      liveSessions.push({ ...row, session_key: session.id, stored_session_id: session.id,
+        profile: session?.profile || row.profile || row._codexInboxRouteProfile || (scope.profile === '*' ? row.profile : scope.profile),
+        connection_id: scope.connectionId, _codexInboxCanonicalId: canonicalId })
     } else {
       if (!ids.length) liveStatusKnown = false
       ids.forEach(id => unresolved.add(id))
@@ -4857,40 +5014,66 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   const focusedBefore = codexInboxLiveFocus()
   const sessions = new Map()
   let offset = 0, total = 0
+  const aggregated = scope.profile === '*'
+  const selectedProfiles = readCodexInboxProfiles()
+  const allProfiles = selectedProfiles.includes('*')
   let targetProfile = scope.profile
   for (let page = 0; page < pageCount; page++) {
     if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    const routeProfile = aggregated ? 'all' : scope.profile
     const params = new URLSearchParams({
       limit: '100', offset: String(offset), min_messages: '1',
-      archived: 'exclude', order: 'recent', profile: scope.profile
+      archived: 'exclude', order: 'recent', profile: routeProfile
     })
     const data = await bridge.api({
       ...(scope.connectionId ? { connectionId: scope.connectionId } : {}),
-      profile: scope.profile,
+      profile: routeProfile,
       path: `/api/sessions?${params}`, timeoutMs: 60_000
     })
     if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     if (!Array.isArray(data?.sessions) || !Number.isFinite(data.total) || data.total < 0) {
       throw new Error('Inbox received an incomplete session list.')
     }
-    if (targetProfile === scope.profile && data.sessions.some(session => session.profile && session.profile !== scope.profile) && host.profileRoutes) {
+    if (!aggregated && targetProfile === scope.profile && data.sessions.some(session => session.profile && session.profile !== scope.profile) && host.profileRoutes) {
       const routes = await host.profileRoutes()
       const matches = routes.filter(route => sameInboxScope(route, scope))
       if (matches.length === 1 && typeof matches[0].targetProfile === 'string' && matches[0].targetProfile) targetProfile = matches[0].targetProfile
       if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     }
-    if (data.errors?.length || data.storage?.[targetProfile] === 'corrupt') {
+    const rowsReturned = Array.isArray(data?.sessions) && data.sessions.length > 0
+    const corruptProfile = aggregated
+      ? Object.values(data?.storage || {}).some(value => value === 'corrupt')
+      : data?.storage?.[targetProfile] === 'corrupt'
+    if ((data?.errors?.length || corruptProfile) && !rowsReturned) {
       throw new Error('The session list could not be read completely.')
     }
-    total = data.total
+    if (aggregated) {
+      const totals = data?.totals || data?.profileTotals || data?.totalByProfile || data?.totalsByProfile
+      if (totals && typeof totals === 'object' && !Array.isArray(totals)) {
+        const profilesToSum = allProfiles ? Object.keys(totals) : selectedProfiles.filter(profile => profile !== '*')
+        total = profilesToSum.reduce((sum, profile) => sum + (Number.isFinite(totals[profile]) ? totals[profile] : 0), 0)
+      } else if (Array.isArray(data?.profiles)) {
+        const profilesToSum = allProfiles ? data.profiles.map(item => item?.profile) : selectedProfiles.filter(profile => profile !== '*')
+        total = data.profiles
+          .filter(item => profilesToSum.includes(item?.profile))
+          .reduce((sum, item) => sum + (Number.isFinite(item?.total) ? item.total : 0), 0)
+      } else {
+        total = Number.isFinite(data?.total) ? data.total : 0
+      }
+    } else {
+      total = data.total
+    }
     for (const session of data.sessions) {
       // A scoped response may still contain a carried row from another owner.
-      if (session.profile && session.profile !== targetProfile) continue
+      if (aggregated) {
+        if (!session.profile || session.profile === '*' || (!allProfiles && !selectedProfiles.includes(session.profile))) continue
+      } else if (session.profile && session.profile !== targetProfile) continue
       if (session.connection_id && session.connection_id !== scope.connectionId) continue
       if (session.hidden || session.archived || !session.id) continue
       const durable = session._lineage_root_id || session.id
       const previous = sessions.get(durable)
-      if (!previous || (session.last_active || 0) > (previous.last_active || 0)) sessions.set(durable, { ...session, profile: scope.profile })
+      if (aggregated) codexInboxRememberProfile(scope, session)
+      if (!previous || (session.last_active || 0) > (previous.last_active || 0)) sessions.set(durable, { ...session, profile: aggregated ? session.profile : scope.profile })
     }
     // Pinned backfills can exceed the requested page. They must not advance
     // the database offset past conversations we have not fetched.
@@ -4954,12 +5137,51 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
     let live, readIdentity, readChildren
     if (typeof host.requestProfile === 'function' && typeof host.profileRoutes === 'function') {
       const routes = (await host.profileRoutes()).filter(route => sameInboxScope(route, scope))
-      if (routes.length !== 1 || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
-      if (typeof routes[0].targetProfile === 'string' && routes[0].targetProfile) targetProfile = routes[0].targetProfile
+      const selectedRoutes = aggregated
+        ? routes.filter(route => allProfiles || selectedProfiles.includes(route.profile) || route.profile === '*')
+        : routes
+      if (!selectedRoutes.length || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
+      if (!aggregated) {
+        if (selectedRoutes.length !== 1 || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
+        if (typeof selectedRoutes[0].targetProfile === 'string' && selectedRoutes[0].targetProfile) targetProfile = selectedRoutes[0].targetProfile
+      }
       liveStatusAt = Date.now()
-      live = await host.requestProfile(routes[0], 'session.active_list', { profile: targetProfile })
-      readIdentity = sessionId => host.requestProfile(routes[0], 'session.status', { session_id: sessionId })
-      readChildren = sessionId => host.requestProfile(routes[0], 'subagent.list', { session_id: sessionId })
+      const routeByProfile = new Map(selectedRoutes.map(route => [route.profile, route]))
+      if (aggregated) {
+        const collected = []
+        let succeeded = false
+        for (const route of selectedRoutes) {
+          try {
+            const result = await host.requestProfile(route, 'session.active_list', { profile: route.targetProfile || route.profile || 'all' })
+            if (Array.isArray(result?.sessions)) {
+              succeeded = true
+              for (const row of result.sessions) if (row && typeof row === 'object') collected.push({ ...row, _codexInboxRouteProfile: route.profile })
+            }
+          } catch { /* one unreachable profile must not blank the others */ }
+        }
+        if (!succeeded) throw new Error('Inbox live owner could not be verified.')
+        live = { sessions: collected }
+        const routeByRuntime = new Map()
+        for (const row of collected) {
+          codexInboxRememberProfile(scope, row)
+          const runtimeId = row.session_id || row.id
+          const profile = row.profile || row._codexInboxRouteProfile
+          const route = routeByProfile.get(profile) || selectedRoutes[0]
+          if (runtimeId && route) routeByRuntime.set(runtimeId, route)
+        }
+        readIdentity = sessionId => {
+          const route = routeByRuntime.get(sessionId) || selectedRoutes[0]
+          return host.requestProfile(route, 'session.status', { session_id: sessionId })
+        }
+        readChildren = sessionId => {
+          const route = routeByRuntime.get(sessionId) || selectedRoutes[0]
+          return host.requestProfile(route, 'subagent.list', { session_id: sessionId })
+        }
+      } else {
+        live = await host.requestProfile(selectedRoutes[0], 'session.active_list', { profile: targetProfile })
+        readIdentity = sessionId => host.requestProfile(selectedRoutes[0], 'session.status', { session_id: sessionId })
+        readChildren = sessionId => host.requestProfile(selectedRoutes[0], 'subagent.list', { session_id: sessionId })
+      }
     } else {
       // A legacy ambient request is safe only for the gateway it actually uses.
       if (!sameInboxScope(scope, inboxGatewayScope())) throw new Error('Inbox requires explicit live-owner routing.')
@@ -4971,9 +5193,10 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
     if (Array.isArray(live?.sessions)) {
       liveReadSucceeded = true
       // Keep only identity/status metadata, not another profile's preview text.
-      const fields = ['id', 'session_id', 'session_key', 'stored_session_id', 'profile', 'connection_id', 'status', 'state', 'busy']
+      const fields = ['id', 'session_id', 'session_key', 'stored_session_id', 'profile', 'connection_id', 'status', 'state', 'busy', '_codexInboxRouteProfile']
       rawLiveSessions = live.sessions.map(row => row && typeof row === 'object'
         ? Object.fromEntries(fields.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]])) : null)
+      if (aggregated) rawLiveSessions = rawLiveSessions.filter(row => row && (!row.profile || allProfiles || selectedProfiles.includes(row.profile)))
       const anchorError = await anchorBackfill
       if (anchorError) throw anchorError
       const focusedAfter = codexInboxLiveFocus(), metadata = [...sessions.values()]
@@ -4983,7 +5206,7 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
       for (const focus of [...stableFocus, ...nominations()]) {
         if (!sameInboxScope(focus, scope)) continue
         const row = codexInboxUniqueLiveRow(focus.runtimeId, rawLiveSessions)
-        if (!row || row.profile && row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId ||
+        if (!row || (targetProfile && targetProfile !== '*' && row.profile && row.profile !== targetProfile) || row.connection_id && row.connection_id !== scope.connectionId ||
             !metadata.some(session => [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].includes(focus.storedId)) ||
             !codexInboxLiveStoredMatch(focus.storedId, row, metadata)) continue
         const key = JSON.stringify([scope.connectionId, focus.runtimeId]), previous = liveOwners.get(key)
@@ -5005,7 +5228,7 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
       const knownIds = new Set(metadata.flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
       // Qualified producer rows can discover missing metadata, but receive no
       // canonical activity authority until that exact-owner metadata is read.
-      const discovery = rawLiveSessions.filter(row => row && row.profile === targetProfile &&
+      const discovery = rawLiveSessions.filter(row => row && (aggregated ? (!row.profile || allProfiles || selectedProfiles.includes(row.profile)) : row.profile === targetProfile) &&
         (!row.connection_id || row.connection_id === scope.connectionId) &&
         codexInboxUniqueLiveRow(row.session_id || row.id, rawLiveSessions) === row &&
         new Set(codexInboxLiveStoredIds(row)).size === 1)
@@ -5229,8 +5452,11 @@ function startCodexInboxObserver(ctx, inbox) {
   const stopQuery = observer.subscribe(project)
   const resolveLiveEvent = event => {
     const query = observer.getCurrentResult(), data = progressSnapshot || query.data
+    const eventProfileOk = scope.profile === '*'
+      ? (typeof event.profile === 'string' && event.profile && event.profile !== '*' && codexInboxProfileSelected(event.profile))
+      : event.profile === scope.profile
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
-        event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
+        event.connectionId !== scope.connectionId || !eventProfileOk ||
         !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
     const metadata = metadataPreview?.sessions || data.sessions
     const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, metadata, liveOwners)
@@ -5241,6 +5467,20 @@ function startCodexInboxObserver(ctx, inbox) {
   const verifyLiveEvent = event => !!resolveLiveEvent(event)
   inbox.verifyLiveEvent = verifyLiveEvent
   inbox.resolveLiveEvent = resolveLiveEvent
+  const profilesChanged = () => {
+    if (disposed || mode !== 'on') return
+    pendingEvents.length = 0
+    nominatedFocus.clear()
+    liveOwners.clear()
+    metadataPreview = null
+    progressSnapshot = null
+    liveAuthority = Symbol('Inbox live connection')
+    pageCount = 1
+    observer.setOptions(options())
+    void observer.refetch()
+    project()
+  }
+  window.addEventListener(INBOX_PROFILES_EVENT, profilesChanged)
   const focusChanged = () => {
     configure(); rememberFocus(); project()
     const next = JSON.stringify(codexInboxLiveFocus())
@@ -5291,7 +5531,7 @@ function startCodexInboxObserver(ctx, inbox) {
     // SDK profile tags can describe the active surface, not the event producer.
     // They may trigger a scoped read; only that read can establish ownership.
     if (!event.replayed && ['message.start', 'message.complete', 'error', 'clarify.request', 'clarify.settled', 'approval.request', 'approval.settled', 'tool.complete', 'subagent.spawn_requested', 'subagent.start', 'subagent.complete'].includes(event.type) &&
-        mode === 'on' && event.connectionId === scope.connectionId && event.profile === scope.profile) {
+        mode === 'on' && event.connectionId === scope.connectionId && (scope.profile === '*' ? (typeof event.profile === 'string' && event.profile && event.profile !== '*' && codexInboxProfileSelected(event.profile)) : event.profile === scope.profile)) {
       const currentFocus = codexInboxLiveFocus()
       if (currentFocus?.runtimeId === event.session_id) rememberFocus()
       const candidates = nominations().filter(focus => sameInboxScope(focus, scope) && focus.runtimeId === event.session_id)
@@ -5328,6 +5568,7 @@ function startCodexInboxObserver(ctx, inbox) {
     nominatedFocus.clear()
     subscriptions.forEach(unsubscribe => unsubscribe())
     window.removeEventListener(INBOX_MODE_EVENT, configure)
+    window.removeEventListener(INBOX_PROFILES_EVENT, profilesChanged)
     readiness?.disconnect()
     stopQuery()
     observer.destroy()
@@ -5532,12 +5773,13 @@ async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, 
   if (!id || !scope || !stillCurrent()) throw new Error('Inbox open owner changed.')
   const bridge = globalThis.window?.hermesDesktop
   if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
+  const routeProfile = scope.profile === '*' ? 'all' : scope.profile
   let resolvedId = id, lineage = null
   if (followLineage || expectedRootId && expectedRootId !== id) {
     const rootId = expectedRootId || id
     lineage = await bridge.api({
-      connectionId: scope.connectionId, profile: scope.profile,
-      path: `/api/sessions/${encodeURIComponent(rootId)}/latest-descendant?${new URLSearchParams({ profile: scope.profile })}`,
+      connectionId: scope.connectionId, profile: routeProfile,
+      path: `/api/sessions/${encodeURIComponent(rootId)}/latest-descendant?${new URLSearchParams({ profile: routeProfile })}`,
       timeoutMs: 60_000
     })
     if (!stillCurrent()) throw new Error('Inbox open owner changed.')
@@ -5548,22 +5790,27 @@ async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, 
     if (followLineage) resolvedId = lineage.session_id
   }
   const row = await bridge.api({
-    connectionId: scope.connectionId, profile: scope.profile,
-    path: `/api/sessions/${encodeURIComponent(resolvedId)}?${new URLSearchParams({ profile: scope.profile })}`,
+    connectionId: scope.connectionId, profile: routeProfile,
+    path: `/api/sessions/${encodeURIComponent(resolvedId)}?${new URLSearchParams({ profile: routeProfile })}`,
     timeoutMs: 60_000
   })
   if (!stillCurrent()) throw new Error('Inbox open owner changed.')
   if (!row || row.id !== resolvedId || typeof row.profile !== 'string') throw new Error('Inbox received incomplete opened-chat metadata.')
-  let targetProfile = scope.profile
-  if (row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
+  let targetProfile = scope.profile === '*' ? row.profile : scope.profile
+  if (scope.profile !== '*' && row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
     const routes = await host.profileRoutes()
     const matches = routes.filter(route => sameInboxScope(route, scope))
     if (matches.length === 1 && matches[0].targetProfile) targetProfile = matches[0].targetProfile
   }
-  if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
+  if (scope.profile === '*') {
+    if (!codexInboxProfileSelected(row.profile)) throw new Error('Inbox opened-chat owner could not be verified.')
+  } else if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
     throw new Error('Inbox opened-chat owner could not be verified.')
   }
-  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile, connection_id: scope.connectionId }
+  if (scope.profile === '*' && (row.connection_id && row.connection_id !== scope.connectionId)) {
+    throw new Error('Inbox opened-chat owner could not be verified.')
+  }
+  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile === '*' ? row.profile : scope.profile, connection_id: scope.connectionId }
 }
 
 function isCodexInboxSessionNotFound(error) {
@@ -5802,6 +6049,29 @@ const CODEX_INBOX_ROW_UI_CSS = `
 }
 `;
 
+function codexInboxProfileColor(name, overrides) {
+  const key = String(name ?? '').trim();
+  if (!key || key === 'default') return null;
+  if (overrides && typeof overrides === 'object' && !Array.isArray(overrides) && typeof overrides[key] === 'string') return overrides[key];
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360} 68% 58%)`;
+}
+
+function codexInboxProfileShortLabel(name) {
+  const value = String(name ?? '');
+  try {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    for (const { segment } of segmenter.segment(value)) {
+      if (/^[\p{L}\p{N}\p{Extended_Pictographic}\p{Regional_Indicator}]+$/u.test(segment)) return segment;
+    }
+  } catch { /* Fall back below. */ }
+  for (const char of value) {
+    if (/[\p{L}\p{N}\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(char)) return char;
+  }
+  return '?';
+}
+
 function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   if (!doc || typeof doc.createElement !== 'function') throw new TypeError('document is required');
   const make = (tag, className, marker) => {
@@ -5820,10 +6090,15 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   const runningArc = make('span', '', 'data-codex-inbox-running-arc');
   runningArc.setAttribute('aria-hidden', 'true');
   lead.append(workDot);
+  const profileMark = make('span', 'grid size-4 shrink-0 place-items-center overflow-hidden', 'data-codex-inbox-profile-mark');
+  profileMark.hidden = true;
+  profileMark.setAttribute('aria-hidden', 'true');
+  profileMark.style.width = '16px';
+  profileMark.style.height = '16px';
   const wrap = make('span', 'min-w-0 flex-1 self-center', 'data-codex-inbox-title-wrap');
   const label = make('span', 'min-w-0 truncate text-[0.8125rem] text-(--ui-text-secondary) leading-[1.35] hover-marquee block font-normal group-hover:text-foreground group-data-[working=true]:text-foreground/90', 'data-codex-inbox-label');
   const text = make('span', 'hover-marquee-inner');
-  label.append(text); wrap.append(label); go.append(lead, wrap);
+  label.append(text); wrap.append(label); go.append(lead, profileMark, wrap);
   const actions = make('div', 'flex shrink-0 items-center self-stretch', 'data-row-actions');
   const glyphButton = (marker, name, paths) => {
     const button = make('button', 'inline-flex shrink-0 cursor-pointer items-center justify-center size-6 rounded-[4px] text-(--ui-text-secondary) bg-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100', marker);
@@ -5905,6 +6180,56 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
       const name = menuTitle ?? (settleAction ? 'Settle' : 'Inbox row options');
       menu.title = name; menu.setAttribute('aria-label', name);
     }
+    if ('profile' in state) {
+      const profile = state.profile == null ? '' : String(state.profile).trim();
+      while (profileMark.firstChild) profileMark.removeChild(profileMark.firstChild);
+      if (!profile) {
+        profileMark.hidden = true;
+        profileMark.setAttribute('aria-hidden', 'true');
+        profileMark.removeAttribute('title');
+        profileMark.removeAttribute('aria-label');
+        profileMark.style.color = '';
+        profileMark.style.background = '';
+        profileMark.style.borderRadius = '';
+        profileMark.style.fontSize = '';
+        profileMark.style.fontWeight = '';
+        profileMark.style.textTransform = '';
+      } else {
+        profileMark.hidden = false;
+        profileMark.removeAttribute('aria-hidden');
+        let overrides = null;
+        try {
+          const storage = globalThis.localStorage || globalThis.window?.localStorage;
+          const raw = storage?.getItem?.('hermes.desktop.profileColors');
+          const parsed = raw ? JSON.parse(raw) : null;
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) overrides = parsed;
+        } catch { /* Malformed or unavailable storage falls back to deterministic colour. */ }
+        const color = codexInboxProfileColor(profile, overrides);
+        if (color === null) {
+          const icon = doc.createElement('i');
+          icon.className = 'codicon codicon-home';
+          icon.setAttribute('aria-hidden', 'true');
+          icon.style.color = 'var(--ui-text-quaternary)';
+          profileMark.append(icon);
+          profileMark.style.color = 'var(--ui-text-quaternary)';
+          profileMark.style.background = 'transparent';
+          profileMark.style.borderRadius = '';
+          profileMark.style.fontSize = '';
+          profileMark.style.fontWeight = '';
+          profileMark.style.textTransform = '';
+        } else {
+          profileMark.textContent = codexInboxProfileShortLabel(profile);
+          profileMark.style.color = color;
+          profileMark.style.background = `color-mix(in srgb, ${color} 22%, transparent)`;
+          profileMark.style.borderRadius = '3px';
+          profileMark.style.fontSize = '0.5rem';
+          profileMark.style.fontWeight = '600';
+          profileMark.style.textTransform = 'uppercase';
+        }
+        profileMark.title = `Profile: ${profile}`;
+        profileMark.setAttribute('aria-label', `Profile: ${profile}`);
+      }
+    }
   };
   update({ title: '', selected: false, disabled: false, menuDisabled: false, workState: 'idle' });
   return { row, go, label, lead, actions, menu, clock, update };
@@ -5929,8 +6254,36 @@ function codexInboxId(session) {
   return typeof id === 'string' && id ? id : null;
 }
 
+// Session id (and lineage root) to its real profile, for the aggregated Inbox
+// paths that only receive an id (badges, reactivation, live identity). Rebuilt
+// from each read; a plugin reload starts empty.
+const codexInboxProfileCache = new Map();
+function codexInboxRememberProfile(scope, session) {
+  const valid = codexInboxScope(scope);
+  const id = codexInboxId(session);
+  const profile = typeof session === 'object' ? session?.profile : null;
+  if (!valid || !id || valid.profile !== '*' || typeof profile !== 'string' || !profile || profile === '*') return;
+  const selected = typeof globalThis.readCodexInboxProfiles === 'function' ? globalThis.readCodexInboxProfiles() : (typeof readCodexInboxProfiles === 'function' ? readCodexInboxProfiles() : []);
+  if (Array.isArray(selected) && selected.length && !selected.includes('*') && !selected.includes(profile)) return;
+  const key = JSON.stringify([valid.connectionId, id]);
+  if (codexInboxProfileCache.size >= 1024) {
+    const first = codexInboxProfileCache.keys().next().value;
+    if (first !== undefined) codexInboxProfileCache.delete(first);
+  }
+  codexInboxProfileCache.set(key, profile);
+}
+function codexInboxCachedProfile(connectionId, id) {
+  return codexInboxProfileCache.get(JSON.stringify([connectionId, id])) || null;
+}
+
 function codexInboxOwnedBy(scope, session) {
-  return !!scope && (!session?.profile || session.profile === scope.profile) &&
+  if (scope?.profile === '*') {
+    const profile = typeof session?.profile === 'string' ? session.profile : null;
+    if (profile && profile !== '*' && !codexInboxProfileSelected(profile)) return false;
+  }
+  const profileMatches = !session?.profile || session.profile === scope?.profile ||
+    (scope?.profile === '*' && (!session?.profile || session.profile === '*' || codexInboxProfileSelected(session.profile)));
+  return !!scope && profileMatches &&
     (session?._connection_id == null || session._connection_id === scope.connectionId) &&
     (session?.connectionId == null || session.connectionId === scope.connectionId) &&
     (session?.connection_id == null || session.connection_id === scope.connectionId);
@@ -5939,7 +6292,16 @@ function codexInboxOwnedBy(scope, session) {
 function codexInboxKey(scope, durableId) {
   const valid = codexInboxScope(scope);
   const id = codexInboxId(durableId);
-  return valid && id ? JSON.stringify([valid.connectionId, valid.profile, id]) : null;
+  if (!valid || !id) return null;
+  let profile = valid.profile;
+  if (profile === '*') {
+    let real = null;
+    if (typeof durableId === 'object' && durableId && typeof durableId.profile === 'string' && durableId.profile && durableId.profile !== '*') real = durableId.profile;
+    else real = codexInboxCachedProfile(valid.connectionId, id);
+    if (!real) return null;
+    profile = real;
+  }
+  return JSON.stringify([valid.connectionId, profile, id]);
 }
 
 function codexInboxWorkStatus(value) {
@@ -6009,6 +6371,7 @@ function createCodexInboxModel(storage, { restoreAttention } = {}) {
     return draft.aliases[declared] || declared || draft.aliases[own] || own;
   };
   const associate = (draft, scope, session) => {
+    codexInboxRememberProfile(scope, session);
     const key = rootKey(draft, scope, session);
     if (!key) return null;
     const own = codexInboxKey(scope, session);
@@ -7092,16 +7455,21 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       currentScope = scope;
       input = { ...next, sessions: Array.isArray(next.sessions) ? next.sessions : [], liveSessions: Array.isArray(next.liveSessions) ? next.liveSessions : [],
         childSnapshots: Array.isArray(next.childSnapshots) ? next.childSnapshots : [], liveStatusKnown: next.liveStatusKnown ?? Array.isArray(next.liveSessions) };
+      if (currentScope?.profile === '*') for (const session of input.sessions) codexInboxRememberProfile(currentScope, session);
       if (scope && on) { reconcileAdmission(); reconcileActivity(); reconcileChildActivity(); }
       refreshDeadline(); requestRender();
     },
     // Positive work/input events only. Callers must supply authoritative scope and ID.
     // Background reads/resuming and explicit UI opens do nothing.
     reactivate(event) {
-      if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || JSON.stringify(codexInboxScope(event.scope)) !== JSON.stringify(currentScope)) return false;
+      const eventScope = codexInboxScope(event?.scope);
+    const scopeMatches = !!eventScope && eventScope.connectionId === currentScope.connectionId && (
+      currentScope.profile === '*' ? (eventScope.profile === '*' || codexInboxProfileSelected(eventScope.profile)) : eventScope.profile === currentScope.profile
+    );
+    if (disposed || !on || !currentScope || !event || !codexInboxOwnedBy(currentScope, event) || !scopeMatches) return false;
       if (!['work', 'input', 'busy'].includes(event.type) && codexInboxWorkStatus(event) !== 'work') return false;
       const session = eventSession(event);
-      if (!session || input.loading || input.error || input.liveStatusKnown !== true ||
+      if (!session || (currentScope?.profile === '*' && session.profile && session.profile !== '*' && !codexInboxProfileSelected(session.profile)) || input.loading || input.error || input.liveStatusKnown !== true ||
           !admission.observe(currentScope, input.sessions, { workingSessions: [session] }) || !admission.isEligible(currentScope, session)) { requestRender(); return false; }
       if (model.isManualSettled(currentScope, session) && !model.unsettle(currentScope, session)) { requestRender(); return false; }
       model.recordReply(currentScope, session, 'none');
@@ -7112,10 +7480,12 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
       requestRender(); return result;
     },
     activity(event) {
+      const eventScopeMatches = currentScope.profile === '*' ? codexInboxProfileSelected(event?.profile) : event?.profile === currentScope.profile;
       if (disposed || !on || !currentScope || !event || event.replayed || !codexInboxOwnedBy(currentScope, event) ||
-          !sameScope({ connectionId: event.connectionId, profile: event.profile })) return false;
+          event.connectionId !== currentScope.connectionId || !eventScopeMatches) return false;
       const session = eventSession(event);
       if (!session) return false;
+      if (currentScope?.profile === '*' && session.profile && session.profile !== '*' && !codexInboxProfileSelected(session.profile)) return false;
       if (['clarify.request', 'approval.request'].includes(event.type)) {
         const promptId = event.payload?.prompt_id ?? event.payload?.request_id;
         if (typeof promptId !== 'string' || !promptId) return false;

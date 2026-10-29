@@ -5,12 +5,13 @@ async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, 
   if (!id || !scope || !stillCurrent()) throw new Error('Inbox open owner changed.')
   const bridge = globalThis.window?.hermesDesktop
   if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
+  const routeProfile = scope.profile === '*' ? 'all' : scope.profile
   let resolvedId = id, lineage = null
   if (followLineage || expectedRootId && expectedRootId !== id) {
     const rootId = expectedRootId || id
     lineage = await bridge.api({
-      connectionId: scope.connectionId, profile: scope.profile,
-      path: `/api/sessions/${encodeURIComponent(rootId)}/latest-descendant?${new URLSearchParams({ profile: scope.profile })}`,
+      connectionId: scope.connectionId, profile: routeProfile,
+      path: `/api/sessions/${encodeURIComponent(rootId)}/latest-descendant?${new URLSearchParams({ profile: routeProfile })}`,
       timeoutMs: 60_000
     })
     if (!stillCurrent()) throw new Error('Inbox open owner changed.')
@@ -21,22 +22,27 @@ async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, 
     if (followLineage) resolvedId = lineage.session_id
   }
   const row = await bridge.api({
-    connectionId: scope.connectionId, profile: scope.profile,
-    path: `/api/sessions/${encodeURIComponent(resolvedId)}?${new URLSearchParams({ profile: scope.profile })}`,
+    connectionId: scope.connectionId, profile: routeProfile,
+    path: `/api/sessions/${encodeURIComponent(resolvedId)}?${new URLSearchParams({ profile: routeProfile })}`,
     timeoutMs: 60_000
   })
   if (!stillCurrent()) throw new Error('Inbox open owner changed.')
   if (!row || row.id !== resolvedId || typeof row.profile !== 'string') throw new Error('Inbox received incomplete opened-chat metadata.')
-  let targetProfile = scope.profile
-  if (row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
+  let targetProfile = scope.profile === '*' ? row.profile : scope.profile
+  if (scope.profile !== '*' && row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
     const routes = await host.profileRoutes()
     const matches = routes.filter(route => sameInboxScope(route, scope))
     if (matches.length === 1 && matches[0].targetProfile) targetProfile = matches[0].targetProfile
   }
-  if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
+  if (scope.profile === '*') {
+    if (!codexInboxProfileSelected(row.profile)) throw new Error('Inbox opened-chat owner could not be verified.')
+  } else if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
     throw new Error('Inbox opened-chat owner could not be verified.')
   }
-  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile, connection_id: scope.connectionId }
+  if (scope.profile === '*' && (row.connection_id && row.connection_id !== scope.connectionId)) {
+    throw new Error('Inbox opened-chat owner could not be verified.')
+  }
+  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile === '*' ? row.profile : scope.profile, connection_id: scope.connectionId }
 }
 
 function isCodexInboxSessionNotFound(error) {
