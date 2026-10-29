@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-This note describes Inbox in Codex Skin v1.11.0. It keeps the detailed admission, ownership and attention-state rules out of the installation guide.
+This note describes Inbox in Codex Skin v1.12.0. It keeps the detailed admission, ownership and attention-state rules out of the installation guide.
 
 
 Open the command palette and run **Codex Skin: Inbox** to switch it On or Off. The preference persists locally; a missing preference defaults to On.
@@ -33,7 +33,7 @@ Off uses the original Codex Skin sidebar layout, including its bottom-oriented s
 With Floating sidebar On, when Pinned and Sessions are both collapsed, their headings stay at the bottom of the sidebar.
 Opening either section moves both directly below Inbox, without leaving unused space above them.
 This alignment follows Pinned and Sessions independently of whether Inbox is open.
-With all three sections expanded, the gap below Inbox uses two native spacing units instead of one.
+The gap below Inbox stays at the ordinary spacing when Working expands, including when Pinned and Sessions are open.
 Long lists remain scrollable, and an expanded Sessions list uses the remaining height.
 
 Inbox opens by default above Pinned and Sessions. Its heading and disclosure match the native sections. A chat enters Inbox when fresh, owner-verified agent work is observed, even in an older chat. Cron sessions never enter Inbox: the filter uses Hermes' session `source` and, when present, immutable `created_source`, not titles or IDs. Known non-cron sources may differ when a chat moves between interfaces; missing or unknown provenance and conflicting ownership stay excluded. Creating an empty chat, opening or focusing a chat, reading history, pagination, unread marks and timestamps do not admit it. Admitted non-cron threads remain after work completes until **Settle**; **Snooze** hides them temporarily. Admission persists separately for each connection and profile, including threads older than the recent history page. Disconnected, stale or failed live reads cannot admit new work.
@@ -51,6 +51,8 @@ Settling or snoozing the current thread opens the next Inbox thread, or a new ch
 Viewing the latest completed reply clears its green completion dot without settling the chat or removing it from Inbox. Reading an earlier reply does not clear a newer one. Completed/read receipts persist locally across refreshes, connection/profile changes and plugin reloads; a metadata refresh alone does not acknowledge a reply. Fresh work or positively newer unread evidence re-arms the indicator. Failed read-receipt writes keep the completion indicator visible and are retried on later updates.
 
 Session listing uses Hermes' native endpoint and follows its configured retention policy. Settle and Snooze themselves write only the plugin's local state and never archive a session.
+
+After startup or reconnect, previously admitted threads become available progressively as their ownership is verified. Inbox no longer waits for every background activity check before showing those threads. Unverified chats remain excluded, and Settle and Snooze still apply. Settle waits until the current activity snapshot is complete, even when threads are already visible. Expanding Working also keeps the gap below Inbox stable when Pinned or Sessions is open.
 
 Admission v2 keeps the old v1 admission store untouched as a backup but does not automatically promote its ambiguous creation/open/work entries. All existing Settle/Snooze records and aliases remain intact. A fresh verified non-cron work observation can admit such a thread; a previous manual Settle or active Snooze still applies. This is work-based admission, not an original-human-creator filter. Unknown source kinds require compatibility review before admission.
 

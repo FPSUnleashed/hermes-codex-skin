@@ -16,11 +16,11 @@ Codex-inspired chat layout for Hermes Desktop, with native theme colors, Glass/C
 
 ## Current release
 
-**[v1.11.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.11.0)** groups running threads under Working, brings questions and approvals into view, preserves unread completion indicators and cleans up completed subagent summaries. See the [changelog](CHANGELOG.md) for the full history.
+**[v1.12.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.12.0)** adds Floating sidebar, progressive Inbox loading and theme-aware Cancel/Send actions for sent-message editing. It also fixes Inbox loading after a deleted session and keeps sidebar spacing stable. See the [changelog](CHANGELOG.md) for the full history.
 
-This page describes v1.11.0. `main` can receive tested improvements before the next tagged release; merging does not replace existing release assets. The manual commands below are pinned to v1.11.0.
+This page describes v1.12.0. `main` can receive tested improvements before the next tagged release; merging does not replace existing release assets. The manual commands below are pinned to v1.12.0.
 
-**Older Desktop layout?** Use [v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0), not v1.11.0 or `main`. See [Compatibility](#compatibility).
+**Older Desktop layout?** Use [v1.6.0](https://github.com/FPSUnleashed/hermes-codex-skin/releases/tag/v1.6.0), not v1.12.0 or `main`. See [Compatibility](#compatibility).
 
 ## Install
 
@@ -34,7 +34,7 @@ Open **Capabilities → Plugins → Install plugin** and paste this exact reposi
 FPSUnleashed/hermes-codex-skin/codex-chat-look
 ```
 
-This repository path is not pinned to v1.11.0; `main` may include newer improvements. For an exact stable version, use the pinned manual download below. Keep the `/codex-chat-look` suffix; do not use a GitHub `/blob/.../plugin.js` HTML page as the plugin file.
+This repository path is not pinned to v1.12.0; `main` may include newer improvements. For an exact stable version, use the pinned manual download below. Keep the `/codex-chat-look` suffix; do not use a GitHub `/blob/.../plugin.js` HTML page as the plugin file.
 
 ### Manual install on macOS / Linux
 
@@ -42,7 +42,7 @@ This repository path is not pinned to v1.11.0; `main` may include newer improvem
 PLUGIN_DIR="${HERMES_HOME:-$HOME/.hermes}/desktop-plugins/codex-chat-look"
 mkdir -p "$PLUGIN_DIR"
 curl -fsSL \
-  https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.11.0/codex-chat-look/plugin.js \
+  https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.12.0/codex-chat-look/plugin.js \
   -o "$PLUGIN_DIR/plugin.js"
 ```
 
@@ -52,13 +52,13 @@ curl -fsSL \
 $pluginDir = Join-Path $HOME ".hermes\desktop-plugins\codex-chat-look"
 New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
 Invoke-WebRequest `
-  -Uri "https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.11.0/codex-chat-look/plugin.js" `
+  -Uri "https://raw.githubusercontent.com/FPSUnleashed/hermes-codex-skin/v1.12.0/codex-chat-look/plugin.js" `
   -OutFile (Join-Path $pluginDir "plugin.js")
 ```
 
 Hermes watches the plugin folder. Enable the skin under **Capabilities → Plugins**. If the old appearance remains, use **Reload desktop plugins** where supported; older builds may need an app restart to reevaluate an already-loaded file.
 
-To verify a manual download, use the [checksums from the same tag](https://github.com/FPSUnleashed/hermes-codex-skin/blob/v1.11.0/CHECKSUMS.sha256), not a moving `main` checksum.
+To verify a manual download, use the [checksums from the same tag](https://github.com/FPSUnleashed/hermes-codex-skin/blob/v1.12.0/CHECKSUMS.sha256), not a moving `main` checksum.
 
 ## Adjustable settings
 
@@ -70,7 +70,7 @@ Open the command palette and search for **Codex Skin:**. Choices persist locally
 | Pinned user messages | Hermes / Off | Hermes |
 | Clean transcript | On / Off | Off |
 | Inbox | On / Off | On |
-| Floating sidebar (unreleased) | On / Off | On |
+| Floating sidebar | On / Off | On |
 
 
 Enable or disable the skin under **Capabilities → Plugins**. Under **Settings → Appearance**, choose **Codex Skin** for the original Codex palette, or keep your native Hermes theme. Installing the plugin does not select its theme.
@@ -131,7 +131,7 @@ Settings, thread identifiers, attention state and update receipts/files are stor
 
 ## Compatibility
 
-v1.11.0 targets the updated Desktop layout introduced by the September 16, 2026 panel-header and virtualized-timeline changes ([Hermes commit 2efbbef](https://github.com/NousResearch/hermes-agent/commit/2efbbef981cc75ed6df6214ee6975a0ae0f418d3)). The skin styles internal Desktop elements, so later UI changes can require a compatibility update. This is not a guarantee for every future Hermes build.
+v1.12.0 targets the updated Desktop layout introduced by the September 16, 2026 panel-header and virtualized-timeline changes ([Hermes commit 2efbbef](https://github.com/NousResearch/hermes-agent/commit/2efbbef981cc75ed6df6214ee6975a0ae0f418d3)). The skin styles internal Desktop elements, so later UI changes can require a compatibility update. This is not a guarantee for every future Hermes build.
 
 **Hermes Agent and Hermes Desktop can update independently.** A backend version alone does not establish the Desktop layout or updater capabilities.
 
@@ -141,8 +141,12 @@ Titlebar autohide was removed because the updated header keeps tabs and window c
 
 ## More information
 
-- [Detailed settings, older installs and historical screenshots](docs/usage.md). The archived captures show earlier releases, not v1.11.0.
+- [Detailed settings, older installs and historical screenshots](docs/usage.md). The archived captures show earlier releases, not v1.12.0.
 - [Inbox design and behavior](docs/inbox.md)
 - [Security policy](SECURITY.md)
 - [Contributing](CONTRIBUTING.md). Skin bugs belong here; Hermes-native bugs belong upstream, not in skin workarounds.
 - [MIT license](LICENSE)
+
+## Contributors
+
+Thanks to [@subhead](https://github.com/subhead) for the Floating sidebar layout and [@DoGMaTiiC](https://github.com/DoGMaTiiC) for the deleted-session Inbox fix in [#39](https://github.com/FPSUnleashed/hermes-codex-skin/pull/39).

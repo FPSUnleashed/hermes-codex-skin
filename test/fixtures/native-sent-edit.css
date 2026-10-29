@@ -1,0 +1,28 @@
+/* Minimal verbatim Hermes Desktop stylesheet excerpts, MIT licensed.
+ * Source: NousResearch/hermes-agent, packaged /Applications/Hermes.app,
+ * dist/assets/index-pdLEZZqK.css, captured 2026-10-29.
+ * Full source SHA-256:
+ * ce4eaebe23cc99c7ba7ca4d69c7221793a0eec3005564105dbaf4b9de69ad104
+ * This fixture preserves the native preflight and the edit panel's layout
+ * utilities. Set CODEX_NATIVE_CSS to exercise the full installed stylesheet.
+ */
+*,:after,:before,::backdrop{box-sizing:border-box;border:0 solid;margin:0;padding:0}
+button,input,select,optgroup,textarea{font:inherit;font-feature-settings:inherit;font-variation-settings:inherit;letter-spacing:inherit;color:inherit;opacity:1;background-color:#0000;border-radius:0}
+button,input:where([type=button],[type=reset],[type=submit]){appearance:button}
+.contents{display:contents}
+.relative{position:relative}
+.absolute{position:absolute}
+.flex{display:flex}
+.flex-col{flex-direction:column}
+.w-full{width:100%}
+.max-w-full{max-width:100%}
+.min-w-0{min-width:0}
+.items-start{align-items:flex-start}
+.overflow-y-auto{overflow-y:auto}
+.sr-only{clip-path:inset(50%);white-space:nowrap;border-width:0;width:1px;height:1px;margin:-1px;padding:0;position:absolute;overflow:hidden}
+.size-5{width:calc(var(--spacing) * 5);height:calc(var(--spacing) * 5)}
+.right-2{right:calc(var(--spacing) * 2)}
+.bottom-2{bottom:calc(var(--spacing) * 2)}
+.border{border-style:var(--tw-border-style);border-width:1px}
+.gap-1\.5{gap:calc(var(--spacing) * 1.5)}
+.max-h-48{max-height:calc(var(--spacing) * 48)}

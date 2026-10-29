@@ -89,7 +89,15 @@ for (const mode of ['fallback', 'dark', 'light']) {
       assert.equal(await browser.evaluate('document.activeElement===ui.menu'), true)
       await browser.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 })
       assert.equal(await browser.evaluate('document.activeElement===ui.clock'), true, 'hidden clock remains keyboard reachable')
-      await browser.evaluate(`document.activeElement.blur();new Promise(r=>setTimeout(r,130))`)
+      // Timer time can expire before Chromium presents the last transition frame.
+      await browser.evaluate(`(async()=>{
+        document.activeElement.blur();
+        const deadline=performance.now()+1500;
+        while(visibility().some(control=>control.opacity!=='0')) {
+          if(performance.now()>deadline)throw Error('blurred action opacity did not settle');
+          await new Promise(resolve=>requestAnimationFrame(resolve));
+        }
+      })()`)
       assert.deepEqual((await browser.evaluate('visibility()')).map(s => s.opacity), ['0', '0'])
       await browser.evaluate(`
       ui.update({selected:true});nativeRow.classList.add('bg-(--ui-row-active-background)');nativeRow.dataset.active='true';

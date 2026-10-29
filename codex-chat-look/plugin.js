@@ -4,7 +4,7 @@ import { jsx } from 'react/jsx-runtime'
 
 const ID = 'codex-chat-look'
 const STYLE_ID = `${ID}-styles`
-const BUILD_ID = 'v1.11.0'
+const BUILD_ID = 'v1.12.0'
 const STORAGE_PREFIX = `${ID}:turn:`
 const LONG_USER_STATE_SUFFIX = ':long-user-expanded'
 const MAX_PERSISTED_LONG_USER_STATES = 250
@@ -533,8 +533,7 @@ html[data-codex-chat-look='true'] [data-codex-user-expand][aria-expanded='true']
   }
 }
 
-/* Both sent-message editing and Queue editing stay native. The skin only gives
-   their existing contenteditable/actions the same bubble language as Codex. */
+/* Keep the native edit engine and Send button; only Cancel is skin-owned. */
 html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message-container {
   border-radius: 17px !important;
   background: transparent !important;
@@ -543,8 +542,8 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer
 html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message {
   width: 100% !important;
   max-width: 100% !important;
-  padding: 8px 12px !important;
-  border: 1px solid var(--codex-color-border) !important;
+  padding: 12px 12px 56px !important;
+  border: 0 !important;
   border-radius: 17px !important;
   background: var(--codex-color-bubble) !important;
   color: var(--codex-color-text) !important;
@@ -553,7 +552,7 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer
 
 html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-slot='composer-rich-input'] {
   min-height: 44px !important;
-  padding: 0 30px 0 0 !important;
+  padding: 0 !important;
   background: transparent !important;
   color: var(--codex-color-text) !important;
   caret-color: var(--codex-color-text) !important;
@@ -563,16 +562,45 @@ html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-slo
   font-weight: 400 !important;
 }
 
-html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] .composer-human-message > button:last-child {
-  right: 8px !important;
-  bottom: 8px !important;
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  border: 0 !important;
-  border-radius: 9999px !important;
-  background: var(--codex-color-primary) !important;
-  color: var(--codex-color-primary-foreground) !important;
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] :is([data-codex-edit-send], [data-codex-edit-cancel]) {
+  position: absolute !important;
+  bottom: 12px !important;
+  width: auto !important;
+  height: 34px !important;
+  min-width: 68px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--ui-stroke-secondary) !important;
+  border-radius: 10px !important;
+  font: 500 13px/1 ${SYSTEM_FONT} !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-codex-edit-send] {
+  right: 12px !important;
+  background: var(--ui-text-primary) !important;
+  color: var(--ui-bg-editor) !important;
+  border-color: transparent !important;
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-codex-edit-send] > * {
+  display: none !important;
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-codex-edit-send]::after {
+  content: attr(data-codex-edit-send);
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] [data-codex-edit-cancel] {
+  right: calc(20px + var(--codex-edit-send-width, 80px)) !important;
+  background: var(--ui-bg-editor) !important;
+  color: var(--ui-text-primary) !important;
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] :is([data-codex-edit-send], [data-codex-edit-cancel]):disabled {
+  opacity: .4 !important;
+  cursor: default;
+}
+html[data-codex-chat-look='true'] [data-slot='aui_edit-composer-root'] :is([data-codex-edit-send], [data-codex-edit-cancel]):focus-visible {
+  outline: 2px solid var(--ui-text-primary) !important;
+  outline-offset: 2px;
 }
 
 /* Keep Hermes' compact live-thinking typography. The Codex answer font must
@@ -2614,6 +2642,58 @@ function decorateLongUserMessage(pair) {
   control.title = expanded ? labels.less : labels.more
 }
 
+const sentEditBindings = new Map()
+
+function decorateSentMessageEditors() {
+  for (const [root, binding] of sentEditBindings) {
+    if (root.isConnected && root.contains(binding.send)) continue
+    binding.cleanup()
+    sentEditBindings.delete(root)
+  }
+  for (const root of document.querySelectorAll('[data-slot="aui_edit-composer-root"]')) {
+    const panel = root.querySelector('.composer-human-message')
+    const editor = root.querySelector('[data-slot="composer-rich-input"][contenteditable="true"]')
+    const send = panel?.querySelector(':scope > button:not([data-codex-edit-cancel])')
+    if (!editor || !send) continue
+    let binding = sentEditBindings.get(root)
+    if (!binding) {
+      const cancel = document.createElement('button')
+      cancel.type = 'button'
+      cancel.setAttribute('data-codex-edit-cancel', '')
+      cancel.onpointerdown = event => event.preventDefault()
+      cancel.onclick = () => {
+        if (!root.isConnected) return
+        const escape = () => editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+        escape()
+        // The first Escape can close a native mention/file suggestion first.
+        window.requestAnimationFrame(() => { if (root.isConnected && editor.isConnected) escape() })
+      }
+      panel.append(cancel)
+      const resize = new ResizeObserver(() => {
+        panel.style.setProperty('--codex-edit-send-width', `${send.getBoundingClientRect().width}px`)
+      })
+      resize.observe(send)
+      binding = { send, cancel, cleanup: () => {
+        resize.disconnect()
+        cancel.remove()
+        send.removeAttribute('data-codex-edit-send')
+        panel.style.removeProperty('--codex-edit-send-width')
+      } }
+      sentEditBindings.set(root, binding)
+    }
+    const french = document.documentElement.lang.toLowerCase().startsWith('fr')
+    const cancelLabel = french ? 'Annuler' : 'Cancel'
+    const sendLabel = french ? 'Envoyer' : 'Send'
+    if (binding.cancel.textContent !== cancelLabel) binding.cancel.textContent = cancelLabel
+    if (send.getAttribute('data-codex-edit-send') !== sendLabel) send.setAttribute('data-codex-edit-send', sendLabel)
+  }
+}
+
+function clearSentMessageEditors() {
+  for (const binding of sentEditBindings.values()) binding.cleanup()
+  sentEditBindings.clear()
+}
+
 function decorateComposerChrome() {
   const surface = document.querySelector('[data-slot="composer-surface"]')
   const dock = document.querySelector('[data-slot="composer-dock"]') || surface?.closest('[data-slot="composer-root"]')
@@ -3704,6 +3784,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
 
     if (composerDirty) {
       composerDirty = false
+      decorateSentMessageEditors()
       decorateComposerChrome()
       composerOverflow.refresh()
       refreshAudioLaneDocks()
@@ -3711,12 +3792,13 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   }
 
   const touchesComposerChrome = element => Boolean(
-    element?.closest?.('[data-slot="composer-dock"]:not([data-slot="composer-rich-input"]), [data-slot="composer-root"]:not([data-slot="composer-rich-input"])')
+    element?.closest?.('[data-slot="aui_edit-composer-root"], [data-slot="composer-dock"]:not([data-slot="composer-rich-input"]), [data-slot="composer-root"]:not([data-slot="composer-rich-input"])')
     || element?.matches?.('[data-slot="dropdown-menu-content"][role="menu"]')
-    || (element?.firstElementChild && element.querySelector?.('[data-slot="dropdown-menu-content"][role="menu"], [data-slot="composer-dock"]'))
+    || (element?.firstElementChild && element.querySelector?.('[data-slot="aui_edit-composer-root"], [data-slot="dropdown-menu-content"][role="menu"], [data-slot="composer-dock"]'))
   )
 
   const runtimeSignalSelector = [
+    '[data-slot="aui_edit-composer-root"]',
     '[data-slot="aui_user-message-root"]',
     '[data-role="assistant"][data-slot="aui_assistant-message-root"]',
     '[data-role="system"][data-slot="aui_system-message-root"]',
@@ -3750,7 +3832,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     let relevant = false
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement
-      if (target?.closest?.('[data-codex-user-expand]')) continue
+      if (target?.closest?.('[data-codex-user-expand], [data-codex-edit-cancel]')) continue
       if (target?.closest?.('[data-slot="sidebar"]')) continue
 
       const pair = target?.closest?.('[data-slot="aui_turn-pair"]')
@@ -3839,6 +3921,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     animationFrame = 0
     scheduled = false
     observer.disconnect()
+    clearSentMessageEditors()
     historyRail.cleanup()
     composerOverflow.cleanup()
     cancelPairWork()
@@ -4686,7 +4769,7 @@ async function readCodexInboxLiveIdentity(read, row) {
   } catch { return null }
 }
 
-async function proveCodexInboxBackgroundOwners(scope, targetProfile, rows, metadata, owners, focus, read, stillCurrent) {
+async function proveCodexInboxBackgroundOwners(scope, targetProfile, rows, metadata, owners, focus, read, stillCurrent, onProof = () => {}) {
   const focusKey = focus && JSON.stringify([scope.connectionId, focus.runtimeId])
   const anchor = focusKey && owners.get(focusKey)
   if (!anchor || anchor.conflicted || !sameInboxScope(anchor, scope) || !stillCurrent()) return
@@ -4705,6 +4788,7 @@ async function proveCodexInboxBackgroundOwners(scope, targetProfile, rows, metad
   }
   // A home shared by contradictory owner proofs cannot certify either owner.
   if ([...owners.values()].some(proof => proof.home === home && (proof.conflicted || !sameInboxScope(proof, scope)))) return
+  onProof()
   const candidates = rows.filter(row => {
     if (!row || row.profile || row.connection_id && row.connection_id !== scope.connectionId) return false
     const runtimeId = row.session_id || row.id
@@ -4713,45 +4797,52 @@ async function proveCodexInboxBackgroundOwners(scope, targetProfile, rows, metad
     return metadata.some(session => codexInboxLiveStoredMatch(session.id, row, metadata))
   })
   for (let offset = 0; offset < candidates.length; offset += 4) {
-    const batch = await Promise.all(candidates.slice(offset, offset + 4).map(async row => ({ row, identity: await readCodexInboxLiveIdentity(read, row) })))
-    if (!stillCurrent() || JSON.stringify(codexInboxLiveFocus()) !== JSON.stringify(focus)) return
-    for (const { row, identity } of batch) {
-      if (identity?.home !== home) continue
+    await Promise.all(candidates.slice(offset, offset + 4).map(async row => {
+      const identity = await readCodexInboxLiveIdentity(read, row)
+      if (!stillCurrent() || JSON.stringify(codexInboxLiveFocus()) !== JSON.stringify(focus) || identity?.home !== home) return
       owners.set(JSON.stringify([scope.connectionId, row.session_id || row.id]), {
         ...scope, runtimeId: row.session_id || row.id, storedId: identity.storedId, home
       })
-    }
+      onProof()
+    }))
+    if (!stillCurrent() || JSON.stringify(codexInboxLiveFocus()) !== JSON.stringify(focus)) return
   }
 }
 
-async function readCodexInboxChildSnapshots(scope, liveSessions, read, stillCurrent) {
+async function readCodexInboxChildSnapshots(scope, liveSessions, read, stillCurrent, onProgress = () => {}) {
   const byThread = new Map(), unknown = new Set()
   const rows = liveSessions.filter(row => row._codexInboxCanonicalId && row.status !== 'unknown')
+  const remaining = new Map()
+  for (const row of rows) remaining.set(row._codexInboxCanonicalId, (remaining.get(row._codexInboxCanonicalId) || 0) + 1)
   const at = Date.now()
+  const snapshot = () => ({
+    childSnapshots: [...byThread].filter(([id]) => !unknown.has(id) && remaining.get(id) === 0).map(([session_id, ids]) => ({ session_id, childIds: [...ids], at })),
+    childUnknownSessionIds: [...unknown].filter(id => remaining.get(id) === 0)
+  })
   for (let offset = 0; offset < rows.length; offset += 4) {
-    const batch = await Promise.all(rows.slice(offset, offset + 4).map(async row => {
+    await Promise.all(rows.slice(offset, offset + 4).map(async row => {
+      let result
       try {
-        const result = await read(row.session_id || row.id)
-        if (!Array.isArray(result?.subagents) || result.subagents.some(child =>
-          typeof child?.subagent_id !== 'string' || !child.subagent_id || typeof child.status !== 'string')) return { row, valid: false }
-        return { row, valid: true, ids: result.subagents.filter(child => ['running', 'pending', 'queued'].includes(child.status)).map(child => child.subagent_id) }
-      } catch { return { row, valid: false } }
+        result = await read(row.session_id || row.id)
+      } catch { result = null }
+      if (!stillCurrent()) throw new Error('Inbox child snapshot lost its owner.')
+      const id = row._codexInboxCanonicalId
+      const valid = Array.isArray(result?.subagents) && !result.subagents.some(child =>
+        typeof child?.subagent_id !== 'string' || !child.subagent_id || typeof child.status !== 'string')
+      remaining.set(id, remaining.get(id) - 1)
+      if (!valid) unknown.add(id)
+      else {
+        if (!byThread.has(id)) byThread.set(id, new Set())
+        result.subagents.filter(child => ['running', 'pending', 'queued'].includes(child.status)).forEach(child => byThread.get(id).add(child.subagent_id))
+      }
+      onProgress(snapshot())
     }))
     if (!stillCurrent()) throw new Error('Inbox child snapshot lost its owner.')
-    for (const result of batch) {
-      const id = result.row._codexInboxCanonicalId
-      if (!result.valid) { unknown.add(id); continue }
-      if (!byThread.has(id)) byThread.set(id, new Set())
-      result.ids.forEach(child => byThread.get(id).add(child))
-    }
   }
-  return {
-    childSnapshots: [...byThread].filter(([id]) => !unknown.has(id)).map(([session_id, ids]) => ({ session_id, childIds: [...ids], at })),
-    childUnknownSessionIds: [...unknown]
-  }
+  return snapshot()
 }
 
-async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}, nominations = () => []) {
+async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}, nominations = () => [], onProgress = () => {}) {
   const bridge = globalThis.window?.hermesDesktop
   if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
   const focusedBefore = codexInboxLiveFocus()
@@ -4810,8 +4901,11 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   const listedIds = new Set([...sessions.values()].flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
   const nominatedIds = nominations().filter(focus => sameInboxScope(focus, scope)).map(focus => focus.storedId)
   const missing = [...new Set([...explicitRequestedIds, ...pendingWorkIds, ...nominatedIds])].filter(id => !listedIds.has(id))
-  for (let index = 0; index < missing.length; index += 4) {
-    const rows = await Promise.all(missing.slice(index, index + 4).map(async id => {
+  onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
+  let publishProgress = () => {}
+  const readMissing = async ids => {
+  for (let index = 0; index < ids.length; index += 4) {
+    const rows = await Promise.all(ids.slice(index, index + 4).map(async id => {
       try {
         return await readCodexInboxOpenedSession({ id, scope }, {
           followLineage: true,
@@ -4825,12 +4919,27 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
     for (const row of rows) {
       if (row && !row.archived && !row.hidden) sessions.set(row._lineage_root_id || row.id, row)
     }
+    if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
+    publishProgress()
   }
+  }
+  // Only the focused anchor can block ownership proof. Unrelated saved history
+  // hydrates concurrently and cannot hold current activity behind its latency.
+  const anchorIds = focusedBefore && missing.includes(focusedBefore.storedId) ? [focusedBefore.storedId] : []
+  const anchorBackfill = readMissing(anchorIds).then(() => null, error => error)
+  const historyBackfill = readMissing(missing.filter(id => !anchorIds.includes(id))).then(() => null, error => error)
   // Paint the owner-scoped list without waiting for activity/roster round trips.
   // This stage deliberately carries no authority for activity or Settle.
   onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
   let liveSessions = [], rawLiveSessions = [], liveStatusKnown = false, liveReadSucceeded = false, liveStatusAt = 0
   let childSnapshots = [], childUnknownSessionIds = []
+  publishProgress = () => {
+    if (!liveReadSucceeded || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) return
+    ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, [...sessions.values()], liveOwners))
+    onProgress({ sessions: [...sessions.values()], liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile,
+      liveStatusKnown, liveSnapshotComplete: false, liveReadSucceeded, liveStatusAt, rowOwnerScope: null, explicitRequestedIds, hasMore: offset < total })
+  }
   try {
     if (!sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     let live, readIdentity, readChildren
@@ -4856,6 +4965,8 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
       const fields = ['id', 'session_id', 'session_key', 'stored_session_id', 'profile', 'connection_id', 'status', 'state', 'busy']
       rawLiveSessions = live.sessions.map(row => row && typeof row === 'object'
         ? Object.fromEntries(fields.filter(field => Object.hasOwn(row, field)).map(field => [field, row[field]])) : null)
+      const anchorError = await anchorBackfill
+      if (anchorError) throw anchorError
       const focusedAfter = codexInboxLiveFocus(), metadata = [...sessions.values()]
       const stableFocus = focusedBefore && JSON.stringify(focusedBefore) === JSON.stringify(focusedAfter) ? [focusedBefore] : []
       // Departure preserves a nomination, not authority. The owner-routed
@@ -4874,9 +4985,10 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
           liveOwners.set(key, { ...focus, home: previous.home })
         }
       }
+      publishProgress()
       if (stableFocus.length && sameInboxScope(focusedBefore, scope)) {
         await proveCodexInboxBackgroundOwners(scope, targetProfile, rawLiveSessions, metadata, liveOwners, focusedBefore, readIdentity,
-          () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope()))
+          () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope()), publishProgress)
       }
       ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, metadata, liveOwners))
       // A send can start before SQLite moves the old thread into the recent
@@ -4907,12 +5019,18 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
         ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, [...sessions.values()], liveOwners))
       }
       ;({ childSnapshots, childUnknownSessionIds } = await readCodexInboxChildSnapshots(scope, liveSessions, readChildren,
-        () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())))
+        () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope()), progress => {
+          ;({ childSnapshots, childUnknownSessionIds } = progress)
+          publishProgress()
+        }))
     }
   } catch {
     // A partial live read or failed work backfill must not authorize Settle.
     liveSessions = []; rawLiveSessions = []; childSnapshots = []; childUnknownSessionIds = []; liveStatusKnown = false; liveReadSucceeded = false
   }
+  const backfillErrors = await Promise.all([anchorBackfill, historyBackfill])
+  const backfillError = backfillErrors.find(Boolean)
+  if (backfillError) throw backfillError
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
   const rowOwnerScope = await readCodexInboxRowOwner(scope)
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
@@ -4930,6 +5048,7 @@ function startCodexInboxObserver(ctx, inbox) {
   let refreshVersion = 0, refreshing = false
   let lastFocus = JSON.stringify(codexInboxLiveFocus()), lastBusy = new Set()
   let metadataPreview = null
+  let progressSnapshot = null
   let liveAuthority = Symbol('Inbox live connection')
   const nominations = () => {
     for (const [key, item] of nominatedFocus) if (Date.now() - item.at > 10_000) nominatedFocus.delete(key)
@@ -4956,7 +5075,13 @@ function startCodexInboxObserver(ctx, inbox) {
           if (disposed || signal.aborted || authority !== liveAuthority || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
           metadataPreview = metadata
           project()
-        }, nominations)
+        }, nominations, progress => {
+          const connected = !sameInboxScope(owner, inboxGatewayScope()) || !host.state.gateway || host.state.gateway.get() === 'open'
+          if (disposed || signal.aborted || authority !== liveAuthority || !connected || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
+          for (const [key, proof] of proofs) liveOwners.set(key, proof)
+          progressSnapshot = { ...progress, _codexInboxLiveAuthority: authority }
+          project()
+        })
         // In-flight reads and native cache hits cannot carry authority across
         // a disconnect or a new plugin lifetime. Stage owner proofs likewise.
         const connected = !sameInboxScope(owner, inboxGatewayScope()) ||
@@ -4965,7 +5090,7 @@ function startCodexInboxObserver(ctx, inbox) {
         if (current && data.liveReadSucceeded) {
           for (const [key, proof] of proofs) liveOwners.set(key, proof)
         }
-        if (current) metadataPreview = null
+        if (current) { metadataPreview = null; progressSnapshot = null }
         return { ...data, _codexInboxLiveAuthority: current && data.liveReadSucceeded ? authority : null }
       },
       enabled: mode === 'on', staleTime: 10_000,
@@ -5006,7 +5131,7 @@ function startCodexInboxObserver(ctx, inbox) {
   }
   const project = () => {
     if (disposed || !sameInboxScope(scope, inboxOwnerScope())) return
-    const query = observer.getCurrentResult(), owner = { ...scope }, snapshot = query.data, data = metadataPreview || snapshot
+    const query = observer.getCurrentResult(), owner = { ...scope }, snapshot = progressSnapshot || query.data, data = metadataPreview || snapshot
     // Metadata can arrive before live RPCs. Retain this connection's last
     // proof, but revalidate it against the newest metadata before projecting.
     const authoritative = !query.error && snapshot?._codexInboxLiveAuthority === liveAuthority
@@ -5039,6 +5164,7 @@ function startCodexInboxObserver(ctx, inbox) {
       scope: owner,
       sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
       liveStatusKnown: authoritative && !!snapshot?.liveStatusKnown && !!live?.liveStatusKnown,
+      liveSnapshotComplete: snapshot?.liveSnapshotComplete !== false,
       liveStatusAt: authoritative ? snapshot?.liveStatusAt : undefined,
       childSnapshots,
       // ID-only busy flags borrow only independently verified runtime identity.
@@ -5086,14 +5212,14 @@ function startCodexInboxObserver(ctx, inbox) {
     if (sameInboxScope(scope, nextScope) && mode === nextMode) return
     pendingEvents.length = 0
     nominatedFocus.clear()
-    if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null }
+    if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null; progressSnapshot = null }
     mode = nextMode
     observer.setOptions(options())
     project()
   }
   const stopQuery = observer.subscribe(project)
   const resolveLiveEvent = event => {
-    const query = observer.getCurrentResult(), data = query.data
+    const query = observer.getCurrentResult(), data = progressSnapshot || query.data
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
         event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
         !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
@@ -5141,6 +5267,7 @@ function startCodexInboxObserver(ctx, inbox) {
       if (host.state.gateway.get() !== 'open') {
         liveAuthority = Symbol('Inbox live connection')
         metadataPreview = null
+        progressSnapshot = null
         pendingEvents.length = 0
         nominatedFocus.clear()
         liveOwners.clear()
@@ -6490,7 +6617,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     clearSettleNotice(item); requestRender(); return true;
   };
   const settle = session => {
-    if (disposed || !on || !currentScope || !codexInboxOwnedBy(currentScope, session)) return false;
+    if (disposed || !on || !currentScope || input.liveSnapshotComplete === false || !codexInboxOwnedBy(currentScope, session)) return false;
     const fresh = findSession(codexInboxId(session));
     if (!fresh || codexInboxId(fresh) !== codexInboxId(session) || !admission.isEligible(currentScope, fresh) ||
         model.isSettled(currentScope, fresh) || model.isSnoozed(currentScope, fresh)) return false;
@@ -6672,8 +6799,7 @@ ${topLayout} { justify-content:flex-start!important; }
 ${topLayout} > [data-codex-inbox-owned='island'] { box-sizing:border-box; flex:0 1 auto!important; min-height:0!important; max-height:max(35%,4rem); }
 ${topLayout} > [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:0 1 auto!important; }
 ${topLayout} > [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] { margin-top:0!important; }
-/* Double the native spacing unit only when all three sections are open. */
-${topLayout} > [data-codex-inbox-owned='island'][data-codex-inbox-expanded='true']:has(+ [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']):has(+ [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']) { padding-bottom:calc(2 * var(--spacing,4px))!important; }
+
 ${topLayout} > [data-slot='sidebar-group'][class~='flex-1']:not([data-codex-inbox-owned]):has(> [data-slot='sidebar-group-content']) { flex:1 1 0!important; max-height:none!important; }
 
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)) { color:inherit; background:transparent; border:0; cursor:pointer; }

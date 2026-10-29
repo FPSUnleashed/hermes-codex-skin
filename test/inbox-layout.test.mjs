@@ -57,12 +57,15 @@ for (const mode of ['light', 'dark']) for (const height of [520, 260, 150]) {
       assert.ok(collapsed.inbox.height > 26 && collapsed.content.height >= 26, 'Inbox has room for an actionable row')
       assert.equal(await browser.evaluate('nativeGroups.every((group,i)=>group.outerHTML===nativeHTML[i])'), true, 'native markup is untouched')
       assert.equal(await browser.evaluate("island().textContent.includes('Load more threads')"), false, 'history pagination does not become an Inbox action')
+      let pinnedTop
       for (const header of [0, 1]) {
         await browser.evaluate(`nativeHeaders[${header}].click();flush()`)
         const g = await geometry()
+        if (header === 0) pinnedTop = g.native[0].top
+        else assert.ok(Math.abs(g.native[0].top - pinnedTop) <= 1, 'opening Sessions must not move the already expanded Pinned section')
         assert.ok(g.content.height >= 26, 'opening a native section cannot squeeze the Inbox out')
         assert.ok(g.inbox.bottom <= g.native[0].top + 1, 'Inbox precedes native sections without overlap')
-        assert.ok(Math.abs(g.native[0].top - g.content.bottom - (header === 1 ? 8 : 4)) <= 1, 'expanded native sections follow Inbox content without reserved blank space')
+        assert.ok(Math.abs(g.native[0].top - g.content.bottom - 4) <= 1, 'expanded native sections keep one stable native spacing unit below Inbox')
         assert.ok(g.native[0].bottom <= g.native[1].top + 1, 'native sections do not overlap')
         assert.ok(g.native.at(-1).bottom <= g.root.bottom + 1, 'native sections stay inside the pane')
         assert.ok(g.native[1].height >= 24, 'Sessions header remains fully visible in a small pane')
@@ -86,11 +89,11 @@ for (const mode of ['light', 'dark']) for (const height of [520, 260, 150]) {
       `)
       assert.equal(await browser.evaluate('store.get("floating-sidebar")'), 'off')
       assert.equal(await browser.evaluate('getComputedStyle(island()).flexGrow'), '1', 'Off must restore the original growing Inbox')
-      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '4px', 'Off must remove the doubled section gap')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '4px', 'Off preserves the native section gap')
       assert.equal(await browser.evaluate('nativeGroups.every((g,i)=>g.outerHTML===beforeToggleHTML[i])&&beforeToggleRows.every(row=>row.isConnected)'), true, 'setting changes layout only, never native markup or Inbox admissions')
       await browser.evaluate('toggleFloating();flush()')
       assert.equal(await browser.evaluate('getComputedStyle(island()).flexGrow'), '0', 'On restores the floating layout immediately')
-      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '8px')
+      assert.equal(await browser.evaluate('getComputedStyle(island()).paddingBottom'), '4px')
       await browser.evaluate("rows=Array.from({length:205},(_,i)=>({id:'inbox-'+i,title:'Inbox '+i,message_count:1,started_at:(Date.now()+60000)/1000}));update();flush()")
       assert.equal(await browser.evaluate("island().querySelectorAll('[data-codex-inbox-row]').length"), 205, 'all admitted rows are reachable by scrolling, not pagination controls')
       assert.equal(await browser.evaluate("[...island().querySelectorAll('button')].some(el=>/^(Load more|Next|Previous) threads$/.test(el.textContent))"), false)
@@ -154,7 +157,7 @@ for (const mode of ['light', 'dark']) for (const height of [520, 260, 150]) {
 
       // Spacing follows the host token, not an assumed 16px root font.
       await browser.evaluate("rows=[{id:'fresh',title:'Inbox task',message_count:1}];update();island().querySelector('[data-codex-inbox-header]').click();nativeHeaders.forEach(button=>button.click());flush();document.documentElement.style.fontSize='14px';document.documentElement.style.setProperty('--spacing','3.5px')")
-      assert.equal(await browser.evaluate("getComputedStyle(island()).paddingBottom"), '7px', 'all-open gap scales to two native spacing units')
+      assert.equal(await browser.evaluate("getComputedStyle(island()).paddingBottom"), '3.5px', 'all-open gap keeps one native spacing unit')
       await browser.evaluate('nativeHeaders[1].click();flush()')
       assert.equal(await browser.evaluate("getComputedStyle(island()).paddingBottom"), '3.5px', 'partly closed state keeps one native spacing unit')
       await browser.evaluate('nativeHeaders[0].click();flush();document.documentElement.style.removeProperty("font-size");document.documentElement.style.removeProperty("--spacing")')

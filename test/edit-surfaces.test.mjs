@@ -29,5 +29,5 @@ test('the native inline message editor reuses the Codex user bubble', () => {
   assert.match(source, /\[data-slot='aui_edit-composer-root'\] \.composer-human-message \{[\s\S]{0,260}border-radius: 17px !important/)
   assert.match(source, /\[data-slot='aui_edit-composer-root'\] \[data-slot='composer-rich-input'\] \{[\s\S]{0,340}font-size: 14px !important/)
   assert.match(source, /\[data-slot='aui_edit-composer-root'\] \[data-slot='composer-rich-input'\] \{[\s\S]{0,220}color: var\(--codex-color-text\) !important/)
-  assert.match(source, /\[data-slot='aui_edit-composer-root'\] \.composer-human-message > button:last-child \{[\s\S]{0,240}border-radius: 9999px !important/)
+
 })

@@ -1,27 +1,18 @@
 import assert from 'node:assert/strict'
-import { execFile as execFileCallback } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
-import os from 'node:os'
+import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { promisify } from 'node:util'
-import { pathToFileURL } from 'node:url'
 import test from 'node:test'
+import { chromium } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
 
-const execFile = promisify(execFileCallback)
-const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome-stable', '/usr/bin/chromium'].find(p => p && existsSync(p))
 const tab = (id, label, active) => `<div id="${id}" role="tab" data-active="${active}" data-tree-tab="${id}"><span class="label"><span class="truncate">${label}</span></span><span class="close-overlay"><span aria-hidden></span><button aria-label="Close ${label}">×</button></span></div>`
 const button = (id, glyph, extra='') => `<button id="${id}" aria-label="${id}" ${extra}>${glyph}</button>`
 
 // Native hierarchy from PreviewPane, PreviewBrowserBar, TreeGroup and PaneTab.
 // Assertions exercise CSS behavior, not source shape. No webview is restyled.
-test('browser chrome preserves control hit targets, page content, modes and pane resizing', async t => {
-  if (!chrome) return t.skip('Chrome required')
+test('browser chrome preserves control hit targets, page content, modes and pane resizing', async () => {
   const { CSS: layoutCSS, BROWSER_PALETTE_CSS, CODEX_THEME } = await loadPluginInternals(['CSS','BROWSER_PALETTE_CSS','CODEX_THEME'])
   const CSS = layoutCSS + BROWSER_PALETTE_CSS
-  const temp = await mkdtemp(path.join(os.tmpdir(),'codex-browser-'))
-  const file = path.join(temp,'fixture.html')
   const html = `<!doctype html><html data-codex-chat-look="true" data-hermes-theme="codex-chat" data-hermes-mode="dark"><head><title>pending</title><style>
 *{box-sizing:border-box}body{margin:0;background:#111;color:#fcfcfc;font:12px system-ui,sans-serif}button{font:inherit;color:inherit;border:0;cursor:pointer}button:disabled{opacity:.35;cursor:default}input{font:inherit;width:100%;min-width:0;height:24px;border:1px solid #555;border-radius:4px}input[aria-invalid=true]{border-color:rgb(200,30,30)}
 :root{--ui-editor-surface-background:var(--theme-background-seed);--ui-text-primary:var(--theme-foreground);--ui-text-secondary:#aaa;--ui-text-tertiary:#898989;--ui-control-background:var(--theme-card-seed);--ui-row-active-background:var(--theme-accent-soft);--ui-row-hover-background:#333;--ui-stroke-secondary:var(--dt-border);--ui-stroke-tertiary:var(--dt-border);--ui-accent:#aaa}
@@ -41,20 +32,28 @@ const names=['back','forward','reload','copy','external','console','devtools'];c
 const sizes=[660,320,240].map(targets);targets(660);
 const dark={tab:cs(by('tab1')).backgroundColor,address:cs(by('address')).backgroundColor,border:cs(by('address')).borderTopColor,divider:cs(by('toolbar')).borderBottomColor,tabRadius:cs(by('tab1')).borderRadius,tabHeight:rect(by('tab1')).height,stripHeight:rect(by('tab1').closest('[data-zone-tabstrip]')).height,closeShadow:cs(by('tab1').querySelector('button')).boxShadow,closeRunway:cs(by('tab1').querySelector('.close-overlay > [aria-hidden]')).backgroundImage,closeRunwayColor:cs(by('tab1').querySelector('.close-overlay > [aria-hidden]')).backgroundColor,closeButtonColor:cs(by('tab1').querySelector('.close-overlay > button')).backgroundColor,labelCase:cs(by('tab1').querySelector('.truncate')).textTransform,unrelatedRadius:cs(by('unrelated')).borderRadius};
 names.forEach(id=>by(id).click());by('minimize').click();by('tab1').querySelector('button').click();by('console').setAttribute('aria-pressed','true');const pressed=cs(by('console')).backgroundColor;
-by('address').setAttribute('aria-invalid','true');const invalid=cs(by('address')).borderTopColor;by('address').removeAttribute('aria-invalid');by('address').focus();const focus=cs(by('address')).outlineStyle;by('address').blur();
+by('address').setAttribute('aria-invalid','true');const invalid=cs(by('address')).borderTopColor;by('address').removeAttribute('aria-invalid');
 root.dataset.hermesMode='light';theme(themes.colors);const light={address:cs(by('address')).backgroundColor,tab:cs(by('tab1')).backgroundColor};const sharedLight={browser:appearance(by('tab1')),chat:appearance(by('unrelated'))};
 root.dataset.hermesMode='dark';theme(themes.darkColors);root.setAttribute('data-hermes-glass','true');const glass=cs(by('toolbar')).backgroundColor;root.removeAttribute('data-hermes-glass');
 root.removeAttribute('data-codex-chat-look');const disabled={addressRadius:cs(by('address')).borderRadius,tabRadius:cs(by('tab1')).borderRadius};root.dataset.codexChatLook='true';
-window.addEventListener('load',()=>{const doc=by('guest').contentDocument;document.title=btoa(JSON.stringify({sizes,dark,count,pressed,invalid,focus,light,glass,disabled,sharedDark,sharedLight,guest:{background:cs(doc.body).backgroundColor,color:cs(doc.body).color,text:doc.body.textContent}}))});
+window.probeReady=new Promise(resolve=>window.addEventListener('load',()=>{const doc=by('guest').contentDocument;document.title=btoa(JSON.stringify({sizes,dark,count,pressed,invalid,light,glass,disabled,sharedDark,sharedLight,guest:{background:cs(doc.body).backgroundColor,color:cs(doc.body).color,text:doc.body.textContent}}));resolve(document.title)},{once:true}));
 </script></body></html>`
+  const browser = await chromium()
   try {
-    await writeFile(file,html)
-    const args=['--headless=new','--disable-gpu','--no-sandbox','--disable-dev-shm-usage','--window-size=900,600','--dump-dom']
-    if(process.env.CODEX_SKIN_ARTIFACT_DIR){await mkdir(process.env.CODEX_SKIN_ARTIFACT_DIR,{recursive:true});await writeFile(path.join(process.env.CODEX_SKIN_ARTIFACT_DIR,'browser-final.html'),html);args.push(`--screenshot=${path.join(process.env.CODEX_SKIN_ARTIFACT_DIR,'browser-final.png')}`)}
-    const {stdout}=await execFile(chrome,[...args,pathToFileURL(file).href],{maxBuffer:2*1024*1024})
-    const title=stdout.match(/<title>([^<]+)<\/title>/)?.[1]
+    // An active element alone does not give a headless document :focus-visible.
+    await browser.call('Emulation.setFocusEmulationEnabled', { enabled:true })
+    await browser.call('Emulation.setDeviceMetricsOverride', { width:900, height:600, deviceScaleFactor:1, mobile:false })
+    await browser.call('Page.setDocumentContent', { frameId:(await browser.call('Page.getFrameTree')).frameTree.frame.id, html })
+    const title=await browser.evaluate('probeReady')
     assert.ok(title && title!=='pending','probe completed')
     const r=JSON.parse(Buffer.from(title,'base64').toString())
+    await browser.evaluate(`by('reload').focus()`)
+    await browser.call('Input.dispatchKeyEvent', { type:'keyDown', key:'Tab', code:'Tab', windowsVirtualKeyCode:9 })
+    await browser.call('Input.dispatchKeyEvent', { type:'keyUp', key:'Tab', code:'Tab', windowsVirtualKeyCode:9 })
+    assert.deepEqual(await browser.evaluate(`[document.hasFocus(),document.activeElement===by('address'),by('address').matches(':focus-visible')]`), [true,true,true], 'Tab reaches the address with visible keyboard focus')
+    r.focus=await browser.evaluate(`cs(by('address')).outlineStyle`)
+    await browser.evaluate(`by('address').blur()`)
+    if(process.env.CODEX_SKIN_ARTIFACT_DIR){await mkdir(process.env.CODEX_SKIN_ARTIFACT_DIR,{recursive:true});await writeFile(path.join(process.env.CODEX_SKIN_ARTIFACT_DIR,'browser-final.html'),html);const {data}=await browser.call('Page.captureScreenshot', { format:'png' });await writeFile(path.join(process.env.CODEX_SKIN_ARTIFACT_DIR,'browser-final.png'),Buffer.from(data,'base64'))}
     for(const size of r.sizes){
       assert.ok(size.address.width>=80)
       for(const b of size.buttons){assert.ok(b.visible && b.hit,`${size.width}px ${b.id} reachable`);assert.ok(b.left>=size.bar.left && b.right<=size.bar.right,`${size.width}px ${b.id} inside bar`);assert.ok(b.bottom<=size.bar.bottom,`${size.width}px ${b.id} inside height`)}
@@ -68,5 +67,5 @@ window.addEventListener('load',()=>{const doc=by('guest').contentDocument;docume
     assert.equal(r.light.address,'rgb(255, 255, 255)');assert.equal(r.glass,'rgba(0, 0, 0, 0)')
     assert.equal(r.disabled.addressRadius,'4px');assert.equal(r.disabled.tabRadius,'0px')
     assert.deepEqual(r.guest,{background:'rgb(255, 255, 255)',color:'rgb(12, 34, 56)',text:'Page content stays untouched'})
-  } finally {await rm(temp,{recursive:true,force:true})}
+  } finally { browser.close() }
 })

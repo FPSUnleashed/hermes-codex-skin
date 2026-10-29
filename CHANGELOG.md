@@ -2,15 +2,21 @@
 
 All notable changes to this project are documented here.
 
-## Unreleased
-
-### Fixed
-
-- Treat Hermes Desktop's expected-404 sentinel as an absent session: an expected 404 arrives as a bare `<status>: <body>` error, which the Inbox rejected, so one deleted thread made the whole Inbox unloadable. Contributed by [@DoGMaTiiC](https://github.com/DoGMaTiiC) in [#39](https://github.com/FPSUnleashed/hermes-codex-skin/pull/39), with additional JSON-body validation and malformed-response regression coverage.
+## [1.12.0] - 2026-10-29
 
 ### Added
 
 - Add an optional Floating sidebar layout, enabled by default: opening Pinned or Sessions moves both sections directly below Inbox; closing both restores bottom alignment. The setting persists locally. Contributed by [@subhead](https://github.com/subhead) in [89cfa2a](https://github.com/subhead/hermes-codex-skin/commit/89cfa2a6c8ce5f02a87083f437dcc8a679e87363).
+
+### Improved
+
+- Show Inbox threads progressively after startup or reconnect, without waiting for every background activity check. Previously admitted threads become available as their ownership is verified; remaining checks continue in the background.
+- Match sent-message editing to the active Hermes theme, with a borderless message bubble and text Cancel/Send actions. Keep Hermes' native send action and support English and French labels.
+
+### Fixed
+
+- Treat Hermes Desktop's expected-404 sentinel as an absent session: an expected 404 arrives as a bare `<status>: <body>` error, which the Inbox rejected, so one deleted thread made the whole Inbox unloadable. Contributed by [@DoGMaTiiC](https://github.com/DoGMaTiiC) in [#39](https://github.com/FPSUnleashed/hermes-codex-skin/pull/39), with additional JSON-body validation and malformed-response regression coverage.
+- Keep the spacing below Inbox stable when expanding Working while Pinned or Sessions is open.
 
 ## [1.11.0] - 2026-10-26
 

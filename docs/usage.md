@@ -33,13 +33,17 @@ Clean transcript defaults to **Off**. An existing **Off** or **On** choice is pr
 
 Older content loaded through **Show previous messages** can remain visible when Hermes no longer exposes enough information to distinguish a final answer from an interim reply. The plugin leaves uncertain content visible rather than risk hiding a real final answer.
 
-### Floating sidebar (unreleased)
+### Floating sidebar
 
 Open the command palette and run **Codex Skin: Floating sidebar**. The setting defaults to **On** and persists locally.
 
 Opening Pinned or Sessions moves both sections directly below Inbox. Closing both returns them to the bottom of the sidebar. Turning the option **Off** restores the original layout without changing chats or Inbox state.
 
 Contributed by [@subhead](https://github.com/subhead).
+
+## Sent-message editing
+
+Editing a sent message keeps the same borderless bubble style and active Hermes theme. **Cancel** and **Send** appear below the text; French-language Desktop uses **Annuler** and **Envoyer**. Send remains Hermes' native action, including its disabled state. Cancel uses Hermes' Escape behavior and does not submit the edit. The main composer and queued-message editor are unchanged.
 
 ## History navigation
 
@@ -49,7 +53,7 @@ History previews use the rendered exchange when available. Older turns in the ma
 
 ## Older Desktop layout (v1.6.0)
 
-For the older Desktop layout, install the pinned v1.6.0 file instead of v1.11.0 or `main`. Keep v1.6.0 while staying on that layout; it predates the in-plugin updater.
+For the older Desktop layout, install the pinned v1.6.0 file instead of v1.12.0 or `main`. Keep v1.6.0 while staying on that layout; it predates the in-plugin updater.
 
 macOS / Linux:
 
@@ -91,7 +95,7 @@ Run **Reload desktop plugins** if Hermes does not unload it automatically.
 
 ## Historical screenshots
 
-These are historical captures, not screenshots of v1.11.0. They can show retired controls, including Titlebar autohide. The composer-width menu predates the two intermediate widths added in v1.10.0.
+These are historical captures, not screenshots of v1.12.0. They can show retired controls, including Titlebar autohide. The composer-width menu predates the two intermediate widths added in v1.10.0.
 
 ### Earlier native theme and Glass overview
 

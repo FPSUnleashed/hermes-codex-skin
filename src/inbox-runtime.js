@@ -710,7 +710,7 @@ function installCodexInboxRuntime({ storage, host, document: doc = document, win
     clearSettleNotice(item); requestRender(); return true;
   };
   const settle = session => {
-    if (disposed || !on || !currentScope || !codexInboxOwnedBy(currentScope, session)) return false;
+    if (disposed || !on || !currentScope || input.liveSnapshotComplete === false || !codexInboxOwnedBy(currentScope, session)) return false;
     const fresh = findSession(codexInboxId(session));
     if (!fresh || codexInboxId(fresh) !== codexInboxId(session) || !admission.isEligible(currentScope, fresh) ||
         model.isSettled(currentScope, fresh) || model.isSnoozed(currentScope, fresh)) return false;
@@ -892,8 +892,7 @@ ${topLayout} { justify-content:flex-start!important; }
 ${topLayout} > [data-codex-inbox-owned='island'] { box-sizing:border-box; flex:0 1 auto!important; min-height:0!important; max-height:max(35%,4rem); }
 ${topLayout} > [data-codex-inbox-owned='island'] > [data-slot='sidebar-group-content'] { flex:0 1 auto!important; }
 ${topLayout} > [data-codex-inbox-owned='island'] + [data-slot='sidebar-group'] { margin-top:0!important; }
-/* Double the native spacing unit only when all three sections are open. */
-${topLayout} > [data-codex-inbox-owned='island'][data-codex-inbox-expanded='true']:has(+ [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']):has(+ [data-slot='sidebar-group'] + [data-slot='sidebar-group'] > [data-slot='sidebar-group-content']) { padding-bottom:calc(2 * var(--spacing,4px))!important; }
+
 ${topLayout} > [data-slot='sidebar-group'][class~='flex-1']:not([data-codex-inbox-owned]):has(> [data-slot='sidebar-group-content']) { flex:1 1 0!important; max-height:none!important; }
 
 html[data-codex-chat-look='true'] [data-codex-inbox-owned] button:not(:where([data-codex-inbox-row-ui] button)) { color:inherit; background:transparent; border:0; cursor:pointer; }
