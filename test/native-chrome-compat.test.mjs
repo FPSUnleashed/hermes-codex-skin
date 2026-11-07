@@ -37,7 +37,11 @@ ${internals.decorateComposerChrome.toString()}
 ${internals.clearComposerChromeDecorations.toString()}
 const by=id=>document.getElementById(id), cs=el=>getComputedStyle(el), rect=el=>{let r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
 let clicks=0;by('reload').onclick=()=>clicks++;by('queue-remove-one').onclick=()=>clicks++;decorateComposerChrome();
-const measure=()=>({tabRadius:cs(by('browser')).borderTopLeftRadius,labelSize:cs(by('browser').querySelector('.truncate')).fontSize,labelCase:cs(by('browser').querySelector('.truncate')).textTransform,tabHeight:rect(by('browser')).height,stripHeight:rect(by('strip')).height,headerHeight:rect(by('header')).height,corner:cs(by('main')).borderTopLeftRadius,addressRadius:cs(by('address')).borderRadius,toolbarHeight:rect(by('toolbar')).height,cardMarked:by('content-one').dataset.codexStatusCard,frameRadius:cs(by('frame-one')).borderTopLeftRadius,frameBorder:cs(by('frame-one')).borderTopWidth,frameBackground:cs(by('frame-one')).backgroundColor,cardBackground:cs(by('content-one')).backgroundColor,stack:rect(by('stack-one')),composer:rect(by('composer-one')),frame:rect(by('frame-one')),secondCard:by('content-two').dataset.codexStatusCard,tasksMarked:by('tasks').dataset.codexTaskSection,taskOverflow:cs(by('tasks-body')).overflowY,taskScrollHeight:by('tasks-body').scrollHeight,taskClientHeight:by('tasks-body').clientHeight,queue:rect(by('queue-two')),queueStack:rect(by('stack-two')),guestColor:cs(by('guest')).color});
+// Canvas resolves CSS Color 4 to sRGB bytes without depending on serialization.
+const rgba=color=>{const c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d',{colorSpace:'srgb'});x.fillStyle=color;x.fillRect(0,0,1,1);return [...x.getImageData(0,0,1,1).data]};
+const effective=el=>{const layers=[];for(let e=el;e;e=e.parentElement)layers.unshift(cs(e).backgroundColor);const c=document.createElement('canvas');c.width=c.height=1;const x=c.getContext('2d',{colorSpace:'srgb'});for(const color of layers){x.fillStyle=color;x.fillRect(0,0,1,1)}return [...x.getImageData(0,0,1,1).data]};
+const rgb=bytes=>'rgb('+bytes.slice(0,3).join(' ')+')';
+const measure=()=>({paint:{approved:rgba('oklch(from color-mix(in srgb, '+rgb(effective(by('composer-one')))+' 50%, '+rgb(effective(document.body))+') calc(l + 0.04) c h)'),frame:rgba(cs(by('frame-one')).backgroundColor),content:rgba(cs(by('content-one')).backgroundColor),composer:effective(by('composer-one')),chat:effective(document.body),frameOpacity:cs(by('frame-one')).opacity,contentOpacity:cs(by('content-one')).opacity},tabRadius:cs(by('browser')).borderTopLeftRadius,labelSize:cs(by('browser').querySelector('.truncate')).fontSize,labelCase:cs(by('browser').querySelector('.truncate')).textTransform,tabHeight:rect(by('browser')).height,stripHeight:rect(by('strip')).height,headerHeight:rect(by('header')).height,corner:cs(by('main')).borderTopLeftRadius,addressRadius:cs(by('address')).borderRadius,toolbarHeight:rect(by('toolbar')).height,cardMarked:by('content-one').dataset.codexStatusCard,frameRadius:cs(by('frame-one')).borderTopLeftRadius,frameBorder:cs(by('frame-one')).borderTopWidth,frameBackground:cs(by('frame-one')).backgroundColor,cardBackground:cs(by('content-one')).backgroundColor,stack:rect(by('stack-one')),composer:rect(by('composer-one')),frame:rect(by('frame-one')),secondCard:by('content-two').dataset.codexStatusCard,tasksMarked:by('tasks').dataset.codexTaskSection,taskOverflow:cs(by('tasks-body')).overflowY,taskScrollHeight:by('tasks-body').scrollHeight,taskClientHeight:by('tasks-body').clientHeight,queue:rect(by('queue-two')),queueStack:rect(by('stack-two')),guestColor:cs(by('guest')).color});
 const enabled=measure();by('reload').click();by('queue-remove-one').click();by('main').parentElement.style.width='260px';const bar=rect(by('toolbar'));const narrow=[...by('toolbar').querySelectorAll('button,input')].map(e=>({id:e.id,...rect(e)}));clearComposerChromeDecorations();document.documentElement.removeAttribute('data-codex-chat-look');const disabled={tabRadius:cs(by('browser')).borderRadius,frameRadius:cs(by('frame-one')).borderTopLeftRadius,marks:document.querySelectorAll('[data-codex-status-card],[data-codex-task-section]').length};document.title=btoa(JSON.stringify({enabled,clicks,narrow,bar,disabled}));
 </script></body></html>`
   try {
@@ -56,8 +60,15 @@ const enabled=measure();by('reload').click();by('queue-remove-one').click();by('
     assert.equal(r.enabled.addressRadius,'999px');assert.ok(r.enabled.toolbarHeight>=45)
     assert.equal(r.enabled.cardMarked,'true');assert.equal(r.enabled.secondCard,'true')
     assert.equal(r.enabled.frameRadius,'20px');assert.equal(r.enabled.frameBorder,'0px')
-    assert.equal(r.enabled.frameBackground,'rgba(0, 0, 0, 0)')
-    assert.notEqual(r.enabled.cardBackground,'rgba(0, 0, 0, 0)')
+    const {approved,frame,content,composer,chat,frameOpacity,contentOpacity}=r.enabled.paint
+    assert.equal(frame[3],255,'status frame is opaque, not an inherited/transparent proxy')
+    assert.deepEqual(content,[0,0,0,0],'native attenuable content does not paint the panel')
+    assert.equal(frameOpacity,'1');assert.equal(contentOpacity,'1')
+    assert.equal(composer[3],255);assert.equal(chat[3],255)
+    for(let i=0;i<3;i++) {
+      assert.ok(Math.abs(composer[i]-chat[i])>=4,'fixture endpoints are nondegenerate')
+      assert.ok(Math.abs(frame[i]-approved[i])<=1,'effective sRGB midpoint then approved dark OKLCH L +0.04 (8-bit rounding)')
+    }
     assert.equal(r.enabled.frame.left-r.enabled.composer.left,21)
     assert.equal(r.enabled.composer.top,r.enabled.stack.bottom)
     assert.equal(r.enabled.tasksMarked,'true');assert.equal(r.enabled.taskOverflow,'auto')

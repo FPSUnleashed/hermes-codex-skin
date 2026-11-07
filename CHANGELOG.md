@@ -2,6 +2,48 @@
 
 All notable changes to this project are documented here.
 
+## [1.13.0] - 2026-11-07
+
+### Added
+
+- Six optional T3 light/dark themes: T3 Chat, T3 Code, T3 Ocean, T3 Iris, T3 Grove and T3 Ember. Theme selection remains explicit.
+- Show complete messages, On by default, with an Off choice for incremental text streaming. Finished text parts appear independently; tools, work indicators and native Stop remain available.
+- Verified whole-turn live labels in `working Xs`, `working Xmin Ys` and `working Xhour Ymin` forms, with native completion date/time on summary hover or keyboard focus when available. Missing timing evidence does not invent a duration.
+- Universal Inbox (Beta), Off by default, for verified available connection/profile routes, with foreign-profile badges and owner-routed opening/actions.
+- Inbox only (Beta), Off by default, to hide Pinned and Sessions without deleting threads. It remains independent of the Inbox switch.
+- Collapsible Snoozed group below Working, with explicit cancel-snooze actions. Opening a snoozed thread does not wake it.
+- Explicit opt-in Share usage statistics, Off by default. PostHog EU receives bounded pseudonymous usage categories, plugin version and OS family only after confirmation and saved consent. No conversations, titles, files or raw errors are sent. Network metadata including IP address remains visible to PostHog. DNT/GPC block collection; opting out stops collection and removes the local ID, not previously received events.
+
+### Improved
+
+- Replace Clean transcript with reversible Working/Worked/Worked for activity disclosures. Show each turn's latest assistant reply by default, including during work, while keeping earlier replies, even different answers, expandable rather than deleted. Preserve native nested calls/results, attachments, alerts, interactive content and uncertain historical messages that cannot be folded safely. Failed/interrupted activity stays open; old Clean transcript preferences no longer activate the retired path. This display policy does not fix native message duplication.
+- Group contiguous tool/reasoning activity across assistant roots while preserving prose boundaries and native nodes. Summaries use concrete native captions and distinct homogeneous tool, mixed Hammer and reasoning Brain icons; Working/Worked retains its chevron without a hammer.
+- Keep the latest chronological tool visible and clickable until prose follows, then show a factual grouped summary. Earlier still-running tools do not displace the latest command.
+- Hide the redundant quiet counter row so its disappearance before a tool call does not shift the transcript. Keep the verified whole-turn clock.
+- Refine stationary Thinking highlighting, activity text alignment/contrast, expanded-content scrolling and prose/work spacing. Compact subagent rows retain native identity/status, goals, metadata, previews and navigation.
+- Adopt T3-style default conversation/composer geometry, semantic T3 composer paint, native UI font-family inheritance, a red native Stop treatment and task-drawer frame/background behavior that remains consistent while scrolling. Existing width choices and native Hermes theme colors remain.
+- Combine Search/New session into a compact native-action row. Use a discrete T3-style history wave with short transform transitions, an independent current-message marker and one-line-question/three-line-answer previews. Resolve repeated/virtualized exchanges only through unique identity and global indices, falling back to question-only when uncertain.
+- Replace old Snooze presets with In 1 hour, In 3 hours, Tomorrow and Next week, showing local wake times. Tomorrow uses the next calendar day at 09:00; Next week uses next Monday at 09:00. Preserve existing saved deadlines. Keep Snooze left and Settle right with stable hover/focus action slots.
+- Reduce repeated rail indexing, unrelated sidebar mutation work, duplicated Inbox publication and row/style updates. Retain already-admitted rows during refresh while withholding unsafe actions until verification and revoking invalid membership promptly.
+
+### Fixed
+
+- Generate the Tasks/Queue bar from the effective composer fill and chat background for every theme, then adjust OKLCH lightness for separation: slightly darker in light appearance and lighter in dark appearance. Preserve the blend's hue, chroma and transparency. Replace the T3 Code/T3 Chat light exceptions with this shared rule; composer paint remains unchanged.
+- Keep the latest reply visible through tool-only tails and plugin-module reloads without guessing ambiguous historical identities. Earlier replies remain available in expandable activity.
+- Reconcile incoming tool groups before paint to prevent alternating extra rows and collapsed summaries.
+- Isolate Inbox state/actions across connection, profile, backend, route retargeting, colliding durable IDs and stale asynchronous callbacks.
+- Apply successful Settle immediately. Dismiss a successfully saved Snooze menu even if subsequent navigation fails; preserve controls on failed saves.
+- Keep media, alerts, preview cards and actions inside still-running markdown visible with Show complete messages, including content mounted after the text starts streaming.
+- Include the full Phosphor Icons notice in the standalone plugin asset as well as the source documentation.
+
+### Documentation
+
+- Update settings/defaults, activity/streaming explanations, Snooze/Snoozed and Beta Inbox guidance, UI font/history behavior and optional-analytics privacy disclosures. Preserve historical release entries and version-pinned legacy installation paths.
+
+### Known issues
+
+- Opening an older conversation can still briefly show it as Working or add it to Inbox without new work. Chat flicker on opening older conversations has also been reported and is not yet resolved.
+
 ## [1.12.0] - 2026-10-29
 
 ### Added

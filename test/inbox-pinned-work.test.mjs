@@ -19,12 +19,16 @@ async function fixture(t) {
     catch { response.writeHead(404).end() }
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
-  const browser = await chromium()
+  let browser
+  // Own the listening server even when Chromium rejects before attachment.
   t.after(async () => {
-    await browser.evaluate('disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(() => {})
-    browser.close()
+    if (browser) {
+      await browser.evaluate('disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(() => {})
+      browser.close()
+    }
     await new Promise(resolve => server.close(resolve))
   })
+  browser = await chromium()
   await browser.call('Page.navigate', { url: `http://127.0.0.1:${server.address().port}/` })
   await browser.evaluate(`(async () => {
     window.process={env:{NODE_ENV:'production'}};
@@ -89,7 +93,7 @@ for (const pinned of [false, true]) for (const createdSource of ['desktop', 'tui
     await browser.evaluate("window.liveStatus='working';state.busyBySession.set({'runtime-old':true});emit('message.start');flush()")
     assert.equal(await browser.evaluate('rows().length'), 1, 'new verified work restores a settled migrated thread')
     await browser.evaluate('runtime.snooze(metadata,Date.now()+60000);emit("message.start");flush()')
-    assert.equal(await browser.evaluate('rows().length===0&&runtime.model.isSnoozed(scope,"old")'), true, 'Snooze remains in force during new work')
+    assert.equal(await browser.evaluate('rows().length===1&&document.querySelector("[data-codex-inbox-row]").parentElement.hasAttribute("data-codex-inbox-snoozed-rows")&&runtime.model.isSnoozed(scope,"old")'), true, 'Snooze remains in force during new work')
     if (pinned) {
       assert.equal(await browser.evaluate('document.querySelector("[data-native-pinned-row=old]")===nativePinnedRow&&nativePinnedRow.isConnected&&nativePinnedRow.textContent==="Old thread"'), true, 'the native-shaped pin DOM is preserved')
       await browser.evaluate('nativePinnedRow.click()')

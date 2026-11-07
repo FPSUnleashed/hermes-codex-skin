@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import test from 'node:test'
-import { chromium } from './helpers/chromium.mjs'
+import { chromium, waitForRendered } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
 
 // Executable helper load, not a source-shape assertion. Browser executes the
@@ -197,16 +197,17 @@ for (const mode of ['fallback', 'dark', 'light']) {
           assert.equal(current.timing, 'linear')
           assert.equal(current.iterations, 'infinite')
           assert.ok(current.mask.split(',').every(value => value.trim() === 'exclude'), 'native hollow contour mask, not a rotating semicircle')
-          assert.deepEqual(current.layer, ['900px', '78px'], 'native gradient layer is 300% of the row')
-          assert.match(current.gradient, /^linear-gradient\(160deg, /)
-          assert.match(current.gradient, /95%/)
+          assert.deepEqual(current.layer, ['720px', '62.3906px'], 'native gradient layer is 240% of the row')
+          assert.match(current.gradient, /^repeating-linear-gradient\(160deg, /)
+          assert.match(current.gradient, /43\.75%, rgba\(0, 0, 0, 0\) 50%\)$/)
         } else {
           assert.equal(current.animation, 'none', 'no invisible ongoing animation')
           if (state === 'completed') assert.equal(current.background, colors.success)
         }
       }
       const before = await browser.evaluate('probe().transform')
-      await browser.evaluate('new Promise(r=>setTimeout(r,140))')
+      // A timer can expire while Chromium's new animation is still pending.
+      await waitForRendered(browser, `probe().transform!==${JSON.stringify(before)}`, 'running arc did not advance')
       assert.notEqual(await browser.evaluate('probe().transform'), before, 'real Chromium advances the running arc')
       await browser.evaluate(`document.documentElement.style.setProperty('--ui-accent','#8855ee');document.documentElement.style.setProperty('--ui-success','#329b51')`)
       assert.equal((await browser.evaluate('probe()')).background, (await browser.evaluate('theme()')).accent, 'working follows the live theme accent')
@@ -221,7 +222,7 @@ for (const mode of ['fallback', 'dark', 'light']) {
     } finally { browser.close() }
   })
 
-  test(`Settle is identifiable at rest while Snooze stays hover/focus only (${mode})`, async () => {
+  test(`Settle and Snooze stay hover/focus only with stable slots (${mode})`, async () => {
     const browser = await chromium()
     try {
       await activityFixture(browser, mode)
@@ -234,7 +235,7 @@ for (const mode of ['fallback', 'dark', 'light']) {
       assert.equal(await browser.evaluate(`ui.menu.hasAttribute('aria-haspopup')||ui.menu.hasAttribute('aria-expanded')`), false, 'Settle is not a pretend menu')
       assert.equal(await browser.evaluate(`ui.menu.querySelector('path').getAttribute('d')`), 'M3.5 8.5l3 3 6-7', 'visible check rather than ellipsis')
       assert.deepEqual(await browser.evaluate(`(()=>{const svg=ui.menu.firstChild,s=getComputedStyle(svg);return [rect(svg).slice(2),s.display,s.stroke,s.strokeWidth]})()`), [[12,12],'block',await browser.evaluate('getComputedStyle(ui.menu).color'),'1.25px'], 'the check glyph has rendered dimensions and stroke')
-      assert.deepEqual(await browser.evaluate('visible()'), [{ opacity:'1', pointerEvents:'auto' }, { opacity:'0', pointerEvents:'none' }])
+      assert.deepEqual(await browser.evaluate('visible()'), [{ opacity:'0', pointerEvents:'none' }, { opacity:'0', pointerEvents:'none' }])
       assert.equal(await browser.evaluate('ui.actions.firstElementChild===ui.clock && ui.actions.lastElementChild===ui.menu'), true, 'Inbox DOM order is Snooze then Settle')
       const geometry = await browser.evaluate('geometry()')
       assert.ok(geometry.slots[0][0] < geometry.slots[1][0], 'Snooze actually renders left of Settle in Chromium')
@@ -248,6 +249,7 @@ for (const mode of ['fallback', 'dark', 'light']) {
       assert.equal(await browser.evaluate('ui.actions.children.length'), 2)
       assert.deepEqual(geometry.slots.map(r => r.slice(2)), [[24,24],[24,24]])
       const settlePoint = await browser.evaluate(`(()=>{const r=ui.menu.getBoundingClientRect();return {x:r.x+12,y:r.y+12}})()`)
+      await browser.call('Input.dispatchMouseEvent', { type:'mouseMoved', ...settlePoint })
       await browser.call('Input.dispatchMouseEvent', { type:'mousePressed', button:'left', clickCount:1, ...settlePoint })
       await browser.call('Input.dispatchMouseEvent', { type:'mouseReleased', button:'left', clickCount:1, ...settlePoint })
       assert.deepEqual(await browser.evaluate('events'), ['settle'], 'visible check invokes the same parent callback')

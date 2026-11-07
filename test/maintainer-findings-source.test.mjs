@@ -35,7 +35,7 @@ test('MNT-004 keeps lexical runtime cleanup without a behavior ref', () => {
   assert.match(source, /import \{[^}]*\buseEffect\b[^}]*\} from 'react'/)
   assert.match(source, /const uninstallBehavior = installBehaviorRuntime/)
   assert.match(styleRuntime, /const uninstallTitlebarAlignment = installTitlebarAlignment\(\)/)
-  assert.match(styleRuntime, /return \(\) => \{\s*uninstallTitlebarAlignment\(\)\s*uninstallBehavior\(\)\s*\}/)
+  assert.match(styleRuntime, /return \(\) => \{\s*uninstallTitlebarAlignment\(\)\s*uninstallSidebarActions\(\)\s*uninstallBehavior\(\)\s*\}/)
   assert.match(source, /RUNTIME_HANDOFF_KEY/)
 })
 

@@ -65,7 +65,7 @@ test('verified Snooze commit cleans the menu and row even when subsequent naviga
   assert.equal(await browser.evaluate('!!popup()&&!!row("a")&&!runtime.model.isSnoozed(scope,"a")&&!!runtime.model.error'), true);
   await browser.evaluate('storage.set=savedSet;host.openSession=()=>{throw Error("Navigation rejected")};window.navigationErrors=0;window.addEventListener("error",e=>{if(e.message.includes("Navigation rejected")){navigationErrors++;e.preventDefault()}})');
   await click('[data-codex-inbox-snooze-popup] button');
-  assert.equal(await browser.evaluate('runtime.model.isSnoozed(scope,"a")&&!popup()&&!row("a")&&navigationErrors===1'), true, 'committed Snooze still cleans the menu and row after a navigation error');
+  assert.equal(await browser.evaluate('runtime.model.isSnoozed(scope,"a")&&!popup()&&row("a").parentElement.hasAttribute("data-codex-inbox-snoozed-rows")&&navigationErrors===1'), true, 'committed Snooze still cleans the menu and row after a navigation error');
 }));
 
 test('explicit opening changes neither historical admission nor existing Settle and Snooze decisions', () => fixture(async browser => {

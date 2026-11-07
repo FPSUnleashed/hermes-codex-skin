@@ -20,9 +20,17 @@ Codex Skin has no separate backend and does not modify Hermes source files. It d
 - **Release images:** opening the update menu can load HTTPS images whose initial URLs match this repository's GitHub release assets/raw paths or GitHub-hosted user attachments. Other initial URLs are rejected; final redirect destinations and image file types are not separately checked. Supported Markdown images and HTML `img` elements become plugin-created image elements; other release-note HTML and release-supplied event handlers are not executed.
 - **Plugin asset:** downloading and installing the selected `plugin.js` release asset requires the user's update click. Checking for availability does not install code.
 
-No GitHub account is required for the public stable channel. Its fetch requests omit browser credentials and referrers and add no authorization token; release images use a no-referrer policy. GitHub receives ordinary request metadata, such as IP address and user agent. No chat content is sent to GitHub, and the plugin adds no analytics.
+No GitHub account is required for the public stable channel. Its fetch requests omit browser credentials and referrers and add no authorization token; release images use a no-referrer policy. GitHub receives ordinary request metadata, such as IP address and user agent. No chat content is sent to GitHub.
 
 Inbox and history previews request session information through Hermes' own APIs. Those requests follow the user's Hermes connection and its authority; they are distinct from the GitHub update feed.
+
+### Optional usage statistics
+
+**Codex Skin: Share usage statistics** is Off by default. A fresh installation creates no analytics identifier and sends no analytics requests. Enabling it requires an explicit confirmation and a verified locally saved consent record. Do Not Track and Global Privacy Control block collection.
+
+When enabled, the plugin sends fixed daily-active, feature-use and failure-category events to `https://eu.i.posthog.com/i/v0/e/`. Each event includes a random persistent installation ID, plugin version and OS family. It does not send conversations, prompts, thread/session identifiers, titles, files, exception text or raw errors. No PostHog SDK, session recording, autocapture, cookies or referrers are used. GeoIP enrichment is disabled, but PostHog still receives network metadata including the IP address. This is pseudonymous collection, not complete anonymity.
+
+The sender bounds its queue and request rate, times out requests and does not automatically retry lost telemetry. A statistics failure must not fail the underlying user action. Turning statistics Off stops collection, clears queued events, aborts in-flight requests and removes the local installation ID after the preference is saved. Opting out cannot recall an event already received and does not delete previously received PostHog events.
 
 ## Verification before replacement and hot reload
 
@@ -42,7 +50,7 @@ For a manual installation, compare the downloaded file with `CHECKSUMS.sha256` f
 
 ## Local data
 
-The plugin persists skin preferences, a bounded list of identifiers for manually expanded user messages, and Inbox state keyed by connection, profile and durable thread identity. Inbox records include admission, aliases, Settle/Snooze state and activity/message-count watermarks.
+The plugin persists skin preferences, a bounded list of identifiers for manually expanded user messages, and Inbox state keyed by connection, profile and durable thread identity, with backend-qualified identity where required to distinguish routes. Inbox records include admission, aliases, Settle/Snooze state and activity/message-count watermarks. Optional statistics state contains the consent flag, random installation ID and last active-event day; opting out removes that local ID.
 
 The updater caches release notes and check times, records pending/completed update verification receipts, and writes staged/rollback plugin files. These files contain plugin code, not chat history.
 

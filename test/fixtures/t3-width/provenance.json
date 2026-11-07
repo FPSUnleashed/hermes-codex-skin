@@ -1,0 +1,39 @@
+{
+  "repository": "https://github.com/pingdotgg/t3code",
+  "commit": "6d450a4284852af137b2f3407fddd89eb76e7644",
+  "sources": {
+    "index.css": {
+      "path": "/shared/FPSU Agent System/hermes/home/cache/scratch/t3-thread-render-research/apps/web/src/index.css",
+      "sha256": "4922ba3213be8e969ff781f41ab16268787518fe335290e57ab7228d4c65c908"
+    },
+    "MessagesTimeline.tsx": {
+      "path": "/shared/FPSU Agent System/hermes/home/cache/scratch/t3-thread-render-research/apps/web/src/components/chat/MessagesTimeline.tsx",
+      "sha256": "c595e054b97430ff171cbc287870e9a33d6cbf6b8030a909050395b7546c4de6"
+    },
+    "TimelineAssistantRows.tsx": {
+      "path": "/shared/FPSU Agent System/hermes/home/cache/scratch/t3-thread-render-research/apps/web/src/components/chat/TimelineAssistantRows.tsx",
+      "sha256": "64bfcec7e90e9d75d560aab884a757ef991682766ce7058e58ca0f9020e9e8d8"
+    },
+    "ChatComposer.tsx": {
+      "path": "file:///shared/FPSU%20Agent%20System/hermes/home/extension-repairs/t3-width-fidelity/upstream/ChatComposer.tsx",
+      "sha256": "003fd2a888c9a90b3f6f3eb63ed521a194e24f80c83aee838cce4512bf20a04b"
+    },
+    "ComposerSurface.tsx": {
+      "path": "file:///shared/FPSU%20Agent%20System/hermes/home/extension-repairs/t3-width-fidelity/upstream/ComposerSurface.tsx",
+      "sha256": "d8a36ae114a7d96c5d915e2a7bbd03f5d8afd9b1aaa894af5b75167e576a7906"
+    },
+    "ComposerPromptEditorTiptap.tsx": {
+      "path": "file:///shared/FPSU%20Agent%20System/hermes/home/extension-repairs/t3-width-fidelity/upstream/ComposerPromptEditorTiptap.tsx",
+      "sha256": "e920c1b2ba97f1f7ee75482eba36ed4a4821dc0f06495372439a8fe7ed033304"
+    }
+  },
+  "classes": {
+    "assistantClasses": "relative min-w-0 px-1 py-0.5",
+    "formClasses": "mx-auto w-full min-w-0 max-w-(--chat-content-max-width)",
+    "bodyClasses": "relative px-4 pb-2",
+    "mainClasses": "group relative z-10 rounded-2xl p-px",
+    "editorClasses": "composer-tiptap -m-1 block max-h-52 min-h-[calc(2lh+--spacing(2))] overflow-y-auto p-1 whitespace-pre-wrap wrap-break-word bg-transparent leading-relaxed text-foreground focus:outline-none",
+    "scrollClasses": "messages-timeline-scroll scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain [overflow-anchor:none]"
+  },
+  "boundary": "Source-extracted native-shaped layout fixture, not the full T3 application. Tailwind utilities compiled by the local installed compiler; no inferred width values."
+}

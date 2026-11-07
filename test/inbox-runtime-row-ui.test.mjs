@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile, writeFile } from 'node:fs/promises'
 import test from 'node:test'
-import { chromium } from './helpers/chromium.mjs'
+import { chromium, waitForRendered } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
 
 // Execute the real renderer directly so this gate does not depend on a shipping
@@ -80,21 +80,23 @@ for (const mode of ['standalone', 'dark', 'light']) {
         await writeFile(file, Buffer.from(data, 'base64'))
         console.log('Production row screenshot: ' + file)
       }
-      const waitPaint = () => browser.evaluate('new Promise(resolve=>setTimeout(resolve,140))')
+      const waitPaint = (opacity, settleOnly = false) => waitForRendered(browser,
+        `${settleOnly ? "[settle('a')]" : "controls('a')"}.every(el=>getComputedStyle(el).opacity===${JSON.stringify(opacity)}${opacity === '1' ? '&&!el.disabled' : ''})`,
+        `Inbox controls did not reach exact opacity ${opacity}`)
       await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 620, y: 450 })
       await browser.evaluate("document.getElementById('outside').focus()")
-      await waitPaint()
-      assert.deepEqual((await browser.evaluate("visibility('a')")).map(s => [s.opacity, s.pointerEvents]), [['0', 'none'], ['1', 'auto']], 'Settle remains identifiable at rest; selection alone does not expose Snooze')
+      await waitPaint('0')
+      assert.deepEqual((await browser.evaluate("visibility('a')")).map(s => [s.opacity, s.pointerEvents]), [['0', 'none'], ['0', 'none']], 'selection alone exposes neither Settle nor Snooze')
       await capture('idle')
       const point = await browser.evaluate("(()=>{const r=row('a').getBoundingClientRect();return {x:r.left+10,y:r.top+r.height/2}})()")
       await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...point })
-      await waitPaint()
+      await waitPaint('1')
       assert.deepEqual((await browser.evaluate("visibility('a')")).map(s => [s.opacity, s.pointerEvents]), [['1', 'auto'], ['1', 'auto']])
       assert.deepEqual(await browser.evaluate("measure(row('a'))"), initial.geometry, 'hover does not change geometry')
       await capture('hover')
       await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 620, y: 450 })
       await browser.evaluate("row('a').querySelector('[data-codex-inbox-open]').focus()")
-      await waitPaint()
+      await waitPaint('1')
       assert.deepEqual((await browser.evaluate("visibility('a')")).map(s => s.opacity), ['1', '1'])
       await capture('focus')
       const key = async (value, code, number) => {
@@ -123,12 +125,12 @@ for (const mode of ['standalone', 'dark', 'light']) {
       for (const extra of [{ liveSessions: [{ session_id: 'a', status: 'working' }] }, { liveSessions: [{ session_id: 'a', status: 'resuming' }] }, { liveStatusKnown: false }, { loading: true }, { error: 'unavailable' }]) {
         await browser.evaluate(`update(${JSON.stringify(extra)});flush()`)
         assert.equal(await browser.evaluate("settle('a').disabled"), false, 'local attention Settle is independent of activity and metadata loading')
-        await waitPaint()
+        await waitPaint('1', true)
         assert.equal(await browser.evaluate("getComputedStyle(settle('a')).visibility"), 'visible', 'working/unknown/loading/error Settle remains visible')
         assert.equal((await browser.evaluate("visibility('a')"))[1].opacity, '1')
         assert.equal(await browser.evaluate("document.activeElement===settle('a')"), true, 'activity changes preserve keyboard focus on Settle')
         await browser.call('Input.dispatchMouseEvent', { type:'mouseMoved', ...point })
-        await waitPaint()
+        await waitPaint('1', true)
         assert.equal((await browser.evaluate("visibility('a')"))[1].opacity, '1', 'hover leaves Settle available')
         assert.equal(await browser.evaluate("getComputedStyle(settle('a')).visibility"), 'visible')
         assert.deepEqual(await browser.evaluate("measure(row('a'))"), initial.geometry, 'activity-independent Settle keeps its 24px slot and title/Snooze positions')
@@ -146,10 +148,10 @@ for (const mode of ['standalone', 'dark', 'light']) {
       await key('Tab', 'Tab', 9)
       assert.equal(await browser.evaluate("document.activeElement===snooze('b')"), true, 'Snooze is first in Inbox keyboard order')
       await key('Enter', 'Enter', 13)
-      assert.deepEqual(await browser.evaluate("[...document.querySelector('[data-codex-inbox-snooze-popup]').children].map(el=>el.textContent)"), ['15 min', '30 min', '1 hour', '3 hours', '1 day'])
+      assert.deepEqual(await browser.evaluate("[...document.querySelector('[data-codex-inbox-snooze-popup]').children].map(el=>el.firstElementChild.textContent)"), ['In 1 hour', 'In 3 hours', 'Tomorrow', 'Next week'])
       await capture('snooze-popup')
       await key('Enter', 'Enter', 13)
-      assert.equal(await browser.evaluate("runtime.model.isSnoozed(scope,'b')&&!row('b')&&!document.querySelector('[data-codex-inbox-snooze-popup]')"), true, 'trusted Snooze preset commits through existing callback')
+      assert.equal(await browser.evaluate("runtime.model.isSnoozed(scope,'b')&&row('b').parentElement.hasAttribute('data-codex-inbox-snoozed-rows')&&!document.querySelector('[data-codex-inbox-snooze-popup]')"), true, 'trusted Snooze preset commits through existing callback')
       assert.deepEqual(await browser.evaluate('drafts'), [{ connectionId: 'source-a', profile: 'default' }])
       await browser.evaluate("nativeRow.firstElementChild.click();nativeRow.querySelector('[aria-label=\"Native options\"]').click();document.getElementById('native-header').click()")
       assert.deepEqual(await browser.evaluate('({clicks:nativeClicks,menus:nativeMenus,toggles:nativeToggles,bubbled})'), { clicks: 1, menus: 1, toggles: 1, bubbled: 3 })

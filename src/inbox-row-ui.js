@@ -13,9 +13,9 @@ const CODEX_INBOX_ROW_UI_CSS = `
 [data-codex-inbox-row-ui][data-work-state='completed'] [data-codex-inbox-work-dot] { background:var(--ui-success,var(--ui-text-quaternary,currentColor)); opacity:1; }
 [data-codex-inbox-row-ui][data-work-state='needs-input'] [data-codex-inbox-work-dot] { background:var(--color-amber-500); opacity:1; }
 /* Plugin-owned transcription of the installed host's private arc-border arc-row:
-   styles.css:1111-1157,1202-1231,1246-1261,1274-1277. The installed SDK has
-   no RunningBorder export; native session-row.tsx paints an aria-hidden span.
-   Keep the native masked 300% gradient and diagonal translation, not rotation. */
+   styles.css:1217-1262,1307-1330,1346-1360,1373-1377; captured index-pdLEZZqK.css.
+   The installed SDK has no RunningBorder export; session-row.tsx paints an aria-hidden span.
+   Keep the masked 240% repeating gradient and one-period compositor translation. */
 [data-codex-inbox-row-ui] > [data-codex-inbox-running-arc] {
   --codex-inbox-arc-c0:color-mix(in srgb,var(--dt-foreground,var(--ui-text-primary,currentColor)) 0%,transparent);
   --codex-inbox-arc-c1:var(--dt-midground,var(--ui-text-primary,currentColor));
@@ -31,15 +31,21 @@ const CODEX_INBOX_ROW_UI_CSS = `
 :root:is(.dark,[data-hermes-mode='dark']) [data-codex-inbox-row-ui] > [data-codex-inbox-running-arc] { --codex-inbox-arc-c1:var(--dt-foreground,var(--ui-text-primary,currentColor)); }
 [data-codex-inbox-row-ui][data-work-state='working'] > [data-codex-inbox-running-arc] { opacity:1; }
 [data-codex-inbox-row-ui][data-work-state='working'] > [data-codex-inbox-running-arc]::before {
-  content:''; position:absolute; top:0; left:0; width:300%; height:300%;
-  background:linear-gradient(var(--codex-inbox-arc-angle),transparent 0%,var(--codex-inbox-arc-c0) 15%,var(--codex-inbox-arc-c1) 20%,var(--codex-inbox-arc-c2) 25%,transparent 35%,transparent 40%,var(--codex-inbox-arc-c0) 55%,var(--codex-inbox-arc-c1) 60%,var(--codex-inbox-arc-c2) 65%,transparent 75%,transparent 80%,var(--codex-inbox-arc-c0) 95%,var(--codex-inbox-arc-c1) 100%);
+  content:''; position:absolute; top:0; left:0; width:240%; height:240%;
+  background:repeating-linear-gradient(var(--codex-inbox-arc-angle),transparent 0%,var(--codex-inbox-arc-c0) 18.75%,var(--codex-inbox-arc-c1) 25%,var(--codex-inbox-arc-c2) 31.25%,transparent 43.75%,transparent 50%);
   will-change:transform; animation:codex-inbox-row-contour var(--codex-inbox-arc-duration) linear infinite;
 }
-@keyframes codex-inbox-row-contour { 0% { transform:translate(-10%,-10%); } 100% { transform:translate(-50%,-50%); } }
+@keyframes codex-inbox-row-contour { 0% { transform:translate(0,0); } 100% { transform:translate(-50%,-50%); } }
 [data-codex-inbox-row-ui] [data-codex-inbox-title-wrap] { min-width:0; flex:1; align-self:center; }
 [data-codex-inbox-row-ui] [data-codex-inbox-label] { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8125rem; line-height:1.35; font-weight:400; color:var(--ui-text-secondary,inherit); }
 [data-codex-inbox-row-ui]:is(:hover,:focus-within,[data-active='true']) [data-codex-inbox-label] { color:var(--ui-text-primary,inherit); }
 [data-codex-inbox-row-ui] > [data-row-actions] { display:flex; flex-shrink:0; align-items:center; align-self:stretch; }
+[data-codex-inbox-row-ui] > [data-row-actions] { position:relative; }
+[data-codex-inbox-profile-slot] { position:absolute; right:0; top:0; bottom:0; width:1.5rem; display:grid; place-items:center; pointer-events:none; }
+[data-codex-inbox-profile-slot][hidden] { display:none; }
+[data-codex-inbox-profile-glyph] { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:16px; height:16px; border-radius:3px; font-size:8px; font-weight:600; line-height:1; text-transform:uppercase; }
+[data-codex-inbox-profile-glyph] .codicon { font-size:12px; }
+[data-codex-inbox-row-ui]:is(:hover,:focus-within) [data-codex-inbox-profile-slot] { visibility:hidden; }
 [data-codex-inbox-row-ui] > [data-row-actions] > button { box-sizing:border-box; display:inline-flex; width:1.5rem; height:1.5rem; flex-shrink:0; align-items:center; justify-content:center; padding:0; border:0; border-radius:4px; background:transparent; color:var(--ui-text-secondary,inherit); font:inherit; cursor:pointer; opacity:0; pointer-events:none; transition:opacity 100ms; }
 [data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > button { opacity:1; pointer-events:auto; }
 [data-codex-inbox-row-ui] > [data-row-actions] > button:hover { background:var(--chrome-action-hover,var(--ui-control-hover-background,transparent)); color:var(--ui-text-primary,inherit); }
@@ -47,7 +53,9 @@ const CODEX_INBOX_ROW_UI_CSS = `
 [data-codex-inbox-row-ui] button:disabled { cursor:default; }
 [data-codex-inbox-row-ui] > [data-row-actions] > button:disabled { pointer-events:none; }
 [data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > button:disabled { opacity:.5; }
-[data-codex-inbox-row-ui] > [data-row-actions] > [data-codex-inbox-settle] { opacity:1; pointer-events:auto; }
+[data-codex-inbox-row-ui] > [data-row-actions] > [data-codex-inbox-snooze][aria-hidden='true'],
+[data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > [data-codex-inbox-snooze][aria-hidden='true'] { opacity:0; visibility:hidden; pointer-events:none; transition:none; }
+
 [data-codex-inbox-row-ui] > [data-row-actions] > [data-codex-inbox-settle]:disabled,
 [data-codex-inbox-row-ui]:is(:hover,:focus-within) > [data-row-actions] > [data-codex-inbox-settle]:disabled { opacity:0; visibility:hidden; pointer-events:none; transition:none; }
 [data-codex-inbox-row-ui] svg { display:block; width:.75rem; height:.75rem; pointer-events:none; flex-shrink:0; }
@@ -80,6 +88,10 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   const text = make('span', 'hover-marquee-inner');
   label.append(text); wrap.append(label); go.append(lead, wrap);
   const actions = make('div', 'flex shrink-0 items-center self-stretch', 'data-row-actions');
+  const profileSlot = make('span', '', 'data-codex-inbox-profile-slot');
+  profileSlot.setAttribute('aria-hidden', 'true'); profileSlot.hidden = true;
+  const profileGlyph = make('span', '', 'data-codex-inbox-profile-glyph');
+  profileSlot.append(profileGlyph);
   const glyphButton = (marker, name, paths) => {
     const button = make('button', 'inline-flex shrink-0 cursor-pointer items-center justify-center size-6 rounded-[4px] text-(--ui-text-secondary) bg-transparent opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100', marker);
     button.type = 'button';
@@ -107,58 +119,97 @@ function createCodexInboxRowUI({ document: doc, onOpen, onMenu, onSnooze }) {
   for (const [button, callback] of [[go, onOpen], [menu, onMenu], [clock, onSnooze]]) {
     button.addEventListener('click', event => {
       event.stopPropagation();
-      if (!button.disabled && typeof callback === 'function') callback(event);
+      if (!button.disabled && !button.inert && typeof callback === 'function') callback(event);
     });
   }
   // The action remains the same button/callback and disabled ledger. Only
   // callers opting in get a Settle check rather than the generic options menu.
   let settleAction = false;
+  let cancelSnoozeAction = false;
+  let snoozeDisabled = false;
   let menuTitle = null;
+  let menuLabel = null;
+  const property = (node, name, value) => { if (node[name] !== value) node[name] = value; };
+  const attribute = (node, name, value) => {
+    if (value === null) { if (node.hasAttribute(name)) node.removeAttribute(name); }
+    else if (node.getAttribute(name) !== value) node.setAttribute(name, value);
+  };
+  // Normalize only the consumed CSS properties, not the metadata object. The
+  // detached declaration handles hex/rgb serialization without live writes and
+  // still lets an identical update repair actual inline-style drift.
+  const normalizedStyle = doc.createElement('span').style;
+  const appearanceStyle = (name, value) => {
+    normalizedStyle[name] = value;
+    property(profileGlyph.style, name, normalizedStyle[name]);
+  };
   const workStates = new Set(['needs-input', 'working', 'completed', 'reading', 'unknown', 'idle']);
   const update = (state = {}) => {
-    if ('title' in state) { text.textContent = String(state.title ?? ''); go.title = text.textContent; }
+    if ('foreignProfile' in state) {
+      const appearance = state.profileAppearance;
+      property(profileSlot, 'hidden', !state.foreignProfile || !appearance);
+      if (!profileSlot.hidden) {
+        property(profileSlot, 'title', String(appearance.label));
+        appearanceStyle('color', appearance.name === 'default' ? 'var(--ui-text-quaternary)' : appearance.color || '');
+        appearanceStyle('background', appearance.name === 'default' ? 'transparent' : appearance.background || 'color-mix(in srgb,var(--ui-text-quaternary) 22%,transparent)');
+        if (appearance.name === 'default') {
+          if (!profileGlyph.querySelector('.codicon-home')) { const home = make('i', 'codicon codicon-home'); home.setAttribute('aria-hidden', 'true'); profileGlyph.replaceChildren(home); }
+        } else if (profileGlyph.textContent !== appearance.letter) profileGlyph.textContent = appearance.letter;
+      }
+      if (state.foreignProfile && !profileSlot.isConnected) actions.append(profileSlot);
+    }
+    if ('title' in state) { property(text, 'textContent', String(state.title ?? '')); property(go, 'title', text.textContent); }
     if ('selected' in state) {
-      row.classList.toggle('bg-(--ui-row-active-background)', Boolean(state.selected));
-      row.setAttribute('data-active', String(Boolean(state.selected)));
+      const selected = Boolean(state.selected);
+      if (row.classList.contains('bg-(--ui-row-active-background)') !== selected) row.classList.toggle('bg-(--ui-row-active-background)', selected);
+      attribute(row, 'data-active', String(selected));
       // The shipped skin paints aria-current; keep it on the shell, not the
       // transparent body, so selection does not create a second inset band.
-      if (state.selected) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current');
+      attribute(row, 'aria-current', selected ? 'true' : null);
     }
-    if ('disabled' in state) { go.disabled = Boolean(state.disabled); clock.disabled = Boolean(state.disabled); }
+    if ('disabled' in state) property(go, 'disabled', Boolean(state.disabled));
+    if ('snoozeDisabled' in state) snoozeDisabled = Boolean(state.snoozeDisabled);
     if ('menuDisabled' in state || 'disabled' in state) {
-      if ('menuDisabled' in state) menu.dataset.menuDisabled = String(Boolean(state.menuDisabled));
-      menu.disabled = go.disabled || menu.dataset.menuDisabled === 'true';
+      if ('menuDisabled' in state) attribute(menu, 'data-menu-disabled', String(Boolean(state.menuDisabled)));
+      property(menu, 'disabled', go.disabled || menu.dataset.menuDisabled === 'true');
     }
     if ('workState' in state) {
       // Rendering consumes an explicit state; it never guesses completion from
       // inactivity, selection or a missing runtime slice.
-      row.setAttribute('data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
+      attribute(row, 'data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
       if (state.workState === 'needs-input') {
-        workDot.setAttribute('role', 'status'); workDot.setAttribute('aria-label', 'Needs input'); workDot.title = 'Waiting for your answer';
+        attribute(workDot, 'role', 'status'); attribute(workDot, 'aria-label', 'Needs input'); property(workDot, 'title', 'Waiting for your answer');
       } else {
-        workDot.removeAttribute('role'); workDot.removeAttribute('aria-label'); workDot.removeAttribute('title');
+        attribute(workDot, 'role', null); attribute(workDot, 'aria-label', null); attribute(workDot, 'title', null);
       }
     }
-    if ('settleAction' in state) {
-      settleAction = Boolean(state.settleAction);
+    if ('settleAction' in state || 'cancelSnoozeAction' in state) {
+      if ('cancelSnoozeAction' in state) cancelSnoozeAction = Boolean(state.cancelSnoozeAction);
+      if ('settleAction' in state) settleAction = Boolean(state.settleAction);
       // Only Inbox opts into Snooze-left / Settle-right. Generic options keep
       // their original order. Move a sibling only on mode changes so ordinary
       // keyed updates cannot detach controls or disturb their keyboard focus.
-      const firstAction = settleAction ? clock : menu;
+      const firstAction = settleAction || cancelSnoozeAction ? clock : menu;
       if (actions.firstElementChild !== firstAction) actions.insertBefore(firstAction, actions.firstChild);
-      menu.toggleAttribute('data-codex-inbox-settle', settleAction);
-      menu.firstChild.firstChild.setAttribute('d', settleAction ? 'M3.5 8.5l3 3 6-7' : 'M3 8h.01M8 8h.01M13 8h.01');
-      menu.firstChild.setAttribute('stroke-width', settleAction ? '1.25' : '2.5');
-      if (settleAction) {
-        menu.removeAttribute('aria-haspopup'); menu.removeAttribute('aria-expanded');
+      attribute(menu, 'data-codex-inbox-settle', settleAction && !cancelSnoozeAction ? '' : null);
+      attribute(menu, 'data-codex-inbox-cancel-snooze', cancelSnoozeAction ? '' : null);
+      // Keep the clock's slot, but only restore is actionable during Snooze.
+      property(clock, 'inert', cancelSnoozeAction);
+      property(clock, 'tabIndex', cancelSnoozeAction ? -1 : 0);
+      attribute(clock, 'aria-hidden', cancelSnoozeAction ? 'true' : null);
+      attribute(menu.firstChild.firstChild, 'd', cancelSnoozeAction ? 'M8 13V3M3.5 7.5 8 3l4.5 4.5' : settleAction ? 'M3.5 8.5l3 3 6-7' : 'M3 8h.01M8 8h.01M13 8h.01');
+      attribute(menu.firstChild, 'stroke-width', settleAction || cancelSnoozeAction ? '1.25' : '2.5');
+      if (settleAction || cancelSnoozeAction) {
+        attribute(menu, 'aria-haspopup', null); attribute(menu, 'aria-expanded', null);
       } else {
-        menu.setAttribute('aria-haspopup', 'menu'); menu.setAttribute('aria-expanded', 'false');
+        attribute(menu, 'aria-haspopup', 'menu'); attribute(menu, 'aria-expanded', 'false');
       }
     }
+    property(clock, 'disabled', go.disabled || cancelSnoozeAction || snoozeDisabled);
     if ('menuTitle' in state) menuTitle = state.menuTitle == null ? null : String(state.menuTitle);
-    if ('menuTitle' in state || 'settleAction' in state) {
-      const name = menuTitle ?? (settleAction ? 'Settle' : 'Inbox row options');
-      menu.title = name; menu.setAttribute('aria-label', name);
+    if ('menuLabel' in state) menuLabel = state.menuLabel == null ? null : String(state.menuLabel);
+    if ('menuTitle' in state || 'menuLabel' in state || 'settleAction' in state || 'cancelSnoozeAction' in state) {
+      const name = menuTitle ?? (cancelSnoozeAction ? 'Cancel snooze' : settleAction ? 'Settle' : 'Inbox row options');
+      property(menu, 'title', name); attribute(menu, 'aria-label', menuLabel ?? name);
     }
   };
   update({ title: '', selected: false, disabled: false, menuDisabled: false, workState: 'idle' });

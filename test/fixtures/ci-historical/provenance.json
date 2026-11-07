@@ -1,0 +1,180 @@
+{
+  "schema": "codex-ci-historical-inputs/1",
+  "scope": "test-only; no shipping imports",
+  "inputs": {
+    "native-row.css": {
+      "bytes": 403099,
+      "sha256": "ce4eaebe23cc99c7ba7ca4d69c7221793a0eec3005564105dbaf4b9de69ad104"
+    },
+    "renderer-class-projection.js": {
+      "bytes": 1084,
+      "sha256": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf"
+    },
+    "baseline/codex-chat-look/plugin.js": {
+      "bytes": 477689,
+      "sha256": "86b5d1a506d1c5c36dd4f669995deb7b57338336916596c59dc0563e9a7619ca"
+    },
+    "baseline/test/helpers/load-plugin.mjs": {
+      "bytes": 1425,
+      "sha256": "3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34"
+    }
+  },
+  "css_reproduction": {
+    "repository": "NousResearch/hermes-agent",
+    "commit": "e5ea5fd9ccdf2913c0b21b24eb3d22b321d2e2a6",
+    "root_lock_sha256": "ba681cd436db12d02a82f80c19de02d94e9cd7ca7c1672c4589b37e0ece522c7",
+    "vite_config_sha256": "7b3dca61a7783f299fc37991bbc5d3c1c87271ce5a4c0c314ce4de1d8670b418",
+    "node": "v26.13.0",
+    "npm": "11.20.0",
+    "vite": "8.3.4",
+    "rolldown": "1.2.13",
+    "tailwindcss": "4.3.3",
+    "exact_independent_reproduction": true,
+    "original_producer_commit": "UNKNOWN",
+    "original_capture_chain": "UNKNOWN",
+    "output": "assets/index-pdLEZZqK.css",
+    "successful_builds": 1,
+    "original_vite_configuration": true,
+    "source_note": "Ten PowerShell files were canonical public Git-blob exports after checkout EOL expansion. The reproduction checkout was noncleanGit but exact public source, not a clean-checkout attestation."
+  },
+  "baseline": {
+    "repository": "FPSUnleashed/hermes-codex-skin",
+    "source_context_commit": "017c4a3aa19daa74f10c88aacbc6322398caa743",
+    "loader_exact_public_bytes": true,
+    "bundle_origin": "Qualified historical pre-repair own baseline with hash-bound historical installation custody; generated T3/TanStack blocks independently recomposed exactly. Not the current candidate and not the different public plugin at the source-context pin.",
+    "bundle_public_pin_equivalence_claimed": false
+  },
+  "renderer_projection": {
+    "sha256": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf",
+    "bytes": 1084,
+    "derived_from_renderer_sha256": "9fcdc165869b8646827eacba32787136d41cecedaa95fecdf7ef8d8dde83c097",
+    "consumer_sha256": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
+    "source_records": [
+      {
+        "relative": "apps/desktop/src/components/assistant-ui/thread/list.tsx",
+        "slot": "aui_thread-content",
+        "source_sha256": "a11b128d7c9a2790c7de71e7fefbccf1e18439db4fcc9938ea816a3310bb8fcf",
+        "classes_sha256": "836fe216bc7bcba5b34d83cdaf5a5ead00f68fa69996696cee4efba76dafe14b",
+        "renderer_offset": 1634811
+      },
+      {
+        "relative": "apps/desktop/src/components/assistant-ui/thread/list.tsx",
+        "slot": "aui_thread-viewport",
+        "source_sha256": "a11b128d7c9a2790c7de71e7fefbccf1e18439db4fcc9938ea816a3310bb8fcf",
+        "classes_sha256": "ab30d5591b7a0bd9df9155673bb6d793ba30688fb7c4877133d0fa5ffa658560",
+        "renderer_offset": 1634633
+      },
+      {
+        "relative": "apps/desktop/src/components/assistant-ui/thread/assistant-message.tsx",
+        "slot": "aui_assistant-message-content",
+        "source_sha256": "6e81c80ac1d64b4cab3603e5d6cec78f168442c11387fbb50850c0c15308d3e8",
+        "classes_sha256": "ebdc115c13ca9c1a3605548ed8fbd79d3fa60db125bdb7422b44748adfbfc9c1",
+        "renderer_offset": 1574796
+      },
+      {
+        "relative": "apps/desktop/src/components/assistant-ui/thread/assistant-message.tsx",
+        "slot": "aui_assistant-message-root",
+        "source_sha256": "6e81c80ac1d64b4cab3603e5d6cec78f168442c11387fbb50850c0c15308d3e8",
+        "classes_sha256": "1976fc9d7bba01de91fdb91354a5ababa034e88613f5705320db4208636546a9",
+        "renderer_offset": 1574466
+      },
+      {
+        "relative": "apps/desktop/src/app/chat/composer/index.tsx",
+        "slot": "composer-surface",
+        "source_sha256": "1204faf4aa452f801b71291edb77153f2effc02280e2eaba8f9f88750c7e060d",
+        "classes_sha256": "db94ac01fe420c76e01a175ed51d30d0b6918c4db1cdbac412876b0a32942495",
+        "renderer_offset": 1935701
+      },
+      {
+        "relative": "apps/desktop/src/app/chat/composer/index.tsx",
+        "slot": "composer-fade",
+        "source_sha256": "1204faf4aa452f801b71291edb77153f2effc02280e2eaba8f9f88750c7e060d",
+        "classes_sha256": "7a4a270b27f4d2b6abf34c226e3a9d2dcae994ad3cbfba8d5051e2a4256b347f",
+        "renderer_offset": 1936324
+      }
+    ],
+    "limitation": "Six literal classes only. Neither a renderer distribution nor proof that its whole build came from the source-context commit.",
+    "renderer_offset_units": "JavaScript UTF-16 code units, not UTF-8 bytes or Unicode code points",
+    "consumer": "test/t3-width-fidelity.test.mjs",
+    "source_repository": "NousResearch/hermes-agent",
+    "source_commit": "e5ea5fd9ccdf2913c0b21b24eb3d22b321d2e2a6"
+  },
+  "notices": [
+    {
+      "file": "../../../LICENSE",
+      "bytes": 1069,
+      "sha256": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
+    },
+    {
+      "file": "licenses/hermes-MIT-LICENSE",
+      "bytes": 1070,
+      "sha256": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6"
+    },
+    {
+      "file": "licenses/katex-0.19.0-LICENSE",
+      "bytes": 1107,
+      "sha256": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3"
+    },
+    {
+      "file": "licenses/t3-MIT-LICENSE",
+      "bytes": 1070,
+      "sha256": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43"
+    },
+    {
+      "file": "licenses/tailwindcss-4.3.3-LICENSE",
+      "bytes": 1071,
+      "sha256": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985"
+    },
+    {
+      "file": "licenses/tanstack_query-core-5.101.2-LICENSE",
+      "bytes": 1079,
+      "sha256": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+    },
+    {
+      "file": "licenses/tw-shimmer-0.4.13-LICENSE",
+      "bytes": 1073,
+      "sha256": "71fd4b7b76d27a09af2e8b2bedf14e51f4c229e32b59654d327cc24dc63e60d7"
+    },
+    {
+      "file": "licenses/vscode_codicons-0.0.45-LICENSE",
+      "bytes": 19242,
+      "sha256": "af5e030844efddbc7ab00dcfea8b019703753d4d9f5172d727c533a492aec665"
+    },
+    {
+      "file": "licenses/vscode_codicons-0.0.45-LICENSE-CODE",
+      "bytes": 1162,
+      "sha256": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b"
+    },
+    {
+      "file": "licenses/xterm_xterm-6.0.0-LICENSE",
+      "bytes": 1261,
+      "sha256": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd"
+    }
+  ],
+  "notice_roles": {
+    "native-row.css": [
+      "hermes-MIT-LICENSE",
+      "tailwindcss-4.3.3-LICENSE (tailwindcss + @tailwindcss/typography identical full text)",
+      "tw-shimmer-0.4.13-LICENSE",
+      "katex-0.19.0-LICENSE",
+      "vscode_codicons-0.0.45-LICENSE-CODE",
+      "vscode_codicons-0.0.45-LICENSE",
+      "xterm_xterm-6.0.0-LICENSE"
+    ],
+    "renderer-class-projection.js": [
+      "hermes-MIT-LICENSE"
+    ],
+    "baseline": [
+      "../../../LICENSE (existing FPSU root MIT)",
+      "t3-MIT-LICENSE",
+      "tanstack_query-core-5.101.2-LICENSE"
+    ]
+  },
+  "embedded_font": {
+    "name": "KaTeX_Size3-Regular.woff2",
+    "bytes": 3624,
+    "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995",
+    "notice": "licenses/katex-0.19.0-LICENSE"
+  },
+  "excluded": "Whole renderer, other build outputs, fonts and images are not redistributed. Relative font URLs in CSS are not supplied font files."
+}

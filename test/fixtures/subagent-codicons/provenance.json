@@ -1,0 +1,16 @@
+{
+  "url": "https://registry.npmjs.org/@vscode/codicons/-/codicons-0.0.45.tgz",
+  "archive_sha256": "dd7c6b20535753027c399dcaea4d12a0e6aaf73de10a3a8f4abfc51d13a88362",
+  "files": [
+    {
+      "archive_path": "package/LICENSE",
+      "sha256": "af5e030844efddbc7ab00dcfea8b019703753d4d9f5172d727c533a492aec665",
+      "md5": "2e6dde0091afb8b4a78fe4d1e49993db"
+    },
+    {
+      "archive_path": "package/dist/codicon.ttf",
+      "sha256": "2bb558cb693451e73c28c33fe64aa89bc19b1a4b70f95948322c243f93476920",
+      "md5": "ce8b349c3362831461612eab9f5477e5"
+    }
+  ]
+}

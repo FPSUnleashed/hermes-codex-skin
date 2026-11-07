@@ -1,0 +1,323 @@
+<!doctype html><html><head><style>/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+@layer properties;
+@layer theme, base, components, utilities;
+@layer theme {
+  :root, :host {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+    --spacing: 0.25rem;
+    --leading-relaxed: 1.625;
+    --radius-2xl: 1rem;
+    --default-font-family: var(--font-sans);
+    --default-mono-font-family: var(--font-mono);
+  }
+}
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  html, :host {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    font-family: var(--default-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-feature-settings: var(--default-font-feature-settings, normal);
+    font-variation-settings: var(--default-font-variation-settings, normal);
+    -webkit-tap-highlight-color: transparent;
+  }
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  abbr:where([title]) {
+    -webkit-text-decoration: underline dotted;
+    text-decoration: underline dotted;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  a {
+    color: inherit;
+    -webkit-text-decoration: inherit;
+    text-decoration: inherit;
+  }
+  b, strong {
+    font-weight: bolder;
+  }
+  code, kbd, samp, pre {
+    font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+    font-feature-settings: var(--default-mono-font-feature-settings, normal);
+    font-variation-settings: var(--default-mono-font-variation-settings, normal);
+    font-size: 1em;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  :-moz-focusring:where(:not(iframe)) {
+    outline: auto;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  summary {
+    display: list-item;
+  }
+  ol, ul, menu {
+    list-style: none;
+  }
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    vertical-align: middle;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  button, input, select, optgroup, textarea, ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+  :where(select:is([multiple], [size])) optgroup {
+    font-weight: bolder;
+  }
+  :where(select:is([multiple], [size])) optgroup option {
+    padding-inline-start: 20px;
+  }
+  ::file-selector-button {
+    margin-inline-end: 4px;
+  }
+  ::placeholder {
+    opacity: 1;
+  }
+  @supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {
+    ::placeholder {
+      color: currentcolor;
+      @supports (color: color-mix(in lab, red, red)) {
+        color: color-mix(in oklab, currentcolor 50%, transparent);
+      }
+    }
+  }
+  textarea {
+    resize: vertical;
+  }
+  ::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  ::-webkit-date-and-time-value {
+    min-height: 1lh;
+    text-align: inherit;
+  }
+  ::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+  ::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
+    padding-block: 0;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: 1;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  button, input:where([type="button"], [type="reset"], [type="submit"]), ::file-selector-button {
+    appearance: button;
+  }
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+@layer utilities {
+  .relative {
+    position: relative;
+  }
+  .z-10 {
+    z-index: 10;
+  }
+  .-m-1 {
+    margin: calc(var(--spacing) * -1);
+  }
+  .mx-auto {
+    margin-inline: auto;
+  }
+  .block {
+    display: block;
+  }
+  .h-full {
+    height: 100%;
+  }
+  .max-h-52 {
+    max-height: calc(var(--spacing) * 52);
+  }
+  .min-h-0 {
+    min-height: 0px;
+  }
+  .min-h-\[calc\(2lh\+--spacing\(2\)\)\] {
+    min-height: calc(2lh + calc(var(--spacing) * 2));
+  }
+  .w-full {
+    width: 100%;
+  }
+  .max-w-\(--chat-content-max-width\) {
+    max-width: var(--chat-content-max-width);
+  }
+  .min-w-0 {
+    min-width: 0px;
+  }
+  .scrollbar-gutter-both {
+    scrollbar-gutter: stable both-edges;
+  }
+  .overflow-x-hidden {
+    overflow-x: hidden;
+  }
+  .overflow-y-auto {
+    overflow-y: auto;
+  }
+  .overscroll-y-contain {
+    overscroll-behavior-y: contain;
+  }
+  .rounded-2xl {
+    border-radius: var(--radius-2xl);
+  }
+  .bg-transparent {
+    background-color: transparent;
+  }
+  .p-1 {
+    padding: var(--spacing);
+  }
+  .p-px {
+    padding: 1px;
+  }
+  .px-1 {
+    padding-inline: var(--spacing);
+  }
+  .px-4 {
+    padding-inline: calc(var(--spacing) * 4);
+  }
+  .py-0\.5 {
+    padding-block: calc(var(--spacing) * 0.5);
+  }
+  .pb-2 {
+    padding-bottom: calc(var(--spacing) * 2);
+  }
+  .leading-relaxed {
+    --tw-leading: var(--leading-relaxed);
+    line-height: var(--leading-relaxed);
+  }
+  .wrap-break-word {
+    overflow-wrap: break-word;
+  }
+  .whitespace-pre-wrap {
+    white-space: pre-wrap;
+  }
+  .\[overflow-anchor\:none\] {
+    overflow-anchor: none;
+  }
+  .focus\:outline-none:focus {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+}
+@property --tw-leading {
+  syntax: "*";
+  inherits: false;
+}
+@layer properties {
+  @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
+    *, ::before, ::after, ::backdrop {
+      --tw-leading: initial;
+    }
+  }
+}
+
+:root{--chat-content-max-width: 46rem;--app-scrollbar-width: 6px;}
+::-webkit-scrollbar {
+  width: var(--app-scrollbar-width);
+}
+  .chat-content-lane {
+    margin-inline: auto;
+    width: 100%;
+    min-width: 0;
+    max-width: var(--chat-content-max-width);
+  }
+  .messages-timeline-row-frame {
+    padding-inline: 0;
+  }
+@layer components {
+  .chat-composer-lane {
+    padding-inline-start: calc(
+      env(safe-area-inset-left) + 0.75rem + var(--chat-lane-inset-start, 0px)
+    );
+    padding-inline-end: calc(
+      env(safe-area-inset-right) + 0.75rem + var(--chat-lane-inset-end, 0px)
+    );
+  }
+  [data-chat-canvas] .messages-timeline-scroll {
+    padding-inline-start: calc(
+      0.75rem + var(--chat-lane-inset-start, 0px) - var(--chat-timeline-gutter, 0px)
+    );
+    padding-inline-end: calc(
+      0.75rem + var(--chat-lane-inset-end, 0px) - var(--chat-timeline-gutter, 0px)
+    );
+  }
+  .chat-scroll-to-bottom,
+  .chat-banner-lane {
+    inset-inline-start: var(--chat-lane-inset-start, 0px);
+    inset-inline-end: var(--chat-lane-inset-end, 0px);
+  }
+  @media (min-width: 640px) {
+    .chat-composer-lane {
+      padding-inline-start: calc(
+        env(safe-area-inset-left) + 3rem + var(--chat-lane-inset-start, 0px)
+      );
+      padding-inline-end: calc(env(safe-area-inset-right) + 3rem + var(--chat-lane-inset-end, 0px));
+    }
+    [data-chat-canvas] .messages-timeline-scroll {
+      padding-inline-start: calc(
+        3rem + var(--chat-lane-inset-start, 0px) - var(--chat-timeline-gutter, 0px)
+      );
+      padding-inline-end: calc(
+        3rem + var(--chat-lane-inset-end, 0px) - var(--chat-timeline-gutter, 0px)
+      );
+    }
+  }
+}
+
+
+body{margin:0}.reference-pane{position:relative;min-width:0}.reference-panes{display:grid;grid-template-columns:repeat(var(--pane-count,1),minmax(0,1fr))}</style></head><body><div class="reference-panes"><section class="reference-pane" data-chat-canvas><div class="messages-timeline-scroll scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain [overflow-anchor:none]" style="height:180px;overflow-y:scroll"><div class="messages-timeline-row-frame"><div data-reference-lane class="chat-content-lane"><div class="relative min-w-0 px-1 py-0.5"><div data-reference-prose><span data-width-probe style="display:inline-block;width:100%;height:1px">x</span></div></div></div></div><div style="height:500px"></div></div><div class="chat-composer-lane"><form class="mx-auto w-full min-w-0 max-w-(--chat-content-max-width)"><div data-reference-surface class="group relative z-10 rounded-2xl p-px"><div class="relative px-4 pb-2"><div class="composer-tiptap -m-1 block max-h-52 min-h-[calc(2lh+--spacing(2))] overflow-y-auto p-1 whitespace-pre-wrap wrap-break-word bg-transparent leading-relaxed text-foreground focus:outline-none" contenteditable><div data-reference-editor><span data-width-probe style="display:inline-block;width:100%;height:1px">x</span></div></div></div></div></form></div></section><section class="reference-pane" data-chat-canvas><div class="messages-timeline-scroll scrollbar-gutter-both h-full min-h-0 overflow-x-hidden overscroll-y-contain [overflow-anchor:none]" style="height:180px;overflow-y:scroll"><div class="messages-timeline-row-frame"><div data-reference-lane class="chat-content-lane"><div class="relative min-w-0 px-1 py-0.5"><div data-reference-prose><span data-width-probe style="display:inline-block;width:100%;height:1px">x</span></div></div></div></div><div style="height:500px"></div></div><div class="chat-composer-lane"><form class="mx-auto w-full min-w-0 max-w-(--chat-content-max-width)"><div data-reference-surface class="group relative z-10 rounded-2xl p-px"><div class="relative px-4 pb-2"><div class="composer-tiptap -m-1 block max-h-52 min-h-[calc(2lh+--spacing(2))] overflow-y-auto p-1 whitespace-pre-wrap wrap-break-word bg-transparent leading-relaxed text-foreground focus:outline-none" contenteditable><div data-reference-editor><span data-width-probe style="display:inline-block;width:100%;height:1px">x</span></div></div></div></div></form></div></section></div><script>window.measureGutters=()=>{for(const p of document.querySelectorAll('.reference-pane')){const v=p.querySelector('.messages-timeline-scroll');p.style.setProperty('--chat-timeline-gutter',(v.offsetWidth-v.clientWidth)/2+'px')}};measureGutters()</script></body></html>

@@ -68,7 +68,7 @@ async function paint(browser, expected, theme = 'light', id = 'a') {
     assert.equal(first.playState, 'running')
     assert.deepEqual(first.animations, ['running'], 'a real CSS pseudo-element animation is running')
     assert.ok(first.mask.split(',').every(value => value.trim() === 'exclude'), 'the contour uses the native exclusion mask')
-    assert.match(first.gradient, /^linear-gradient\(/)
+    assert.match(first.gradient, /^repeating-linear-gradient\(/)
     assert.equal(first.dotOpacity, '1')
     assert.equal(first.color, theme === 'light' ? 'rgb(36, 36, 36)' : 'rgb(238, 238, 238)')
     await browser.evaluate('flush()')

@@ -286,8 +286,8 @@ test('real Chrome: native click and Enter do not admit or wake; controls and dis
 })
 
 test('real Chrome: native middle pointerup opens but never admits without work', async t => {
-  const hostRoot = process.env.CODEX_INBOX_QUERY_CORE_ROOT
-  if (!hostRoot) return t.skip('Set CODEX_INBOX_QUERY_CORE_ROOT for the exact native middle-click seam.')
+  const hostRoot = process.env.HERMES_DESKTOP_SOURCE_ROOT || process.env.CODEX_INBOX_QUERY_CORE_ROOT
+  if (!hostRoot) return t.skip('Set HERMES_DESKTOP_SOURCE_ROOT for the exact native middle-click seam.')
   const { middleClickHandlers } = await import(`${hostRoot}/apps/desktop/src/lib/middle-click.ts`)
   const browser = await chromium()
   try {

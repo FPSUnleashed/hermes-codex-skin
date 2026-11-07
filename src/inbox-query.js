@@ -35,8 +35,11 @@ function inboxOwnerScope() {
 }
 
 function sameInboxScope(left, right) {
-  return left.connectionId === right.connectionId && left.profile === right.profile
+  return !!left && !!right && left.connectionId === right.connectionId && left.profile === right.profile
 }
+
+function codexInboxDefaultOwnerScope() { return inboxOwnerScope() }
+function codexInboxDefaultMode() { return readCodexInboxMode() }
 
 async function readCodexInboxRowOwner(scope) {
   // Route inventory alone can hide failed source enumerations. Require the
@@ -234,13 +237,23 @@ async function readCodexInboxChildSnapshots(scope, liveSessions, read, stillCurr
   return snapshot()
 }
 
-async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}, nominations = () => [], onProgress = () => {}) {
+async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = new Map(), onMetadata = () => {}, nominations = () => [], onProgress = () => {}, context = {}) {
+  const inboxOwnerScope = context.ownerScope || codexInboxDefaultOwnerScope
   const bridge = globalThis.window?.hermesDesktop
   if (typeof bridge?.api !== 'function') throw new Error('Inbox requires the Desktop session API.')
+  let route = scope.targetProfile && scope.mode ? { ...scope } : null
+  if (!context.liveOwners && host.profileRoutes) {
+    try {
+      const routes = (await host.profileRoutes()).filter(item => sameInboxScope(item, scope))
+      if (routes.length === 1) { route = { ...routes[0] }; scope = { ...scope, ...codexInboxStateScope(route) } }
+    } catch { /* Explicit metadata can survive inventory failure, never live/row-owner authority. */ }
+  }
   const focusedBefore = codexInboxLiveFocus()
   const sessions = new Map()
+  const metadataIds = row => [row?.id, row?._lineage_root_id, ...(row?._lineage_ids || [])].filter(Boolean)
+  const revalidatedMetadataIds = new Set()
   let offset = 0, total = 0
-  let targetProfile = scope.profile
+  let targetProfile = scope.targetProfile || scope.profile
   for (let page = 0; page < pageCount; page++) {
     if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     const params = new URLSearchParams({
@@ -256,24 +269,31 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
     if (!Array.isArray(data?.sessions) || !Number.isFinite(data.total) || data.total < 0) {
       throw new Error('Inbox received an incomplete session list.')
     }
-    if (targetProfile === scope.profile && data.sessions.some(session => session.profile && session.profile !== scope.profile) && host.profileRoutes) {
+    if (!context.liveOwners && targetProfile === scope.profile && data.sessions.some(session => session.profile && session.profile !== scope.profile) && host.profileRoutes) {
       const routes = await host.profileRoutes()
       const matches = routes.filter(route => sameInboxScope(route, scope))
       if (matches.length === 1 && typeof matches[0].targetProfile === 'string' && matches[0].targetProfile) targetProfile = matches[0].targetProfile
       if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     }
-    if (data.errors?.length || data.storage?.[targetProfile] === 'corrupt') {
+    if (data.errors?.length || data.storage?.[targetProfile] && data.storage[targetProfile] !== 'ok') {
       throw new Error('The session list could not be read completely.')
+    }
+    if (context.liveOwners && data.sessions.some(session => !session || typeof session.id !== 'string' || !session.id ||
+        session.profile !== targetProfile || session.connection_id !== scope.connectionId)) {
+      throw new Error('Inbox metadata owner could not be verified.')
     }
     total = data.total
     for (const session of data.sessions) {
+      metadataIds(session).forEach(id => revalidatedMetadataIds.add(id))
       // A scoped response may still contain a carried row from another owner.
       if (session.profile && session.profile !== targetProfile) continue
       if (session.connection_id && session.connection_id !== scope.connectionId) continue
       if (session.hidden || session.archived || !session.id) continue
       const durable = session._lineage_root_id || session.id
       const previous = sessions.get(durable)
-      if (!previous || (session.last_active || 0) > (previous.last_active || 0)) sessions.set(durable, { ...session, profile: scope.profile })
+      if (!previous || (session.last_active || 0) > (previous.last_active || 0)) sessions.set(durable, { ...session,
+        _codexInboxBackendOwner: { connectionId: session.connection_id || scope.connectionId, profile: session.profile || targetProfile },
+        profile: scope.profile, connection_id: scope.connectionId })
     }
     // Pinned backfills can exceed the requested page. They must not advance
     // the database offset past conversations we have not fetched.
@@ -293,27 +313,55 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   const listedIds = new Set([...sessions.values()].flatMap(row => [row.id, row._lineage_root_id, ...(row._lineage_ids || [])].filter(Boolean)))
   const nominatedIds = nominations().filter(focus => sameInboxScope(focus, scope)).map(focus => focus.storedId)
   const missing = [...new Set([...explicitRequestedIds, ...pendingWorkIds, ...nominatedIds])].filter(id => !listedIds.has(id))
-  onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
-  let publishProgress = () => {}
+  const pendingMetadataIds = new Set(missing.filter(id => !revalidatedMetadataIds.has(id)))
+  const metadataProgress = () => ({ pendingMetadataIds: [...pendingMetadataIds], revalidatedMetadataIds: [...revalidatedMetadataIds] })
+  onMetadata({ route, sessions: [...sessions.values()], ...metadataProgress(), explicitRequestedIds, hasMore: offset < total })
+  let publishProgress = () => false
+  const publishMetadata = () => {
+    if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) return
+    if (!publishProgress()) onMetadata({ route, sessions: [...sessions.values()], ...metadataProgress(), explicitRequestedIds, hasMore: offset < total })
+  }
   const readMissing = async ids => {
   for (let index = 0; index < ids.length; index += 4) {
-    const rows = await Promise.all(ids.slice(index, index + 4).map(async id => {
-      try {
-        return await readCodexInboxOpenedSession({ id, scope }, {
-          followLineage: true,
-          stillCurrent: () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())
-        })
-      } catch (error) {
-        if (isCodexInboxSessionNotFound(error)) return null
-        throw error
-      }
-    }))
-    for (const row of rows) {
-      if (row && !row.archived && !row.hidden) sessions.set(row._lineage_root_id || row.id, row)
+    if (index) {
+      // Keep every metadata stage: lineage/source changes can revoke attention.
+      // A task boundary, not a latest-snapshot mailbox, bounds cached IPC bursts.
+      await new Promise(resolve => setTimeout(resolve, 0))
     }
     if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
-    onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
-    publishProgress()
+    let batchOpen = true, publicationQueued = false
+    try {
+      await Promise.all(ids.slice(index, index + 4).map(async id => {
+        let row = null
+        try {
+          row = await readCodexInboxOpenedSession({ id, scope }, {
+            followLineage: true,
+            requireOwner: !!context.liveOwners,
+            stillCurrent: () => !signal?.aborted && sameInboxScope(scope, inboxOwnerScope())
+          })
+        } catch (error) {
+          if (!isCodexInboxSessionNotFound(error)) throw error
+        }
+        if (!batchOpen) return
+        if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+        pendingMetadataIds.delete(id); revalidatedMetadataIds.add(id)
+        metadataIds(row).forEach(alias => { pendingMetadataIds.delete(alias); revalidatedMetadataIds.add(alias) })
+        if (row && !row.archived && !row.hidden) sessions.set(row._lineage_root_id || row.id, row)
+        // A slow sibling must not retain a completed revision. Immediate cached
+        // siblings still finish as one publication, preserving the batch budget.
+        if (!publicationQueued) {
+          publicationQueued = true
+          setTimeout(() => {
+            publicationQueued = false
+            if (batchOpen) publishMetadata()
+          }, 0)
+        }
+      }))
+    } finally { batchOpen = false }
+    if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
+    // The live progression already contains these exact metadata rows. Publishing
+    // both performs the same owner transaction twice, without adding authority.
+    publishMetadata()
   }
   }
   // Only the focused anchor can block ownership proof. Unrelated saved history
@@ -321,23 +369,23 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   const anchorIds = focusedBefore && missing.includes(focusedBefore.storedId) ? [focusedBefore.storedId] : []
   const anchorBackfill = readMissing(anchorIds).then(() => null, error => error)
   const historyBackfill = readMissing(missing.filter(id => !anchorIds.includes(id))).then(() => null, error => error)
-  // Paint the owner-scoped list without waiting for activity/roster round trips.
-  // This stage deliberately carries no authority for activity or Settle.
-  onMetadata({ sessions: [...sessions.values()], explicitRequestedIds, hasMore: offset < total })
   let liveSessions = [], rawLiveSessions = [], liveStatusKnown = false, liveReadSucceeded = false, liveStatusAt = 0
   let childSnapshots = [], childUnknownSessionIds = []
   publishProgress = () => {
-    if (!liveReadSucceeded || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) return
+    if (!liveReadSucceeded || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) return false
     ;({ liveSessions, liveStatusKnown } = resolveCodexInboxLiveSessions(scope, targetProfile, rawLiveSessions, [...sessions.values()], liveOwners))
-    onProgress({ sessions: [...sessions.values()], liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile,
+    onProgress({ route, sessions: [...sessions.values()], ...metadataProgress(), liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile,
       liveStatusKnown, liveSnapshotComplete: false, liveReadSucceeded, liveStatusAt, rowOwnerScope: null, explicitRequestedIds, hasMore: offset < total })
+    return true
   }
   try {
+    if (context.liveAvailable?.() === false) throw new Error('Inbox live connection is not certified.')
     if (!sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
     let live, readIdentity, readChildren
     if (typeof host.requestProfile === 'function' && typeof host.profileRoutes === 'function') {
       const routes = (await host.profileRoutes()).filter(route => sameInboxScope(route, scope))
       if (routes.length !== 1 || signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox live owner could not be verified.')
+      if (context.liveOwners && (routes[0].targetProfile !== scope.targetProfile || routes[0].mode !== scope.mode)) throw new Error('Inbox live route changed.')
       if (typeof routes[0].targetProfile === 'string' && routes[0].targetProfile) targetProfile = routes[0].targetProfile
       liveStatusAt = Date.now()
       live = await host.requestProfile(routes[0], 'session.active_list', { profile: targetProfile })
@@ -426,15 +474,31 @@ async function readCodexInboxPage(scope, pageCount, signal, inbox, liveOwners = 
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
   const rowOwnerScope = await readCodexInboxRowOwner(scope)
   if (signal?.aborted || !sameInboxScope(scope, inboxOwnerScope())) throw new Error('Inbox scope changed.')
-  return { sessions: [...sessions.values()], liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile, liveStatusKnown, liveReadSucceeded, liveStatusAt, rowOwnerScope, explicitRequestedIds, hasMore: offset < total }
+  return { route, sessions: [...sessions.values()], liveSessions, rawLiveSessions, childSnapshots, childUnknownSessionIds, targetProfile, liveStatusKnown, liveReadSucceeded, liveStatusAt, rowOwnerScope, explicitRequestedIds, hasMore: offset < total }
 }
 
-function startCodexInboxObserver(ctx, inbox) {
+function startCodexInboxObserver(ctx, inbox, context = {}) {
+  const inboxOwnerScope = context.ownerScope || codexInboxDefaultOwnerScope
+  const readCodexInboxMode = context.mode || codexInboxDefaultMode
   // A data service must not inherit the mount lifetime of optional UI chrome.
   // The vendored observer uses the SDK's cache, never a plugin-owned client.
   if (!inbox) return () => {}
   let scope = inboxOwnerScope(), pageCount = 1, mode = readCodexInboxMode(), disposed = false
-  const liveOwners = new Map()
+  const liveOwners = context.liveOwners || new Map()
+  const commitProofs = proofs => {
+    let changed = false
+    for (const [key, proof] of proofs) {
+      const previous = liveOwners.get(key)
+      const next = context.liveOwners && previous && (previous.conflicted || proof.conflicted || !sameInboxScope(previous, proof))
+        ? { ...previous, conflicted: true } : proof
+      if (JSON.stringify(previous) !== JSON.stringify(next)) {
+        liveOwners.set(key, next)
+        changed = true
+      }
+    }
+    // Stable proof reads must not repeatedly reproject every owner's history.
+    if (changed) context.onOwnersChanged?.()
+  }
   const nominatedFocus = new Map()
   const pendingEvents = []
   let refreshVersion = 0, refreshing = false
@@ -442,13 +506,16 @@ function startCodexInboxObserver(ctx, inbox) {
   let metadataPreview = null
   let progressSnapshot = null
   let liveAuthority = Symbol('Inbox live connection')
+  let retainedMetadata = [], retainedRoute = null
+  const liveConnected = owner => context.liveAvailable ? context.liveAvailable() :
+    !sameInboxScope(owner, inboxGatewayScope()) || !host.state.gateway || host.state.gateway.get() === 'open'
   const nominations = () => {
     for (const [key, item] of nominatedFocus) if (Date.now() - item.at > 10_000) nominatedFocus.delete(key)
     return [...nominatedFocus.values()].map(item => item.focus)
   }
   const rememberFocus = () => {
     const focus = codexInboxLiveFocus()
-    const connected = !sameInboxScope(scope, inboxGatewayScope()) || !host.state.gateway || host.state.gateway.get() === 'open'
+    const connected = liveConnected(scope)
     if (disposed || mode !== 'on' || !connected || !focus || !sameInboxScope(focus, scope)) return
     nominations()
     const key = JSON.stringify(focus)
@@ -459,33 +526,37 @@ function startCodexInboxObserver(ctx, inbox) {
   const options = () => {
     const owner = { ...scope }, pages = pageCount
     return {
-      queryKey: [ID, 'inbox', owner.connectionId, owner.profile, pages],
+      queryKey: [ID, 'inbox', owner.connectionId, owner.profile, pages, ...(context.queryKey || [])],
       queryFn: async ({ signal }) => {
+        const release = await context.acquire?.(signal)
+        try {
         const authority = liveAuthority, proofs = new Map(liveOwners)
         rememberFocus()
         const data = await readCodexInboxPage(owner, pages, signal, inbox, proofs, metadata => {
           if (disposed || signal.aborted || authority !== liveAuthority || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
-          metadataPreview = metadata
+          metadataPreview = { ...metadata, _codexInboxMetadataAuthority: authority }
           project()
         }, nominations, progress => {
-          const connected = !sameInboxScope(owner, inboxGatewayScope()) || !host.state.gateway || host.state.gateway.get() === 'open'
+          const connected = liveConnected(owner)
           if (disposed || signal.aborted || authority !== liveAuthority || !connected || mode !== 'on' || !sameInboxScope(owner, inboxOwnerScope())) return
-          for (const [key, proof] of proofs) liveOwners.set(key, proof)
-          progressSnapshot = { ...progress, _codexInboxLiveAuthority: authority }
+          commitProofs(proofs)
+          metadataPreview = null
+          progressSnapshot = { ...progress, _codexInboxLiveAuthority: authority, _codexInboxMetadataAuthority: authority }
           project()
-        })
+        }, context)
         // In-flight reads and native cache hits cannot carry authority across
         // a disconnect or a new plugin lifetime. Stage owner proofs likewise.
-        const connected = !sameInboxScope(owner, inboxGatewayScope()) ||
-          !host.state.gateway || host.state.gateway.get() === 'open'
+        const connected = liveConnected(owner)
         const current = !disposed && authority === liveAuthority && connected && !signal.aborted
         if (current && data.liveReadSucceeded) {
-          for (const [key, proof] of proofs) liveOwners.set(key, proof)
+          commitProofs(proofs)
         }
         if (current) { metadataPreview = null; progressSnapshot = null }
-        return { ...data, _codexInboxLiveAuthority: current && data.liveReadSucceeded ? authority : null }
+        return { ...data, _codexInboxLiveAuthority: current && data.liveReadSucceeded ? authority : null,
+          _codexInboxMetadataAuthority: current ? authority : null }
+        } finally { release?.() }
       },
-      enabled: mode === 'on', staleTime: 10_000,
+      enabled: mode === 'on', staleTime: context.liveOwners ? 0 : 10_000,
       refetchInterval: mode === 'on' ? 10_000 : false, retry: 1
     }
   }
@@ -523,10 +594,20 @@ function startCodexInboxObserver(ctx, inbox) {
   }
   const project = () => {
     if (disposed || !sameInboxScope(scope, inboxOwnerScope())) return
-    const query = observer.getCurrentResult(), owner = { ...scope }, snapshot = progressSnapshot || query.data, data = metadataPreview || snapshot
+    const query = observer.getCurrentResult(), snapshot = progressSnapshot || query.data, data = metadataPreview || snapshot
+    const owner = { ...scope, ...codexInboxStateScope(data?.route || scope) }
+    const routeKey = codexInboxRouteKey(data?.route || owner)
+    const currentMetadata = mode === 'on' && !query.error && liveConnected(owner) && data?._codexInboxMetadataAuthority === liveAuthority
+    if (!currentMetadata || retainedRoute !== routeKey) retainedMetadata = []
+    retainedRoute = routeKey
+    const pending = new Set(data?.pendingMetadataIds || []), revised = new Set(data?.revalidatedMetadataIds || [])
+    const retainedSessions = retainedMetadata.filter(session => {
+      const ids = [session.id, session._lineage_root_id, ...(session._lineage_ids || [])].filter(Boolean)
+      return ids.some(id => pending.has(id)) && !ids.some(id => revised.has(id))
+    })
     // Metadata can arrive before live RPCs. Retain this connection's last
     // proof, but revalidate it against the newest metadata before projecting.
-    const authoritative = !query.error && snapshot?._codexInboxLiveAuthority === liveAuthority
+    const authoritative = liveConnected(owner) && !query.error && snapshot?._codexInboxLiveAuthority === liveAuthority
     const live = authoritative && Array.isArray(snapshot?.rawLiveSessions)
       ? resolveCodexInboxLiveSessions(owner, snapshot.targetProfile, snapshot.rawLiveSessions, data.sessions, liveOwners)
       : { liveSessions: [], liveStatusKnown: false }
@@ -554,7 +635,8 @@ function startCodexInboxObserver(ctx, inbox) {
     window.dispatchEvent(new CustomEvent(INBOX_ROWS_EVENT))
     inbox.update({
       scope: owner,
-      sessions: data?.sessions || [], liveSessions: live?.liveSessions || [],
+      route: data?.route,
+      sessions: data?.sessions || [], retainedSessions, liveSessions: live?.liveSessions || [],
       liveStatusKnown: authoritative && !!snapshot?.liveStatusKnown && !!live?.liveStatusKnown,
       liveSnapshotComplete: snapshot?.liveSnapshotComplete !== false,
       liveStatusAt: authoritative ? snapshot?.liveStatusAt : undefined,
@@ -577,6 +659,10 @@ function startCodexInboxObserver(ctx, inbox) {
         if (!disposed && mode === 'on' && sameInboxScope(owner, scope)) void observer.refetch()
       }
     })
+    // Presentation continuity is not fresh metadata, live proof or admission.
+    // Only this observer incarnation's positively admitted rows can be retained.
+    if (currentMetadata) retainedMetadata = [...(data.sessions || []), ...retainedSessions]
+      .filter(session => inbox.admission?.isEligible?.(owner, session) === true)
     if (authoritative && pendingEvents.length) {
       for (let index = 0; index < pendingEvents.length;) {
         const item = pendingEvents[index]
@@ -604,17 +690,24 @@ function startCodexInboxObserver(ctx, inbox) {
     if (sameInboxScope(scope, nextScope) && mode === nextMode) return
     pendingEvents.length = 0
     nominatedFocus.clear()
-    if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1; metadataPreview = null; progressSnapshot = null }
+    // Task-sliced backfills can straddle A -> B -> A or Off -> On. Neither
+    // matching coordinates nor a retained cache entry restores an old read.
+    liveAuthority = Symbol('Inbox live connection')
+    retainedMetadata = []; retainedRoute = null
+    metadataPreview = null
+    progressSnapshot = null
+    if (!sameInboxScope(scope, nextScope)) { scope = nextScope; pageCount = 1 }
     mode = nextMode
     observer.setOptions(options())
     project()
   }
   const stopQuery = observer.subscribe(project)
+  inbox.reproject = project
   const resolveLiveEvent = event => {
     const query = observer.getCurrentResult(), data = progressSnapshot || query.data
     if (disposed || mode !== 'on' || event.replayed || !event.session_id || query.error ||
         event.connectionId !== scope.connectionId || event.profile !== scope.profile ||
-        !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
+        !liveConnected(scope) || !sameInboxScope(scope, inboxOwnerScope()) || data?._codexInboxLiveAuthority !== liveAuthority) return null
     const metadata = metadataPreview?.sessions || data.sessions
     const canonicalId = codexInboxCanonicalRuntime(scope, data.targetProfile, event.session_id, data.rawLiveSessions, metadata, liveOwners)
     if (!canonicalId) return null
@@ -658,6 +751,7 @@ function startCodexInboxObserver(ctx, inbox) {
     host.state.gateway?.subscribe?.(() => {
       if (host.state.gateway.get() !== 'open') {
         liveAuthority = Symbol('Inbox live connection')
+        retainedMetadata = []; retainedRoute = null
         metadataPreview = null
         progressSnapshot = null
         pendingEvents.length = 0
@@ -714,7 +808,7 @@ function startCodexInboxObserver(ctx, inbox) {
     readiness?.disconnect()
     stopQuery()
     observer.destroy()
-    liveOwners.clear()
+    if (!context.liveOwners) liveOwners.clear()
     if (inbox.verifyLiveEvent === verifyLiveEvent) delete inbox.verifyLiveEvent
     if (inbox.resolveLiveEvent === resolveLiveEvent) delete inbox.resolveLiveEvent
     if (inbox.pendingWorkSessionIds === pendingWorkSessionIds) delete inbox.pendingWorkSessionIds

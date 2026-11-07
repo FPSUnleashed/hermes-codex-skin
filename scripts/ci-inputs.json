@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "node": "v26.13.0",
+  "npm": "11.20.0",
+  "regressionFiles": 192,
+  "plugin": {
+    "files": {
+      "package.json": "4f4069f7ce283336c1c7fe0116c84f467f2f67192d997922b07c723cb778f686",
+      "package-lock.json": "08b3ea78c071f17f54988205eb3d66a3041ed0f439e5f6819c477d6977c5ebca"
+    }
+  },
+  "native": {
+    "repository": "NousResearch/hermes-agent",
+    "commit": "e5ea5fd9ccdf2913c0b21b24eb3d22b321d2e2a6",
+    "tablerEntrySHA256": "995b7f3121bbe8d8db4d6ddc8bcfba5e58abde07c433da90ce7ce97e99ccf40a",
+    "files": {
+      "LICENSE": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
+      "package.json": "1b2e18d82ec312b7411518dbdad8962f7c4968e24205dfe284a3ff52f2b8b97c",
+      "package-lock.json": "ba681cd436db12d02a82f80c19de02d94e9cd7ca7c1672c4589b37e0ece522c7",
+      "apps/desktop/package.json": "1c99ed81706758d017ab79e7a58cd03a797697a47398940a547a1332f9c508ce",
+      "apps/desktop/tsconfig.json": "75964d8f8536c4b84a49d869cccca550759a32b7db69274786628b56b644044f",
+      "apps/desktop/tsconfig.electron.json": "28a315f4cc5a81f287db5df5201a4e20539dd576ba12440d5ff2dbd07651341a",
+      "apps/shared/package.json": "b9ae25a2a7f088a1f2d4083f19bd10c4432c1e451022d885c59b0f1996cee85e",
+      "apps/shared/tsconfig.json": "5b93f92433b92f0af8199f5d6b814ed2de978a17f82c9a49ed74d4ff014c5ec1"
+    },
+    "sourceDirectories": {
+      "apps/desktop/src": {
+        "files": 3415,
+        "sha256": "17c1320fd48c6fbd87b7c29efc3d62201f92f09c3736f8d5a5aa96747d76e7ef"
+      },
+      "apps/desktop/electron": {
+        "files": 687,
+        "sha256": "8b5c3b5741fd5587c6a339322fee266f84ca32daaa0ed9a55d6ab2c46e1054ee"
+      },
+      "apps/shared/src": {
+        "files": 53,
+        "sha256": "f4ad20f9c8c876c150d00cfe53b686631f30d2b051a7cf8d1fdf90b1fd3e101a"
+      }
+    },
+    "packages": {
+      "@assistant-ui/react": "0.14.29",
+      "@assistant-ui/react-streamdown": "0.3.7",
+      "@assistant-ui/tap": "0.9.8",
+      "@tabler/icons-react": "3.49.0",
+      "@tanstack/query-core": "5.104.1",
+      "assistant-stream": "0.3.31",
+      "esbuild": "0.28.2",
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "streamdown": "2.7.0",
+      "typescript": "6.0.3",
+      "zustand": "5.0.15"
+    }
+  },
+  "t3": {
+    "repository": "pingdotgg/t3code",
+    "commit": "6d450a4284852af137b2f3407fddd89eb76e7644",
+    "files": {
+      "LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
+      "apps/web/src/index.css": "4922ba3213be8e969ff781f41ab16268787518fe335290e57ab7228d4c65c908",
+      "apps/web/src/components/chat/ComposerSurface.tsx": "d8a36ae114a7d96c5d915e2a7bbd03f5d8afd9b1aaa894af5b75167e576a7906",
+      "packages/shared/src/themePalettes.ts": "21b10dad58a61e86c563e48f75584a49ef61d423d426129e831c8c2c2090ddb8",
+      "apps/web/src/themePalette.ts": "d5c9e00126c67f5fce87417032d2322ffe5e6e6bd7dccad03ef6b2ddcd65c112",
+      "apps/web/src/components/chat/ChatComposer.tsx": "003fd2a888c9a90b3f6f3eb63ed521a194e24f80c83aee838cce4512bf20a04b",
+      "apps/web/src/components/chat/WorkLog.tsx": "3e88c0968a662b113269f9a96c8ff38f5e56b03071ead6fb10ead18144a14083"
+    }
+  },
+  "historical": {
+    "status": "Qualified test-only vendoring; original capture producer UNKNOWN; full geometry/full CI PENDING.",
+    "roles": {
+      "HERMES_INSTALLED_ROW_CSS": "native-row.css",
+      "HERMES_INSTALLED_RENDERER_JS": "renderer-class-projection.js",
+      "BACKGROUND_BASELINE_BUNDLE": "baseline/codex-chat-look/plugin.js"
+    },
+    "files": {
+      "README.md": "f6036bdbf6bd82186f8d28074430891ae306c821bfbd98ec7ccb5b2149055316",
+      "baseline/codex-chat-look/plugin.js": "86b5d1a506d1c5c36dd4f669995deb7b57338336916596c59dc0563e9a7619ca",
+      "baseline/test/helpers/load-plugin.mjs": "3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34",
+      "licenses/hermes-MIT-LICENSE": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
+      "licenses/katex-0.19.0-LICENSE": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3",
+      "licenses/t3-MIT-LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
+      "licenses/tailwindcss-4.3.3-LICENSE": "60e0b68c0f35c078eef3a5d29419d0b03ff84ec1df9c3f9d6e39a519a5ae7985",
+      "licenses/tanstack_query-core-5.101.2-LICENSE": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7",
+      "licenses/tw-shimmer-0.4.13-LICENSE": "71fd4b7b76d27a09af2e8b2bedf14e51f4c229e32b59654d327cc24dc63e60d7",
+      "licenses/vscode_codicons-0.0.45-LICENSE": "af5e030844efddbc7ab00dcfea8b019703753d4d9f5172d727c533a492aec665",
+      "licenses/vscode_codicons-0.0.45-LICENSE-CODE": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b",
+      "licenses/xterm_xterm-6.0.0-LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
+      "native-row.css": "ce4eaebe23cc99c7ba7ca4d69c7221793a0eec3005564105dbaf4b9de69ad104",
+      "provenance.json": "693b7406070e878e6461cc3f5ec8a312cdd76833de015e8bcf1fa9944d4540a2",
+      "renderer-class-projection.js": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf"
+    },
+    "consumerFiles": {
+      "test/t3-width-fidelity.test.mjs": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
+      "test/helpers/reference-paths.mjs": "767fa4828572c86232ec50da401c8dd0198dee4dc1ddbdce2ce1e4f4c418057a",
+      ".github/workflows/ci.yml": "56acd8045d02686c5024cd2707efd6fcd8653167fd420b52be9aaf412842ee9a",
+      "LICENSE": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
+    },
+    "fixtureClosure": {
+      "files": 15,
+      "sha256": "7156dd1789b26283c57dca2fca7091d557aedce654377095a0f0dab9740179b5"
+    },
+    "consumerClosures": {
+      "test": {
+        "files": 227,
+        "sha256": "940ca10c180caf9c26b43448988326e2dd1181d9e405f2f8e6521dbb22672914",
+        "excluded": [
+          "test/fixtures/ci-historical"
+        ]
+      },
+      "scripts": {
+        "files": 3,
+        "sha256": "82815a7cc387b399f12d039eb666d59c4f9dcca72e1e6d7c333cee95b1491b88",
+        "excluded": [
+          "scripts/ci-inputs.json",
+          "scripts/verify-ci-inputs.mjs"
+        ]
+      },
+      "src": {
+        "files": 17,
+        "sha256": "1e87c7a1dc7da742e7e8a860930c838c69d207503974e390ccc4900eda2014ee",
+        "excluded": []
+      }
+    }
+  }
+}

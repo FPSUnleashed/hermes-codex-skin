@@ -13,7 +13,7 @@ test('reference rail scales native hit boxes and virtual scroll coordinates toge
  let r=await b.evaluate('metrics()');assert.equal(await b.evaluate('strip.scrollTop'),280)
  for(let i=0;i<r.length;i++){
   assert.equal(r[i].nativeTop,`${(40+i)*7}px`);assert.equal(r[i].nativeHeight,'7px');assert.equal(r[i].hit,String(40+i))
-  assert.ok(Math.abs(r[i].height-2)<.06);assert.equal(r[i].width,6);assert.ok(Math.abs(r[i].y-r[i].buttonY)<.04);assert.ok(Math.abs(r[i].buttonHeight-10)<.04)
+  assert.ok(Math.abs(r[i].height-2)<.06);assert.ok(Math.abs(r[i].width-24*.333)<.05);assert.ok(Math.abs(r[i].y-r[i].buttonY)<.04);assert.ok(Math.abs(r[i].buttonHeight-10)<.04)
   if(i)assert.ok(Math.abs(r[i].y-r[i-1].y-10)<.04)
  }
  for(const i of [0,10,20])for(const type of ['mousePressed','mouseReleased'])await b.call('Input.dispatchMouseEvent',{type,x:r[i].x,y:r[i].y,button:'left',clickCount:1})

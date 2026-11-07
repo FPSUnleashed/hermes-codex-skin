@@ -55,7 +55,7 @@ for (const theme of ['light', 'dark']) test(`production Inbox terminal receipts 
     assert.equal(state.state, 'idle', 'initial idle never implies successful completion')
     assert.equal(state.arc, false)
     assert.notEqual(state.color, 'rgb(22, 136, 75)')
-    assert.equal(state.settleVisible, '1', 'Settle visible without hovering')
+    assert.equal(state.settleVisible, '0', 'Settle is hidden without row hover or focus')
     assert.equal(state.settleDisabled, false)
     const initialGeometry = await browser.evaluate("(()=>{const r=row(),l=r.querySelector('[data-codex-inbox-label]');return [r.getBoundingClientRect().height,l.getBoundingClientRect().left-r.getBoundingClientRect().left]})()")
     assert.deepEqual(initialGeometry, [26, 28])

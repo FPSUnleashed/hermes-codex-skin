@@ -148,12 +148,13 @@ test('Chromium computes 736 / 883.2 / 1030.4 CSS px, constrains narrow panes and
           assert.deepEqual(state.surface, native.surface)
           assert.deepEqual(state.column, native.column)
         } else {
-          closeTo(state.surface.width, Math.min(requested, width - 32), `${mode} surface at ${width}px`)
-          assert.equal(state.variable, `${requested}px`, 'the configured CSS limit is exact')
+          const gutter = mode === 'codex' ? (width >= 640 ? 48 : 12) : 16
+          closeTo(state.surface.width, Math.min(requested, width - 2 * gutter), `${mode} surface at ${width}px`)
+          assert.equal(state.variable, mode === 'codex' ? '46rem' : `${requested}px`, 'the configured CSS limit is exact')
           closeTo(state.dock.width, state.surface.width + 10, '5px peel-out margins are preserved')
-          closeTo(state.column.width, Math.min(requested, width), 'conversation shares the width limit')
+          closeTo(state.column.width, Math.min(requested, mode === 'codex' ? width - 2 * gutter : width), 'conversation shares the content lane limit')
           closeTo(state.surface.left, (width - state.surface.width) / 2, 'surface remains centered')
-          assert.ok(state.surface.left >= 16, 'minimum 16px visible gutter')
+          assert.ok(state.surface.left >= gutter, 'the selected mode preserves its minimum gutter')
         }
         assert.equal(state.mode, mode)
         if (width === 1200) t.diagnostic(JSON.stringify({mode, limit:state.variable, surface:state.surface.width, dock:state.dock.width, column:state.column.width, popout:state.popout.width}))

@@ -145,7 +145,7 @@ test('actual browser runtime: work-only, freshness, cron, manual polls, new work
     await browser.evaluate('row("old").querySelector("[data-codex-inbox-settle]").click();runtime.activity({type:"message.start",...scope,session_id:"old"});flush()');
     assert.equal(await browser.evaluate('!!row("old")'), true, 'subsequent verified message start restores');
     await browser.evaluate('runtime.snooze(rows[0],Date.now()+60000);runtime.opened({explicit:true,scope,session:rows[0]});update();flush()');
-    assert.equal(await browser.evaluate('!row("old")&&runtime.model.isSnoozed(scope,"old")'), true);
+    assert.equal(await browser.evaluate('row("old").parentElement.hasAttribute("data-codex-inbox-snoozed-rows")&&runtime.model.isSnoozed(scope,"old")'), true);
     await browser.evaluate('runtime.activity({type:"message.start",...scope,session_id:"cron"});flush()');
     assert.equal(await browser.evaluate('!!row("cron")'), false);
     await browser.evaluate('runtime.cancelSnooze(rows[0]);update();flush()'); assert.equal(await browser.evaluate('!!row("old")'), true);

@@ -27,7 +27,7 @@ async function setup(browser, html) {
   await browser.evaluate(`window.decorate = ${decorateComposerChrome.toString()}; window.clearDecorations = ${clearComposerChromeDecorations.toString()}; window.enable = () => { document.documentElement.dataset.codexChatLook = 'true'; decorate() }; window.disable = () => { clearDecorations(); document.documentElement.removeAttribute('data-codex-chat-look') }`)
 }
 
-const painted = `id => { const el=document.getElementById(id); const s=getComputedStyle(el); return {decorated:el.dataset.codexStatusCard, background:s.backgroundColor, radius:s.borderTopLeftRadius, task:el.firstElementChild.dataset.codexTaskSection, scroll:getComputedStyle(el.querySelector('.status-section-body')).overflowY} }`
+const painted = `id => { const el=document.getElementById(id); const s=getComputedStyle(el), frame=el.closest('[data-slot="status-stack-scroll"]').parentElement; return {decorated:el.dataset.codexStatusCard, background:getComputedStyle(frame).backgroundColor, contentBackground:s.backgroundColor, radius:s.borderTopLeftRadius, task:el.firstElementChild.dataset.codexTaskSection, scroll:getComputedStyle(el.querySelector('.status-section-body')).overflowY} }`
 
 for (const theme of ['dark', 'light', 'solarized']) {
   test(`status drawer receives its themed card and retains native collapse (${theme})`, async () => {
@@ -56,6 +56,7 @@ for (const theme of ['dark', 'light', 'solarized']) {
       for (const card of [result.wrapped, result.legacy]) {
         assert.equal(card.decorated, 'true', 'native stack must be discovered behind drawer wrappers')
         assert.notEqual(card.background, 'rgba(0, 0, 0, 0)', 'replacement card must actually paint')
+        assert.equal(card.contentBackground, 'rgba(0, 0, 0, 0)', 'native content opacity must not fade or double-paint the frame')
         assert.equal(card.radius, '20px')
         assert.equal(card.task, 'true')
         assert.equal(card.scroll, 'auto')
