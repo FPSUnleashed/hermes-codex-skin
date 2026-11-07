@@ -52,12 +52,14 @@ jobs:
           persist-credentials: false
 
       - name: Check out public T3 reference source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: pingdotgg/t3code
-          ref: 6d450a4284852af137b2f3407fddd89eb76e7644
-          path: native/t3
-          persist-credentials: false
+        # This upstream tree has an unmapped gitlink. A direct public fetch
+        # avoids the checkout action's recursive credential-cleanup failure.
+        run: |
+          set -euo pipefail
+          git init "$T3_THEME_SOURCE_ROOT"
+          git -C "$T3_THEME_SOURCE_ROOT" remote add origin https://github.com/pingdotgg/t3code.git
+          git -C "$T3_THEME_SOURCE_ROOT" fetch --depth=1 origin 6d450a4284852af137b2f3407fddd89eb76e7644
+          git -C "$T3_THEME_SOURCE_ROOT" checkout --detach FETCH_HEAD
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -104,7 +106,7 @@ jobs:
       - name: Run regression tests
         env:
           CODEX_V9_BROWSER_AUTHORIZED: '1'
-        # Preserve all 191 files and assertions. The existing Linux subreaper
+        # Preserve all 192 files and assertions. The existing Linux subreaper
         # owns profiles/descendants and retains its admission/process guards.
         run: |
           set -euo pipefail
