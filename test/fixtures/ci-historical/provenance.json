@@ -44,6 +44,29 @@
     "bundle_origin": "Qualified historical pre-repair own baseline with hash-bound historical installation custody; generated T3/TanStack blocks independently recomposed exactly. Not the current candidate and not the different public plugin at the source-context pin.",
     "bundle_public_pin_equivalence_claimed": false
   },
+  "composer_baseline": {
+    "repository": "FPSUnleashed/hermes-codex-skin",
+    "consumer": "test/ocean-composer-scope.test.mjs",
+    "role": "Independent historical own composer-scope registration oracle; exact original external fixture bytes, not the release candidate or width baseline.",
+    "original_producer_commit": "UNKNOWN",
+    "public_pin_equivalence_claimed": false,
+    "inputs": {
+      "composer-baseline/codex-chat-look/plugin.js": {
+        "bytes": 538318,
+        "sha256": "95397927f251417ac727172833a63848dbf02bc8b8a3156cae0a9bf88cc1d8f9"
+      },
+      "composer-baseline/test/helpers/load-plugin.mjs": {
+        "bytes": 1425,
+        "sha256": "3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34"
+      }
+    },
+    "notices": [
+      "../../../LICENSE (FPSU MIT)",
+      "licenses/t3-MIT-LICENSE",
+      "licenses/tanstack_query-core-5.101.2-LICENSE",
+      "Full embedded Lucide ISC notice in the historical bundle"
+    ]
+  },
   "renderer_projection": {
     "sha256": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf",
     "bytes": 1084,

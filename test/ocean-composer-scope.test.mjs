@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
-import { loadPluginInternals as loadInstalledBaseline } from '../../../t3-contour-color-fix/candidate/test/helpers/load-plugin.mjs'
+import { loadPluginInternals as loadInstalledBaseline } from './fixtures/ci-historical/composer-baseline/test/helpers/load-plugin.mjs'
 
 async function registrations(load) {
   const entries=[],disposers=[]

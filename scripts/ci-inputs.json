@@ -73,9 +73,11 @@
       "BACKGROUND_BASELINE_BUNDLE": "baseline/codex-chat-look/plugin.js"
     },
     "files": {
-      "README.md": "f6036bdbf6bd82186f8d28074430891ae306c821bfbd98ec7ccb5b2149055316",
+      "README.md": "7545432a31bfc7e2543416a180f046697b83d13c81c97291f4f8d6e9c9608791",
       "baseline/codex-chat-look/plugin.js": "86b5d1a506d1c5c36dd4f669995deb7b57338336916596c59dc0563e9a7619ca",
       "baseline/test/helpers/load-plugin.mjs": "3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34",
+      "composer-baseline/codex-chat-look/plugin.js": "95397927f251417ac727172833a63848dbf02bc8b8a3156cae0a9bf88cc1d8f9",
+      "composer-baseline/test/helpers/load-plugin.mjs": "3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34",
       "licenses/hermes-MIT-LICENSE": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
       "licenses/katex-0.19.0-LICENSE": "766ccc1f306c885aa45542a9846bbd0a505b27a0374f146778171c2254ce18e3",
       "licenses/t3-MIT-LICENSE": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43",
@@ -86,7 +88,7 @@
       "licenses/vscode_codicons-0.0.45-LICENSE-CODE": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b",
       "licenses/xterm_xterm-6.0.0-LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
       "native-row.css": "ce4eaebe23cc99c7ba7ca4d69c7221793a0eec3005564105dbaf4b9de69ad104",
-      "provenance.json": "693b7406070e878e6461cc3f5ec8a312cdd76833de015e8bcf1fa9944d4540a2",
+      "provenance.json": "e7ee5ffc27d7e3e8db66fa00676011c74be359c82648442e8180b8d4bf8c161d",
       "renderer-class-projection.js": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf"
     },
     "consumerFiles": {
@@ -96,13 +98,13 @@
       "LICENSE": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
     },
     "fixtureClosure": {
-      "files": 15,
-      "sha256": "7156dd1789b26283c57dca2fca7091d557aedce654377095a0f0dab9740179b5"
+      "files": 17,
+      "sha256": "de69b3d0a80758785dc3cfe088d109d9c956837fa4d14e3351b12e794701a802"
     },
     "consumerClosures": {
       "test": {
         "files": 227,
-        "sha256": "940ca10c180caf9c26b43448988326e2dd1181d9e405f2f8e6521dbb22672914",
+        "sha256": "f3467f1e59a41292c5fbf976dfc9168f2e78e65fde2717ff41411eee082840a9",
         "excluded": [
           "test/fixtures/ci-historical"
         ]

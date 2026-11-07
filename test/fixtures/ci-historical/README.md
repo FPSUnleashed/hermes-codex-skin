@@ -11,6 +11,8 @@ is distributed here.
 | `renderer-class-projection.js` | Six verbatim class strings, 1084 bytes; **not a renderer** | `1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf` |
 | `baseline/codex-chat-look/plugin.js` | Independent historical own pre-repair oracle, 477689 bytes | `86b5d1a506d1c5c36dd4f669995deb7b57338336916596c59dc0563e9a7619ca` |
 | `baseline/test/helpers/load-plugin.mjs` | Original relative loader layout, 1425 bytes | `3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34` |
+| `composer-baseline/codex-chat-look/plugin.js` | Independent historical composer-scope oracle, 538318 bytes | `95397927f251417ac727172833a63848dbf02bc8b8a3156cae0a9bf88cc1d8f9` |
+| `composer-baseline/test/helpers/load-plugin.mjs` | Original relative loader layout, 1425 bytes | `3e014f3191285bd22343a34b0420c89fbab167bd8ea793d90c0249a1cf345a34` |
 
 ## CSS: reproduction, not capture attestation
 
@@ -78,6 +80,22 @@ public bytes from
 The different public plugin at that context pin is **not** claimed to be the
 477689-byte historical baseline. FPSU, T3 and TanStack full MIT notices accompany
 this fixture; the existing repository root `LICENSE` covers FPSU.
+
+## Historical composer-scope baseline
+
+`composer-baseline` preserves the exact historical own plugin and loader that
+`test/ocean-composer-scope.test.mjs` previously imported from an external repair
+directory. It is distinct from the older width baseline and from the release
+candidate. No code was reconstructed from the candidate, no registrations were
+fabricated, and every comparison and negative control remains unchanged.
+The original historical producer commit is unknown; the recorded hashes bind
+the recovered original files, not an invented public source commit.
+
+The loader is identical to the existing public-byte historical loader. The
+bundle retains full embedded T3 MIT, TanStack MIT and Lucide ISC notices; the
+repository root `LICENSE` covers FPSU. The existing T3 and TanStack license
+files also accompany this fixture. It is loaded only into the test VM for
+registration comparison, never as shipping code or in the user's app.
 
 No dependency installation, browser pass, whole-renderer redistribution or
 publication approval is implied by input authentication.
