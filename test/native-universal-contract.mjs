@@ -1,15 +1,14 @@
 import { referenceRoot } from './helpers/reference-paths.mjs'
+import { resolveNativeRouterDependency, startNativeRouterServer } from './helpers/native-router-dependency.mjs'
 // Run directly: executes built-candidate requests through real native HTTP.
 import assert from 'node:assert/strict'
-import {spawn} from 'node:child_process'
-import {once} from 'node:events'
 import {readFile,writeFile,mkdir} from 'node:fs/promises'
 import {createRequire} from 'node:module'
-import {fileURLToPath} from 'node:url'
 import vm from 'node:vm'
 import http from 'node:http'
 import https from 'node:https'
-import {universalFixture} from './helpers/universal-fixture.mjs'
+
+const serverDependency=resolveNativeRouterDependency()
 const root=referenceRoot()
 const evidence=referenceRoot('CODEX_NATIVE_EVIDENCE_ROOT')
 const scratch=referenceRoot('CODEX_NATIVE_SCRATCH_ROOT')
@@ -20,10 +19,8 @@ const children=[],servers={},requests=[],httpCalls=[],intercepts=[]
 let transport
 try{
  for(const source of ['A','B']){
-  const child=spawn('python',['-u',fileURLToPath(new URL('./native-router-server.py',import.meta.url)),source],{cwd:root,env:{...process.env,TMPDIR:scratch,PYTHONDONTWRITEBYTECODE:'1'},stdio:['ignore','pipe','pipe']});children.push(child)
-  let stderr='';child.stderr.on('data',d=>stderr+=d)
-  const port=await new Promise((resolve,reject)=>{let out='';const timer=setTimeout(()=>reject(Error(stderr||'server timeout')),30000);child.once('exit',code=>{clearTimeout(timer);reject(Error('server '+code+' '+stderr))});child.stdout.on('data',d=>{out+=d;const match=/PORT=(\d+)/.exec(out);if(match){clearTimeout(timer);resolve(+match[1])}})})
-  servers[source]={mode:'local',baseUrl:`http://127.0.0.1:${port}`,token:'synthetic',gatewayEndpoint:{profile_id:'synthetic-root'}}
+  const server=await startNativeRouterServer({dependency:serverDependency,source,root,scratch});children.push(server)
+  servers[source]={mode:'local',baseUrl:server.baseUrl,token:'synthetic',gatewayEndpoint:{profile_id:'synthetic-root'}}
  }
  transport=await complete('apps/desktop/electron/api-transport.ts')
  const routing=await declarations('apps/desktop/electron/connection-config.ts',['connectionScopeKey','SELF_PROFILE_QUERY_KEYS_BY_PATH','translateSelfProfileQuery','pathWithProfileScope','pathForRegistryBackendRequest','apiRequestRegistryConnectionId'])
@@ -61,6 +58,7 @@ try{
  assert.equal(red.statusCode,403)
  const aliasRequests=requests.filter(r=>r.profile==='desk');assert.equal(aliasRequests.length,6);assert.ok(aliasRequests.every(r=>r.path.includes('profile=desk')))
  let registered
+ const {universalFixture}=await import('./helpers/universal-fixture.mjs')
  await universalFixture(async browser=>{
   await browser.evaluate(`(async()=>{for(const route of routes){const data=await hermesDesktop.api({connectionId:route.connectionId,profile:route.profile,path:'/api/sessions?'+new URLSearchParams({profile:route.profile,limit:'100',min_messages:'1'})});const rows=data.sessions.map(row=>({...row,profile:route.profile}));runtime.admission.observe(route,rows,{workingSessions:rows})}runToggle();await flush()})()`)
   await browser.evaluate('refetch()')
@@ -78,7 +76,7 @@ try{
   registered={onRows:6,offRows:await browser.evaluate('rows().length'),paletteReceipt:await browser.evaluate('paletteReceipt'),navigation:await browser.evaluate('nav'),errors:await browser.evaluate('errors'),attention:'Admission seeded from six native synthetic metadata reads to model previous work; no live RPC authority invented.'}
  },{routes,nativeApi:request=>{requests.push(request);return native.handleHermesApiRequest(request)}})
  assert.equal(intercepts.length,0)
- const result={status:'PASS',owners:output.length,registered,output,requests,httpCalls,intercepts,flatAllRed:red,
-  boundaries:'Built reader and inventory; actual native route translation, main dispatch branch, HTTP transport, native grant scope guard and real FastAPI/SessionDB. Six synthetic stores, colliding IDs, Desktop alias desk->alpha, shared local routes and two warm descriptors. Descriptor/grant issuance modeled; no Electron IPC, WS, SSH, auth issuance, live installation or private data. Concrete native predicate proves aggregate interception is not reached; global-aggregate implementation itself is not exercised.'}
+ const result={status:'PASS',serverDependency,owners:output.length,registered,output,requests,httpCalls,intercepts,flatAllRed:red,
+  boundaries:'Built reader and inventory; actual native route translation, main dispatch branch and HTTP transport. Native grant scope guard and real FastAPI/SessionDB require the externally reviewed server implementation; the server hash identifies bytes, not native provenance. Six synthetic stores, colliding IDs, Desktop alias desk->alpha, shared local routes and two warm descriptors. Descriptor/grant issuance modeled; no Electron IPC, WS, SSH, auth issuance, live installation or private data. Concrete native predicate proves aggregate interception is not reached; global-aggregate implementation itself is not exercised.'}
  await mkdir(evidence+'/implementation-evidence',{recursive:true});await writeFile(evidence+'/implementation-evidence/native-candidate-result.json',JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2))
-}finally{transport?.destroyKeepaliveAgents();await Promise.all(children.map(async child=>{const end=child.exitCode===null?once(child,'exit'):Promise.resolve();child.kill('SIGTERM');await end}))}
+}finally{transport?.destroyKeepaliveAgents();await Promise.all(children.map(server=>server.stop()))}

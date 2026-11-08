@@ -74,6 +74,8 @@ back, fabricating a native module or skipping a contract.
 | `SIDEBAR_TABLER_ENTRY` | Actual entrypoint of the required native Tabler package. |
 | `BACKGROUND_BASELINE_BUNDLE`, `CODEX_WIDTH_PRE_REPAIR_ROOT` | Authenticated historical inputs; never point these at the current candidate as its own oracle. |
 | `CODEX_NATIVE_EVIDENCE_ROOT`, `CODEX_NATIVE_SCRATCH_ROOT` | Dedicated existing output/scratch directories for the explicit HTTP probe. |
+| `CODEX_NATIVE_ROUTER_SERVER`, `CODEX_NATIVE_ROUTER_SERVER_SHA256` | Reviewed external Python server and its exact lowercase SHA-256 for the standalone native HTTP probe. See [the server contract](native-router-dependency.md). Neither the path nor the digest certifies its native implementation. |
+| `CODEX_NATIVE_PYTHON` | Optional absolute path to an existing compatible Python executable for that external server. Nothing is installed. |
 
 Keep the native dependency graph separate from the historical observer test graph.
 Do not downgrade the native lock to satisfy the helper's query-core 5.101.2 pin:
@@ -94,7 +96,7 @@ per-file hashes. This is **not** proof that a directory named `t3-v0.1.6` has th
 version. Historical pins remain distinct. A composer seam pass does not qualify
 theme/compositor paint or all T3 comparisons.
 
-## Public CI input bootstrap (not yet end-to-end qualified)
+## Public CI input bootstrap
 
 `.github/workflows/ci.yml` checks out the plugin and separate public sources:
 
@@ -161,23 +163,29 @@ cannot bypass the qualification. Never use the current candidate as its own
 historical baseline or conflate historical T3 CSS pins. No additional font,
 image, renderer code, private logs or build output is included.
 
-The full CI command remains the unfiltered `test/*.test.mjs` glob (191 files),
+The full CI command remains the unfiltered `test/*.test.mjs` glob (195 files),
 under `test/helpers/chromium-suite.py`. Its process-budget/admission guard,
 isolated profiles, bounded launches and identity-checked owned-descendant
 cleanup are retained unchanged. Scratch is private under `RUNNER_TEMP`, never
 `/tmp`. Only the owned CI suite step grants `CODEX_V9_BROWSER_AUTHORIZED=1`.
 `scripts/check-ci-results.mjs` rejects missing totals, failures, skips, todos,
 cancellations and incomplete harness cleanup even if Node itself exits zero.
-This workflow still needs an integrated authorized browser run on the final
-composition; projection geometry and full CI remain PENDING. Input byte and
-consumer-closure authentication is not full-suite success.
+The preceding candidate `a040ad95a4562c2906e3865ecc9963ba0dc6a4aa` passed public
+CI run `42423504888`, with all 1,013 tests passing and 459 Chrome launches.
+That result does not qualify later repairs. The final follow-up commit needs
+its own complete CI run. Input byte and consumer-closure authentication alone
+is not full-suite success.
 
 ## Open qualification boundaries
 
-- `test/native-universal-contract.mjs` still references missing
-  `test/native-router-server.py`. A bounded search of linked historical repair
-  trees and relevant archives did not recover an authenticated copy. No server
-  has been invented. The HTTP contract remains blocked.
+- `test/native-universal-contract.mjs` requires explicit
+  `CODEX_NATIVE_ROUTER_SERVER` and `CODEX_NATIVE_ROUTER_SERVER_SHA256` inputs.
+  The historical sibling server has not been recovered in the bounded linked
+  source search. Without an authenticated compatible external implementation,
+  the native HTTP gate remains blocked. The probe now rejects this missing
+  dependency before native/browser imports. The separate preflight checks only
+  dependency readiness and cleanup, not native HTTP, FastAPI/SessionDB, grant
+  enforcement or browser behavior. See [the server contract](native-router-dependency.md).
 - `test/native-run-stream-continuity.probe.mjs` needs the actual Web Animations
   API. jsdom lacks `Element.animate`; its two earlier mounting failures remain
   failed evidence. Do not polyfill a fake animation, disable the native hook or

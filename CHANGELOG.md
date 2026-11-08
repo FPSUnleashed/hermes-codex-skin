@@ -35,6 +35,8 @@ All notable changes to this project are documented here.
 - Apply successful Settle immediately. Dismiss a successfully saved Snooze menu even if subsequent navigation fails; preserve controls on failed saves.
 - Keep media, alerts, preview cards and actions inside still-running markdown visible with Show complete messages, including content mounted after the text starts streaming.
 - Include the full Phosphor Icons notice in the standalone plugin asset as well as the source documentation.
+- Keep valid history-preview requests and cached results through unrelated streaming updates, while refreshing the mounted preview when its own turn changes.
+- Close test-owned HTTP servers when browser acquisition or cleanup fails. Make the standalone native HTTP probe's external server dependency explicit; a missing server is not a passing native qualification.
 
 ### Documentation
 

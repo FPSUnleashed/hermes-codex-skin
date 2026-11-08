@@ -4123,6 +4123,7 @@ function installHistoryRailRuntime() {
     root.setAttribute('data-codex-history-rail', '')
     let buttons = []
     let hovered = null
+    let previewPair = null
     let previousDescription = null
     let closeTimer = 0
     let revision = 0
@@ -4177,6 +4178,7 @@ function installHistoryRailRuntime() {
         else hovered.setAttribute('aria-describedby', previousDescription)
       }
       hovered = null
+      previewPair = null
       card.hidden = true
       question.textContent = ''
       answer.replaceChildren()
@@ -4232,6 +4234,42 @@ function installHistoryRailRuntime() {
         position()
       }).catch(() => { /* Keep the native question preview on missing history. */ })
     }
+    const mountedRow = button => {
+      // Index mounted users only once per content version, then resolve by
+      // exact native identity. Duplicate labels are never an identity source.
+      if (mountedVersion !== contentVersion) {
+        mountedUsers.clear()
+        const viewport = surface.querySelector('[data-slot="aui_thread-viewport"]')
+        for (const user of viewport?.querySelectorAll('[data-slot="aui_user-message-root"]') || []) {
+          const id = user.getAttribute('data-message-id')
+          if (!id) continue
+          const row = { user, text: user.querySelector('[data-slot="aui_user-message-text"]')?.textContent || '' }
+          mountedUsers.set(id, mountedUsers.has(id) ? null : row)
+        }
+        mountedVersion = contentVersion
+      }
+      const candidate = mountedUsers.get(button.getAttribute('data-timeline-id'))
+      return candidate && historyPromptPreview(candidate.text) === button.getAttribute('aria-label') ? candidate : null
+    }
+    const fillPreview = (button, row) => {
+      question.textContent = button.getAttribute('aria-label') || ''
+      answer.replaceChildren()
+      const pair = row?.user?.closest('[data-slot="aui_turn-pair"]')
+      previewPair = pair || null
+      if (pair) {
+        question.textContent = row.text
+        const roots = [...pair.querySelectorAll('[data-role="assistant"][data-slot="aui_assistant-message-root"]')]
+          .filter(root => root.closest('[data-slot="aui_turn-pair"]') === pair)
+        const final = roots.findLast(node => node.querySelector('[data-slot="aui_msg-actions"]')) || roots.at(-1)
+        const parts = final?.querySelectorAll('[data-slot="aui_assistant-message-content"] > .aui-md')
+        const text = parts?.[parts.length - 1]
+        if (text) answer.appendChild(historyPreviewFragment(text))
+      }
+      answer.hidden = !answer.textContent.trim()
+      card.hidden = false
+      position()
+      if (!pair) fillUnloaded(button)
+    }
     const show = (button, pointerY = null) => {
       cancelClose()
       if (button === hovered) {
@@ -4253,37 +4291,7 @@ function installHistoryRailRuntime() {
       if (!root.hasAttribute('data-codex-history-open')) root.setAttribute('data-codex-history-open', '')
       button.setAttribute('data-codex-history-hover', '')
       queueWave()
-      question.textContent = button.getAttribute('aria-label') || ''
-      answer.replaceChildren()
-      // Index mounted users only once per content version, then resolve by
-      // exact native identity. Duplicate labels are never an identity source.
-      if (mountedVersion !== contentVersion) {
-        mountedUsers.clear()
-        const viewport = surface.querySelector('[data-slot="aui_thread-viewport"]')
-        for (const user of viewport?.querySelectorAll('[data-slot="aui_user-message-root"]') || []) {
-          const id = user.getAttribute('data-message-id')
-          if (!id) continue
-          const row = { user, text: user.querySelector('[data-slot="aui_user-message-text"]')?.textContent || '' }
-          mountedUsers.set(id, mountedUsers.has(id) ? null : row)
-        }
-        mountedVersion = contentVersion
-      }
-      const candidate = mountedUsers.get(button.getAttribute('data-timeline-id'))
-      const row = candidate && historyPromptPreview(candidate.text) === button.getAttribute('aria-label') ? candidate : null
-      const pair = row?.user?.closest('[data-slot="aui_turn-pair"]')
-      if (pair) {
-        question.textContent = row.text
-        const roots = [...pair.querySelectorAll('[data-role="assistant"][data-slot="aui_assistant-message-root"]')]
-          .filter(root => root.closest('[data-slot="aui_turn-pair"]') === pair)
-        const final = roots.findLast(node => node.querySelector('[data-slot="aui_msg-actions"]')) || roots.at(-1)
-        const parts = final?.querySelectorAll('[data-slot="aui_assistant-message-content"] > .aui-md')
-        const text = parts?.[parts.length - 1]
-        if (text) answer.appendChild(historyPreviewFragment(text))
-      }
-      answer.hidden = !answer.textContent.trim()
-      card.hidden = false
-      position()
-      if (!pair) fillUnloaded(button)
+      fillPreview(button, mountedRow(button))
     }
     const onOver = event => {
       // Stop only native hover expansion. Click/keyboard navigation remains on
@@ -4334,7 +4342,7 @@ function installHistoryRailRuntime() {
     const contentChanges = new MutationObserver(records => {
       if (records.some(record => strip.contains(record.target))) refresh()
       const viewport = surface.querySelector('[data-slot="aui_thread-viewport"]')
-      if (!records.some(record => {
+      const transcriptChanges = records.filter(record => {
         const target = record.target instanceof Element ? record.target : record.target.parentElement
         const projection = '[data-codex-turn-activity], [data-codex-tool-sequence], [data-codex-activity-face], [data-slot="timeline-timestamp"]'
         if (target?.closest(projection)) return false
@@ -4343,12 +4351,20 @@ function installHistoryRailRuntime() {
           .every(node => node instanceof Element && node.matches(projection))) return false
         return viewport?.contains(record.target) || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes]
           .some(node => node instanceof Element && node.matches('[data-slot="aui_thread-viewport"]')))
-      })) return
+      })
+      if (!transcriptChanges.length) return
       contentVersion += 1
       mountedUsers.clear()
-      historyCache = null
-      const button = hovered
-      if (button) { close(); show(button) }
+      if (!hovered) return
+      const row = mountedRow(hovered)
+      const pair = row?.user?.closest('[data-slot="aui_turn-pair"]') || null
+      // Streaming in another turn invalidates the DOM index, not scoped RPC
+      // history or its pending response. Repaint only this mounted preview or
+      // a mounted/unmounted handoff; keep hover/ARIA/wave state intact.
+      if (pair !== previewPair || (pair && transcriptChanges.some(record => pair.contains(record.target)))) {
+        revision += 1
+        fillPreview(hovered, row)
+      }
     })
     contentChanges.observe(surface, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-message-id', 'data-timeline-id', 'data-timeline-index', 'aria-label'] })
     const cleanup = () => {

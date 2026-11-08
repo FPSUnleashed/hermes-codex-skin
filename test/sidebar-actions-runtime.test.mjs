@@ -77,7 +77,9 @@ test('extracted native JSX and real SearchField preserve current-profile handler
  t.diagnostic(JSON.stringify({provenance:native.provenance,boundary:native.boundary}))
  const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><body></body></html>')})
  await new Promise(r=>server.listen(0,'127.0.0.1',r))
- const b=await chromium();try{
+ let b
+ try{
+  b=await chromium()
   await b.call('Page.navigate',{url:`http://127.0.0.1:${server.address().port}`});await wait(b)
   await mount(b);await b.evaluate('stop();clearNative()');await wait(b)
   await b.evaluate(`window.nativeErrors=[];window.addEventListener('error',e=>nativeErrors.push(String(e.error?.stack||e.message)));console.error=(...args)=>nativeErrors.push(args.map(String).join(' '))`)
@@ -121,7 +123,10 @@ test('extracted native JSX and real SearchField preserve current-profile handler
   }
   await b.evaluate(`document.documentElement.style.fontSize='16px';stop()`);await wait(b)
   assert.equal(await b.evaluate(`document.querySelector('[data-tour=sessions-sidebar]').innerHTML===exactNativeBefore`),true,'exact native primitive DOM restored')
- }finally{b.close();await new Promise(r=>server.close(r))}
+ }finally{
+  try{b?.close()}
+  finally{await new Promise(r=>server.close(r))}
+ }
 })
 
 test('late native remount, root disable, native locale refresh, floating/mode variants and context action',async()=>{

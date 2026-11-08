@@ -84,6 +84,6 @@ export function railFixture({count=48,start=0,total=count,sourcePath,duplicate=f
     move:(i,y=0)=>{buttons[i].dispatch('pointermove',{clientY:y});flush()},
     setRuntime:id=>{runtime=id},setProfile:id=>{profile=id},invalidate:()=>subscriptions.forEach(fn=>fn()),
     records:records=>runtimeRail.observe(records),
-    mutate:()=>{for(const o of observers)if(o.connected&&o.kind==='mutation')o.fn([{type:'characterData',target:content}])},
+    mutate:(records=[{type:'characterData',target:content}])=>{for(const o of observers)if(o.connected&&o.kind==='mutation')o.fn(records)},
     history:()=>Array.from({length:total},(_,i)=>[{role:'user',row_id:1000+i,text:label(i)},{role:'assistant',text:`RPC answer ${i}`}]).flat()}
 }

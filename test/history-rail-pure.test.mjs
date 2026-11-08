@@ -65,8 +65,10 @@ test('pane/size/slice/content invalidation and native click/End ownership seams'
  f.over(2);f.strip.dispatch('scroll');assert.equal(f.card().hidden,true)
  f.over(2);f.buttons[2].setAttribute('data-timeline-id','foreign');f.records([{type:'attributes',target:f.buttons[2],attributeName:'data-timeline-id'}]);assert.equal(f.card().hidden,true)
  f.buttons[2].setAttribute('data-timeline-id','history:1042');f.records([{type:'attributes',target:f.buttons[2],attributeName:'data-timeline-id'}]);f.over(2)
- f.users[2].closest('[data-slot="aui_turn-pair"]').querySelector('.aui-md').firstElementChild.textContent='Changed answer 42'
- f.mutate();f.flush();assert.match(f.card().textContent,/Changed answer 42/)
+ const paragraph=f.users[2].closest('[data-slot="aui_turn-pair"]').querySelector('.aui-md').firstElementChild
+ const removedNodes=[...paragraph.childNodes];paragraph.textContent='Changed answer 42'
+ // textContent replaces children of this paragraph, not characterData on its ancestor.
+ f.mutate([{type:'childList',target:paragraph,addedNodes:[...paragraph.childNodes],removedNodes}]);f.flush();assert.match(f.card().textContent,/Changed answer 42/)
  f.surface.setAttribute('data-session-anchor','session-tile:b');f.records([{type:'attributes',target:f.surface,attributeName:'data-session-anchor'}]);assert.equal(f.card().hidden,true)
  f.runtimeRail.cleanup();assert.ok(f.observers.every(o=>!o.connected));assert.equal(f.root.listeners.get('pointermove').length,0)
 })
