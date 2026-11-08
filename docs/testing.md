@@ -163,7 +163,7 @@ cannot bypass the qualification. Never use the current candidate as its own
 historical baseline or conflate historical T3 CSS pins. No additional font,
 image, renderer code, private logs or build output is included.
 
-The full CI command remains the unfiltered `test/*.test.mjs` glob (200 files),
+The full CI command remains the unfiltered `test/*.test.mjs` glob (202 files),
 under `test/helpers/chromium-suite.py`. Its process-budget/admission guard,
 isolated profiles, bounded launches and identity-checked owned-descendant
 cleanup are retained unchanged. Scratch is private under `RUNNER_TEMP`, never
@@ -192,6 +192,32 @@ through PATH. The standalone status-panel paint probe uses a separately painted
 reference with the approved OKLCH lightness step and unchanged tolerance of two
 channel levels. Its pure color tests are part of the glob; those tests do not
 claim that the standalone full Glass/paint capture has run.
+
+## Inbox scaffold mutation stability
+
+Inbox preserves synchronous native scroll restoration for every projection,
+including zero. Stable header and Working/Snoozed shelf values are compared
+before writing attributes, text, visibility or display styles. Metadata-only
+updates no longer replace unchanged shelf labels.
+`test/inbox-layout-stability-browser.test.mjs` exercises native overflowing
+content with `moveBefore` and its `insertBefore` fallback, synchronous and
+next-frame scroll positions, focus, node identity and retained-row action gates.
+Its mutation check applies only to unchanged scaffold state during title-only
+updates. It does not forbid scroll restoration or drop query stages.
+
+## Exact Sidebar fixture restoration
+
+The Sidebar direction/zoom fixture synchronizes a CSSOM-mutated style attribute
+before removing an originally absent attribute. This prevents Chromium from
+leaving `style=""` during fixture cleanup. The original strict DOM-restoration
+assertion and native Sidebar nodes/actions remain unchanged.
+`test/sidebar-attribute-restoration.test.mjs` separately exercises absent, empty
+and nonempty style/direction states in Chromium without serializing the element
+before cleanup. This is a test-fixture repair, not a Sidebar product change.
+
+A `node --test` invocation can contain real browser cases. Classify a selected
+file by its browser imports/launches rather than treating every Node entrypoint
+as a browser-free check.
 
 ## Open qualification boundaries
 

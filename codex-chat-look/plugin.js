@@ -8831,7 +8831,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
           if (event.key === 'Enter' || event.key === ' ') { stop(event); if (!event.repeat) toggle(event); }
         });
       }
-      header.setAttribute('aria-expanded', String(inboxOpen)); header.setAttribute('data-codex-inbox-header', '');
+      setAttr(header, 'aria-expanded', inboxOpen); setAttr(header, 'data-codex-inbox-header', '');
       header.querySelector('.codicon-chevron-right').classList.toggle('rotate-90', inboxOpen);
       // Selection/title updates must not detach working rows and restart their
       // CSS animation. Keep their content owner mounted between projections.
@@ -8842,7 +8842,7 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         content = doc.createElement('div'); content.setAttribute('data-slot', 'sidebar-group-content'); content.className = 'w-full text-sm scrollbar-fade';
         island.appendChild(content);
       }
-      content.hidden = !inboxOpen;
+      if (content.hidden !== !inboxOpen) content.hidden = !inboxOpen;
       for (const child of [...content.children]) if (!child.matches('[data-codex-inbox-row], [data-codex-inbox-working-toggle], [data-codex-inbox-working-rows], [data-codex-inbox-snoozed-toggle], [data-codex-inbox-snoozed-rows]')) child.remove();
       let shelfToggle = content.querySelector('[data-codex-inbox-working-toggle]');
       let shelfRows = content.querySelector('[data-codex-inbox-working-rows]');
@@ -8859,12 +8859,16 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         shelfRows.id = 'codex-inbox-working-rows'; shelfRows.setAttribute('data-codex-inbox-working-rows', '');
         content.append(shelfToggle, shelfRows);
       }
-      shelfToggle.textContent = `Working ${working.length}`;
-      shelfToggle.hidden = !working.length;
+      // Replacing unchanged shelf labels dirties layout before scroll restoration.
+      const workingLabel = `Working ${working.length}`;
+      if (shelfToggle.textContent !== workingLabel) shelfToggle.textContent = workingLabel;
+      if (shelfToggle.hidden !== !working.length) shelfToggle.hidden = !working.length;
       // The inline display value must not override the native hidden contract.
-      shelfToggle.style.display = working.length ? 'block' : 'none';
-      shelfToggle.setAttribute('aria-expanded', String(workingShelfOpen));
-      shelfRows.hidden = !working.length || !workingShelfOpen;
+      const workingDisplay = working.length ? 'block' : 'none';
+      if (shelfToggle.style.display !== workingDisplay) shelfToggle.style.display = workingDisplay;
+      setAttr(shelfToggle, 'aria-expanded', workingShelfOpen);
+      const workingHidden = !working.length || !workingShelfOpen;
+      if (shelfRows.hidden !== workingHidden) shelfRows.hidden = workingHidden;
       let snoozedToggle = content.querySelector('[data-codex-inbox-snoozed-toggle]');
       let snoozedRows = content.querySelector('[data-codex-inbox-snoozed-rows]');
       if (!snoozedToggle) {
@@ -8880,11 +8884,14 @@ html[data-codex-chat-look='true'] [data-codex-inbox-undo-progress] { display:blo
         snoozedRows.id = 'codex-inbox-snoozed-rows'; snoozedRows.setAttribute('data-codex-inbox-snoozed-rows', '');
         content.append(snoozedToggle, snoozedRows);
       }
-      snoozedToggle.textContent = `Snoozed ${snoozed.length}`;
-      snoozedToggle.hidden = !snoozed.length;
-      snoozedToggle.style.display = snoozed.length ? 'block' : 'none';
-      snoozedToggle.setAttribute('aria-expanded', String(snoozedShelfOpen));
-      snoozedRows.hidden = !snoozed.length || !snoozedShelfOpen;
+      const snoozedLabel = `Snoozed ${snoozed.length}`;
+      if (snoozedToggle.textContent !== snoozedLabel) snoozedToggle.textContent = snoozedLabel;
+      if (snoozedToggle.hidden !== !snoozed.length) snoozedToggle.hidden = !snoozed.length;
+      const snoozedDisplay = snoozed.length ? 'block' : 'none';
+      if (snoozedToggle.style.display !== snoozedDisplay) snoozedToggle.style.display = snoozedDisplay;
+      setAttr(snoozedToggle, 'aria-expanded', snoozedShelfOpen);
+      const snoozedHidden = !snoozed.length || !snoozedShelfOpen;
+      if (snoozedRows.hidden !== snoozedHidden) snoozedRows.hidden = snoozedHidden;
       const place = (node, parent, before) => {
         if (node === before) return;
         if (node.isConnected && typeof parent.moveBefore === 'function') parent.moveBefore(node, before);

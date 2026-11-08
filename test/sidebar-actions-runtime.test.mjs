@@ -7,6 +7,7 @@ import { createServer } from 'node:http'
 import { chromium } from './helpers/chromium.mjs'
 import { loadPluginInternals } from './helpers/load-plugin.mjs'
 import { nativeSidebarActions } from './helpers/native-sidebar-actions.mjs'
+import { restoreDOMAttribute } from './helpers/restore-dom-attribute.mjs'
 
 const nativeRoot = referenceRoot('SIDEBAR_NATIVE_ROOT', 'HERMES_DESKTOP_SOURCE_ROOT')
 const requireNative = createRequire(`${nativeRoot}/package.json`)
@@ -138,7 +139,7 @@ test('extracted native JSX and real SearchField preserve current-profile handler
   await b.evaluate(`document.body.style.removeProperty('zoom');window.dispatchEvent(new Event('resize'));document.documentElement.dir='ltr'`);await wait(b);await wait(b)
   await b.evaluate(`document.querySelector('[data-codex-t3-search-row]').style.direction='rtl'`);await wait(b);await wait(b)
   const rtlLine=await line(b);assert.ok(Math.abs(rtlLine.search.x-rtlLine.n.right-4)<.05)
-  await b.evaluate(`(()=>{const row=document.querySelector('[data-codex-t3-search-row]');for(const key of ['style','dir']){if(searchLayoutBefore[key]===null)row.removeAttribute(key);else row.setAttribute(key,searchLayoutBefore[key])}document.documentElement.removeAttribute('dir');document.documentElement.style.fontSize='16px';stop()})()`);await wait(b)
+  await b.evaluate(`(()=>{const row=document.querySelector('[data-codex-t3-search-row]'),restoreAttribute=${restoreDOMAttribute.toString()};for(const key of ['style','dir'])restoreAttribute(row,key,searchLayoutBefore[key]);document.documentElement.removeAttribute('dir');document.documentElement.style.fontSize='16px';stop()})()`);await wait(b)
   assert.equal(await b.evaluate(`document.querySelector('[data-tour=sessions-sidebar]').innerHTML===exactNativeBefore`),true,'exact native primitive DOM restored')
  }finally{
   try{b?.close()}

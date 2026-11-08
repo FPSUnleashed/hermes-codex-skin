@@ -2,7 +2,7 @@
   "schema": 1,
   "node": "v26.13.0",
   "npm": "11.20.0",
-  "regressionFiles": 200,
+  "regressionFiles": 202,
   "plugin": {
     "files": {
       "package.json": "4f4069f7ce283336c1c7fe0116c84f467f2f67192d997922b07c723cb778f686",
@@ -103,8 +103,8 @@
     },
     "consumerClosures": {
       "test": {
-        "files": 243,
-        "sha256": "48fd66d372471bd4dbdff4eb3ca6742ac9fd8ced0006c54981924d62c54254f0",
+        "files": 246,
+        "sha256": "872ade3b5ee4dbb72bc32744218b2a1aa287c704bbf9182920077b31d0860d94",
         "excluded": [
           "test/fixtures/ci-historical"
         ]
@@ -119,7 +119,7 @@
       },
       "src": {
         "files": 17,
-        "sha256": "c4b7b35479672cc8c91c4ea56f0b0353ffb397a3a32d5f506b84bf94325a8730",
+        "sha256": "9a1650d01df6969feafd09507b8f97bfc661f8aea75424b1873201b1a8f4e4da",
         "excluded": []
       }
     }

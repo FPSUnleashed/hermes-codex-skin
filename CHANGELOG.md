@@ -40,6 +40,8 @@ All notable changes to this project are documented here.
 - Position New session at Search's inline end in both left-to-right and right-to-left layouts, including live direction changes and zoom.
 - Close test-owned HTTP servers when browser acquisition or cleanup fails. Make the standalone native HTTP probe's external server dependency explicit; a missing server is not a passing native qualification.
 - Close test browsers when fixture setup fails before ownership reaches the test body. Keep the standalone paint probe aligned with the approved Tasks/Queue contrast rule and resolve its resource-test Node executable from PATH.
+- Avoid rewriting unchanged Inbox header and Working/Snoozed shelf values during metadata updates, reducing redundant layout work while retaining synchronous scroll restoration, focus and row identity.
+- Restore absent style attributes exactly after the Sidebar direction/zoom fixture mutates CSSOM, keeping strict native DOM-restoration assertions and product behavior unchanged.
 
 ### Documentation
 
