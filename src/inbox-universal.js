@@ -48,6 +48,7 @@ function codexInboxReadLimiter(limit = 4) {
     }
   }
   return signal => new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error('Inbox read cancelled')); return }
     const item = { signal, resolve, reject, abort: () => {
       const index = queue.indexOf(item)
       if (index >= 0) queue.splice(index, 1)

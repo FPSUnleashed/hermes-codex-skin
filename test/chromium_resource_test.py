@@ -16,7 +16,7 @@ class ChromiumResourceTests(unittest.TestCase):
         command = [sys.executable, str(HERE / 'helpers/chromium-suite.py'),
                    '--chrome', '/usr/bin/google-chrome-stable', '--receipt', str(receipt),
                    '--timeout', '25', '--max-chrome-launches', str(launches), '--',
-                   '/home/a0admin/.local/bin/node', str(HERE / 'helpers/chromium-resource-probe.mjs'), name]
+                   'node', str(HERE / 'helpers/chromium-resource-probe.mjs'), name]
         completed = subprocess.run(command, text=True, capture_output=True, timeout=32)
         (OUT / (name + '.log')).write_text(completed.stdout + completed.stderr)
         data = json.loads(receipt.read_text())

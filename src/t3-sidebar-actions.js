@@ -95,9 +95,12 @@ export function installT3SidebarActions() {
         if (!parent) continue // Hidden/collapsed native sidebar, recomputed on reveal.
         const p = parent.getBoundingClientRect(), r = field.getBoundingClientRect()
         const scale = p.width / parent.offsetWidth || 1
-        const gap = parseFloat(getComputedStyle(row).columnGap)
-        const size = button.getBoundingClientRect().height / scale
-        const coordinates = { left:(r.right - p.left) / scale + gap - parent.clientLeft + parent.scrollLeft, top:(r.top - p.top) / scale + (r.height / scale - size) / 2 - parent.clientTop + parent.scrollTop }
+        const rowStyle = getComputedStyle(row), gap = parseFloat(rowStyle.columnGap)
+        const action = button.getBoundingClientRect(), size = action.height / scale
+        // Flex reserves inline-end space in the row's direction; left remains
+        // a physical offset-parent coordinate, including its border and scroll.
+        const left = rowStyle.direction === 'rtl' ? (r.left - p.left - action.width) / scale - gap : (r.right - p.left) / scale + gap
+        const coordinates = { left:left - parent.clientLeft + parent.scrollLeft, top:(r.top - p.top) / scale + (r.height / scale - size) / 2 - parent.clientTop + parent.scrollTop }
         for (const [key, value] of Object.entries(coordinates)) {
           const next = `${Math.round(value * 100) / 100}px`
           if (button.style.getPropertyValue(`--codex-t3-new-${key}`) !== next) button.style.setProperty(`--codex-t3-new-${key}`,next)
@@ -115,13 +118,18 @@ export function installT3SidebarActions() {
   const containsSidebar = node => node.nodeType === 1 && (node.matches(sidebarSelector) || node.querySelector(sidebarSelector))
   const mutations = new MutationObserver(records => {
     // Keep body discovery, including detached removals, without coupling layout to transcript streaming.
-    if (records.some(record => record.target.closest?.(sidebarSelector)
-      || (record.type === 'attributes' && observed.has(record.target))
-      || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].some(containsSidebar)))) schedule()
+    if (records.some(record => {
+      // Direction can change without resizing. Ignore style/class churn on
+      // transcripts and our own action: only row ancestors can affect it.
+      if (record.type === 'attributes' && ['dir','class','style'].includes(record.attributeName)) return [...bindings.values()].some(({row}) => record.target.contains(row))
+      return record.target.closest?.(sidebarSelector)
+        || (record.type === 'attributes' && observed.has(record.target))
+        || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].some(containsSidebar))
+    })) schedule()
   })
-  mutations.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['placeholder','data-tour','data-sessions-mode']})
+  mutations.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['placeholder','data-tour','data-sessions-mode','dir','class','style']})
   const rootChanges = new MutationObserver(schedule)
-  rootChanges.observe(document.documentElement,{attributes:true,attributeFilter:['data-codex-chat-look']})
+  rootChanges.observe(document.documentElement,{attributes:true,attributeFilter:['data-codex-chat-look','dir','class','style']})
   window.addEventListener('resize',schedule)
   sync()
   return () => {

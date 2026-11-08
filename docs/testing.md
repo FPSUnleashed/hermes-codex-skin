@@ -163,7 +163,7 @@ cannot bypass the qualification. Never use the current candidate as its own
 historical baseline or conflate historical T3 CSS pins. No additional font,
 image, renderer code, private logs or build output is included.
 
-The full CI command remains the unfiltered `test/*.test.mjs` glob (195 files),
+The full CI command remains the unfiltered `test/*.test.mjs` glob (200 files),
 under `test/helpers/chromium-suite.py`. Its process-budget/admission guard,
 isolated profiles, bounded launches and identity-checked owned-descendant
 cleanup are retained unchanged. Scratch is private under `RUNNER_TEMP`, never
@@ -175,6 +175,23 @@ CI run `42423504888`, with all 1,013 tests passing and 459 Chrome launches.
 That result does not qualify later repairs. The final follow-up commit needs
 its own complete CI run. Input byte and consumer-closure authentication alone
 is not full-suite success.
+
+## Second review regression checks
+
+The browser-free reply-presence, Inbox routing/cancellation, sidebar geometry
+and fixture-lifecycle checks execute the shipping functions with JSDOM or
+process-local browser-I/O seams. Fixture lifecycle covers eleven authentic
+setups, including acquisition failure, each setup failure and ownership transfer;
+it does not certify their UI paint or caller teardown. The existing browser
+sidebar test also exercises real native JSX in both directions and at multiple
+font scales and CSS zoom levels.
+
+CI additionally runs `python3 test/chromium_resource_command_test.py` without
+Chrome to verify that the resource scenario uses the Node executable selected
+through PATH. The standalone status-panel paint probe uses a separately painted
+reference with the approved OKLCH lightness step and unchanged tolerance of two
+channel levels. Its pure color tests are part of the glob; those tests do not
+claim that the standalone full Glass/paint capture has run.
 
 ## Open qualification boundaries
 

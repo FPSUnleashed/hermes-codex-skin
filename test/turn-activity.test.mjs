@@ -22,6 +22,7 @@ const notice = (id, label = 'Subagent Tasks Completed: inspect') => `<div id="${
 
 async function fixture(html, options = {}) {
   const browser = await chromium()
+  try {
   const {frameTree} = await browser.call('Page.getFrameTree')
   await browser.call('Page.setDocumentContent', {frameId: frameTree.frame.id, html: `<html data-codex-chat-look="true"><head></head><body><section data-session-anchor="workspace">${html}</section></body></html>`})
   await browser.evaluate(`(()=>{
@@ -42,6 +43,7 @@ async function fixture(html, options = {}) {
     window.header=id=>el(id).querySelector('[data-codex-turn-activity]');
   })()`)
   return browser
+  } catch (error) { browser.close(); throw error }
 }
 
 async function click(browser, selector) {

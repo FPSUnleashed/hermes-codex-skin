@@ -10,6 +10,7 @@ const footer = id => `<div data-slot="aui_msg-actions" id="${id}"><button onclic
 const root = (id, body, tail = '') => `<div data-role="assistant" data-slot="aui_assistant-message-root" data-message-id="${id}" id="${id}"><div data-slot="aui_assistant-message-content">${body}</div>${tail}</div>`
 async function fixture(body) {
   const b = await chromium()
+  try {
   await b.call('Emulation.setFocusEmulationEnabled', { enabled: true })
   const { frameTree } = await b.call('Page.getFrameTree')
   await b.call('Page.setDocumentContent', { frameId: frameTree.frame.id, html: `<!doctype html><html data-codex-chat-look="true"><head></head><body><section data-session-anchor="workspace"><div data-slot="aui_turn-pair"><div data-role="user" data-message-id="native-user">Question</div>${body}</div></section></body></html>` })
@@ -26,6 +27,7 @@ async function fixture(body) {
     window.visible = id => { let n = el(id); if (!n) return false; for (; n; n = n.parentElement) if (getComputedStyle(n).display === 'none') return false; return true; };
   })()`)
   return b
+  } catch (error) { b.close(); throw error }
 }
 async function key(b, key, code, windowsVirtualKeyCode) {
   for (const type of ['keyDown', 'keyUp']) await b.call('Input.dispatchKeyEvent', { type, key, code, windowsVirtualKeyCode, ...(type === 'keyDown' ? { text: key === 'Enter' ? '\r' : key } : {}) })

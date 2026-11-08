@@ -47,6 +47,7 @@ const followup=message('work-2',md('progress-2')+tool('tool-2'))+message('final-
 
 async function fixture(html,notices=[],options={}) {
   const browser=await chromium()
+  try {
   const {frameTree}=await browser.call('Page.getFrameTree')
   await browser.call('Page.setDocumentContent',{frameId:frameTree.frame.id,html:`<html data-codex-chat-look="true"><head></head><body><section data-session-anchor="workspace">${html}</section></body></html>`})
   await browser.evaluate(`(()=>{const atom=v=>({get:()=>v,subscribe:()=>()=>{}});window.historyCalls=[];window.historyResult=${JSON.stringify(options.history??fixtureHistory)};window.location.hash='#/stored-test';const host={state:{activeSessionId:atom('test'),profile:atom('default'),gateway:atom('open')},onEvent:()=>()=>{},request:async(method,params)=>{historyCalls.push({method,params});if(${Boolean(options.deferHistory)})await new Promise(resolve=>window.resolveHistory=resolve);if(${Boolean(options.historyError)})throw Error('History unavailable');return historyResult}};const PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'},jsx=()=>null,useEffect=()=>{};${source}
@@ -57,6 +58,7 @@ async function fixture(html,notices=[],options={}) {
   await browser.evaluate(outputFiles[0].text)
   for(const id of notices) await browser.evaluate(`mountBackground(${JSON.stringify(id)});waitFor(()=>el(${JSON.stringify(id)}).querySelector('[data-slot="aui_background-result"]'))`)
   return browser
+  } catch (error) { browser.close(); throw error }
 }
 const settled=browser=>browser.evaluate(`waitFor(()=>header('pair')?.textContent==='Worked'&&header('pair').getAttribute('aria-expanded')==='false'&&(!el('progress-1')||!visible('progress-1')))`)
 const retained=browser=>browser.evaluate(`({first:visible('answer-1'),second:visible('answer-2'),work1:visible('tool-1'),work2:visible('tool-2'),progress1:visible('progress-1'),progress2:visible('progress-2')})`)

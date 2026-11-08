@@ -117,11 +117,28 @@ test('extracted native JSX and real SearchField preserve current-profile handler
   assert.ok(await b.evaluate(`retainedNative.getBoundingClientRect().width>100`),'fallback is visible, not icon-only')
   await pointer(b,'[data-sidebar="menu-button"]');assert.deepEqual(await b.evaluate('nativeActions.at(-1)'),['navigate','B','new-session'])
   await b.evaluate(`renderNative('A');window.nativeActions=[]`);await wait(b);await wait(b)
-  for(const scale of [12,16,24,32]){
-   await b.evaluate(`document.documentElement.style.fontSize='${scale}px'`);await wait(b);await wait(b)
-   const r=await line(b);assert.equal(r.search.h,scale*2);assert.equal(r.n.w,scale*1.75);assert.ok(Math.abs(r.n.x-r.search.right-scale*.25)<.05);assert.ok(Math.abs(r.n.y+r.n.h/2-r.search.y-r.search.h/2)<.05)
+  // Real extracted native JSX, not the deterministic JSDOM geometry seam.
+  // Root and row can disagree; only the actual flex row owns inline-end.
+  await b.evaluate(`window.searchLayoutBefore={style:document.querySelector('[data-codex-t3-search-row]').getAttribute('style'),dir:document.querySelector('[data-codex-t3-search-row]').getAttribute('dir')}`)
+  for(const [rootDirection,rowDirection] of [['ltr',null],['rtl',null],['ltr','rtl'],['rtl','ltr']]){
+   for(const scale of [12,16,24,32]){
+    await b.evaluate(`(()=>{document.documentElement.dir='${rootDirection}';const row=document.querySelector('[data-codex-t3-search-row]');${rowDirection ? `row.dir='${rowDirection}'` : `row.removeAttribute('dir')`};document.documentElement.style.fontSize='${scale}px'})()`);await wait(b);await wait(b)
+    const r=await line(b),direction=rowDirection||rootDirection,gap=direction==='rtl'?r.search.x-r.n.right:r.n.x-r.search.right
+    assert.equal(r.search.h,scale*2);assert.equal(r.n.w,scale*1.75);assert.ok(Math.abs(gap-scale*.25)<.05,JSON.stringify({rootDirection,rowDirection,scale,r,gap}));assert.ok(Math.abs(r.n.y+r.n.h/2-r.search.y-r.search.h/2)<.05)
+    assert.equal(await b.evaluate(`(()=>{const b=document.querySelector('[data-codex-t3-new-session]'),r=b.getBoundingClientRect(),s=b.closest('[data-tour="sessions-sidebar"]').getBoundingClientRect();return r.left>=s.left-.05&&r.right<=s.right+.05})()`),true,'action stays inside sidebar in both directions')
+   }
+   await pointer(b,'[data-codex-t3-new-session]');assert.deepEqual(await b.evaluate('nativeActions.at(-1)'),['navigate','A','new-session'])
   }
-  await b.evaluate(`document.documentElement.style.fontSize='16px';stop()`);await wait(b)
+  for(const direction of ['ltr','rtl'])for(const zoom of [.8,1.25]){
+   await b.evaluate(`(()=>{document.documentElement.dir='${direction}';document.documentElement.style.fontSize='16px';document.querySelector('[data-codex-t3-search-row]').removeAttribute('dir');document.body.style.zoom='${zoom}';window.dispatchEvent(new Event('resize'))})()`);await wait(b);await wait(b)
+   const r=await line(b),gap=direction==='rtl'?r.search.x-r.n.right:r.n.x-r.search.right
+   assert.ok(Math.abs(gap-4*zoom)<.1);assert.ok(Math.abs(r.n.w-28*zoom)<.1);assert.ok(Math.abs(r.n.y+r.n.h/2-r.search.y-r.search.h/2)<.1)
+  }
+  // Direction changes must invalidate placement even when row size is stable.
+  await b.evaluate(`document.body.style.removeProperty('zoom');window.dispatchEvent(new Event('resize'));document.documentElement.dir='ltr'`);await wait(b);await wait(b)
+  await b.evaluate(`document.querySelector('[data-codex-t3-search-row]').style.direction='rtl'`);await wait(b);await wait(b)
+  const rtlLine=await line(b);assert.ok(Math.abs(rtlLine.search.x-rtlLine.n.right-4)<.05)
+  await b.evaluate(`(()=>{const row=document.querySelector('[data-codex-t3-search-row]');for(const key of ['style','dir']){if(searchLayoutBefore[key]===null)row.removeAttribute(key);else row.setAttribute(key,searchLayoutBefore[key])}document.documentElement.removeAttribute('dir');document.documentElement.style.fontSize='16px';stop()})()`);await wait(b)
   assert.equal(await b.evaluate(`document.querySelector('[data-tour=sessions-sidebar]').innerHTML===exactNativeBefore`),true,'exact native primitive DOM restored')
  }finally{
   try{b?.close()}

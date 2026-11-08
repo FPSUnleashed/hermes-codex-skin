@@ -61,6 +61,7 @@ const oracleMarkup = `<div id="sidebar" data-app-sidebar class="border-r border-
 
 async function fixture() {
   const b = await chromium()
+  try {
   await b.call('Page.setDocumentContent', { frameId: (await b.call('Page.getFrameTree')).frameTree.frame.id, html: `<!doctype html><html><head><style>${nativeCSS}</style><style>#root{height:800px}#sidebar{width:280px;height:300px}#composer{width:400px}#primary{width:28px;height:28px;transition:none!important}#split{display:block;height:300px}iframe{position:fixed;left:800px;top:0;width:500px;height:500px}</style></head><body>${markup}<iframe id="oracle"></iframe></body></html>` })
   await b.evaluate(`(()=>{const d=document.querySelector('iframe').contentDocument;d.open();d.write(${JSON.stringify(`<!doctype html><html><head><style>${oracleCSS}</style><style>#sidebar{height:100px}#composer{height:50px}#primary{transition:none!important}</style></head><body>${oracleMarkup}</body></html>`)});d.close()})()`)
   await b.evaluate(`
@@ -81,6 +82,7 @@ async function fixture() {
   b.primaryNodeId=(await b.call('DOM.querySelector',{nodeId:root.nodeId,selector:'#primary'})).nodeId
   await b.call('Input.dispatchMouseEvent',{type:'mouseMoved',x:1270,y:790})
   return b
+  } catch (error) { b.close(); throw error }
 }
 function paletteFor(id, mode) {
   if (id === 't3-code') return null

@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import vm from 'node:vm'
 import { chromium, waitForRendered } from './helpers/chromium.mjs'
 import { nativeStatusFixture } from './helpers/status-theme-fixture.mjs'
+import { approvedStatusPanelColor, statusPanelPaintFailures } from './helpers/status-panel-paint-oracle.mjs'
 
 // Test-only copy. Exact frozen v10/candidate, native writer and pinned native CSS.
 const target = fileURLToPath(new URL('../', import.meta.url))
@@ -28,7 +29,7 @@ const themes = [...native.themes, ...builds[1].themes]
 assert.equal(new Set(themes.map(t => t.name)).size, themes.length)
 const modes = ['light', 'dark'], glasses = ['off', 'sidebar', 'window'], states = ['rest', 'scrolled', 'hover', 'focus']
 const historical = JSON.parse(await readFile(process.env.STATUS_PANEL_AA_PLAN, 'utf8'))
-const plan = { baseline: builds[0].bundle, candidate: builds[1].bundle, nativeInputs: native.inputs, themes: themes.map(t => t.name), modes, glasses, states, plannedCases: themes.length * modes.length * glasses.length * states.length, plannedAACases: historical.aa_cells.length * 2, comparison: 'strict A/B at identical screen coordinate; A/A placement controls for every historical affected theme/mode', midpointToleranceUnchanged: 2 }
+const plan = { baseline: builds[0].bundle, candidate: builds[1].bundle, nativeInputs: native.inputs, themes: themes.map(t => t.name), modes, glasses, states, plannedCases: themes.length * modes.length * glasses.length * states.length, plannedAACases: historical.aa_cells.length * 2, comparison: 'strict A/B at identical screen coordinate; A/A placement controls for every historical affected theme/mode', oracle: 'independently painted sRGB midpoint with approved OKLCH lightness step', paintToleranceUnchanged: 2 }
 await writeFile(`${output}/paint-plan.json`, JSON.stringify(plan, null, 2) + '\n')
 if (process.env.STATUS_PANEL_PREPARE_ONLY === '1') { console.log(JSON.stringify({ prepared: true, ...plan })); process.exit(0) }
 const markup = `<div id="chat" style="background:var(--ui-chat-surface-background);min-height:460px"><div id="backdrop" style="height:40px"></div><div id="dock" data-slot="composer-dock" class="group/composer-dock"><div class="status-drawer" id="drawer"><div class="status-drawer-clip"><div class="status-drawer-content"><div data-slot="composer-status-stack"><div id="frame"><div data-slot="status-stack-scroll"><div data-slot="status-stack-content" id="status" class="opacity-100"><div data-slot="status-stack-section"><button id="queue" type="button">2 agents</button></div><div data-slot="status-stack-section" style="height:80px"></div></div></div></div></div></div></div></div><div data-slot="composer-root" id="composer-root"><div data-slot="composer-surface" id="composer" style="position:relative"><div aria-hidden="true" style="position:absolute;inset:0"></div><input id="input" aria-label="Composer" style="position:relative;margin:10px" /></div></div></div><button id="outside">Outside</button></div>`
@@ -105,9 +106,22 @@ try {
         paint.push(...await pixels(pointsFor(m),rows.length===0?`matrix-first-${id}`:undefined))
       }
       const row = { theme:theme.name,requestedMode:mode,glass,state,screenPoints:metrics.map(pointsFor),baseline:{chat:paint[0],panel:paint[1],composer:paint[2]},candidate:{chat:paint[3],panel:paint[4],composer:paint[5]},metrics }
-      for (const side of ['baseline','candidate']) { const p=row[side]; p.midpoint=p.chat.map((v,i)=>(v+p.composer[i])/2); p.maxError=Math.max(...p.panel.map((v,i)=>Math.abs(v-p.midpoint[i]))) }
-      // Independent oracle: measured compositor endpoints, not CSS role values.
-      if(row.candidate.maxError>2) failures.push({case:rows.length,reason:'not-painted-midpoint',row})
+      // Paint an independent approved color on the same native frame. Applying
+      // the step to screenshot RGB endpoints would be wrong for translucent
+      // Glass: adjust the uncomposited mix first, preserving its native alpha.
+      const reference = approvedStatusPanelColor(metrics[1].mode)
+      const saved = await b.evaluate(`(()=>{const e=document.getElementById('next').contentDocument.getElementById('frame'),s=e.style;const old={value:s.getPropertyValue('background-color'),priority:s.getPropertyPriority('background-color')};s.setProperty('background-color',${JSON.stringify(reference)},'important');return old})()`)
+      let expected
+      try {
+        await b.evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))')
+        const referencePaint = await pixels(pointsFor(metrics[1]))
+        assert.deepEqual(referencePaint[0], row.candidate.chat, 'Reference must not change chat paint')
+        assert.deepEqual(referencePaint[2], row.candidate.composer, 'Reference must not change composer paint')
+        expected = referencePaint[1]
+      } finally {
+        await b.evaluate(`(()=>{const s=document.getElementById('next').contentDocument.getElementById('frame').style,old=${JSON.stringify(saved)};if(old.value)s.setProperty('background-color',old.value,old.priority);else s.removeProperty('background-color')})()`)
+      }
+      for (const failure of statusPanelPaintFailures(row, expected)) failures.push({case:rows.length,...failure})
       for(const key of ['chat','composer']) if(JSON.stringify(row.baseline[key])!==JSON.stringify(row.candidate[key])) failures.push({case:rows.length,reason:`unrelated-${key}-changed`,row})
       for(const m of metrics) assert.equal(m.identity&&m.text==='2 agents',true)
       for(const key of ['composer','outside']) assert.deepEqual(metrics[0][key],metrics[1][key],`Unrelated ${key} metrics changed`)
@@ -144,7 +158,7 @@ try {
     await writeFile(`${output}/preservation.json`,JSON.stringify(preservation,null,2)+'\n')
   }
   const red = rows.filter(r=>r.baseline.maxError>2)
-  assert.ok(red.length>0,'Exact frozen v10 must fail the same painted-midpoint oracle before GREEN can count')
+  assert.ok(red.length>0,'Exact frozen v10 must fail the same approved-contrast paint oracle before GREEN can count')
   const report = { status:failures.length?'FAIL':'PASS',cases:rows.length,plannedCases:plan.plannedCases,baselineRedCases:red.length,candidateFailures:failures.length,failures,aaCases:aaRows.length,aaPlacementDifferences:aaRows.filter(r=>r.differentPlacementDiffers).length,aaSameCoordinateFailures:aaRows.filter(r=>!r.sameCoordinateEqual).length,preservation,collapseTiming,proof:'Chromium screenshot samples in source-shaped fixture, not native Mac acceptance or full suite' }
   await writeFile(`${output}/paint-result.json`,JSON.stringify(report,null,2)+'\n')
   console.log(JSON.stringify(report)); assert.equal(rows.length,plan.plannedCases); assert.equal(aaRows.length,plan.plannedAACases); assert.equal(failures.length,0)

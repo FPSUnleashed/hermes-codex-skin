@@ -16,6 +16,7 @@ const actions='<div data-slot="aui_msg-actions"><button>Copy</button></div>'
 const pair=`<div id="pair" data-slot="aui_turn-pair"><div data-role="user" data-message-id="${start}-0-user">Question</div>${message('work','<div data-slot="tool-block" id="tool"><button id="native">Native tool</button></div>')}${message(`${end}-2-assistant`,'<div class="aui-md" id="answer">First final</div>',actions)}</div>`
 async function fixture(options={}) {
  const browser=await chromium()
+  try {
  await browser.call('Emulation.setLocaleOverride',{locale:options.locale||'en-US'})
  await browser.call('Emulation.setTimezoneOverride',{timezoneId:options.timezone||'Europe/Paris'})
  await browser.call('Emulation.setDeviceMetricsOverride',{width:860,height:360,deviceScaleFactor:1,mobile:false})
@@ -30,6 +31,7 @@ async function fixture(options={}) {
  await browser.evaluate(`waitFor(()=>h())`)
  await browser.evaluate(`new Promise(r=>setTimeout(r,200))`)
  return browser
+  } catch (error) { browser.close(); throw error }
 }
 
 async function screenshot(browser,name) {

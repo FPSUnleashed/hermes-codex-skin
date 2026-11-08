@@ -66,6 +66,7 @@ const markup = `
 
 async function fixture() {
   const browser = await chromium()
+  try {
   const html = `<!doctype html><html><head><style>${nativeCSS}</style><style>
   .codicon {font-family:codicon} .xterm-helper-textarea {font-family:inherit}
   </style></head><body>${markup}</body></html>`
@@ -88,6 +89,7 @@ async function fixture() {
     window.snapshot=()=>Object.fromEntries([...document.querySelectorAll('[id]')].filter(e=>!['root','skin-css'].includes(e.id)).map(e=>{const s=getComputedStyle(e);return[e.id,{family:s.fontFamily,size:s.fontSize,weight:s.fontWeight,line:s.lineHeight,spacing:s.letterSpacing}]}));
   `)
   return browser
+  } catch (error) { browser.close(); throw error }
 }
 
 for (const [theme, mode] of [['codex-chat', 'light'], ['codex-chat', 'dark'], ['external-theme', 'light'], ['external-theme', 'dark']]) {

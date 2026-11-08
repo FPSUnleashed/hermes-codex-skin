@@ -29,14 +29,17 @@ All notable changes to this project are documented here.
 ### Fixed
 
 - Generate the Tasks/Queue bar from the effective composer fill and chat background for every theme, then adjust OKLCH lightness for separation: slightly darker in light appearance and lighter in dark appearance. Preserve the blend's hue, chroma and transparency. Replace the T3 Code/T3 Chat light exceptions with this shared rule; composer paint remains unchanged.
-- Keep the latest reply visible through tool-only tails and plugin-module reloads without guessing ambiguous historical identities. Earlier replies remain available in expandable activity.
+- Keep the latest reply visible through tool-only tails, plugin-module reloads and the first text arriving in an already-mounted empty reply, without guessing ambiguous historical identities. Earlier replies remain available in expandable activity; ordinary text tokens do not trigger repeated turn projections.
 - Reconcile incoming tool groups before paint to prevent alternating extra rows and collapsed summaries.
 - Isolate Inbox state/actions across connection, profile, backend, route retargeting, colliding durable IDs and stale asynchronous callbacks.
 - Apply successful Settle immediately. Dismiss a successfully saved Snooze menu even if subsequent navigation fails; preserve controls on failed saves.
 - Keep media, alerts, preview cards and actions inside still-running markdown visible with Show complete messages, including content mounted after the text starts streaming.
 - Include the full Phosphor Icons notice in the standalone plugin asset as well as the source documentation.
 - Keep valid history-preview requests and cached results through unrelated streaming updates, while refreshing the mounted preview when its own turn changes.
+- Reject already-cancelled Inbox reads before they enter a saturated queue, preserving active-read ownership and FIFO ordering.
+- Position New session at Search's inline end in both left-to-right and right-to-left layouts, including live direction changes and zoom.
 - Close test-owned HTTP servers when browser acquisition or cleanup fails. Make the standalone native HTTP probe's external server dependency explicit; a missing server is not a passing native qualification.
+- Close test browsers when fixture setup fails before ownership reaches the test body. Keep the standalone paint probe aligned with the approved Tasks/Queue contrast rule and resolve its resource-test Node executable from PATH.
 
 ### Documentation
 

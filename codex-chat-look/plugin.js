@@ -4519,6 +4519,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
   let composerDirty = true
   let destroyed = false
   const dirtyPairs = new Set()
+  const replyTextPresence = new WeakMap()
   const durationOwners = new WeakMap()
   let durationHistory = null
   const animatedPlaybackNodes = new WeakSet()
@@ -4951,6 +4952,7 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
         ? durationHistory.proseKinds : null
       const recordedEnd = turnNativeCompletedAt(pair, groupingScope(), turnStates.get(pair)?.active === true)
       const liveDuration = liveClock.label(liveClockScope(), userMessageId(pair), livePairs.size === 1 && livePairs.has(pair))
+      rememberReplyTextPresence(pair)
       reconcileTurnActivity(pair, duration, historyKinds, groupingScope(), recordedEnd, liveDuration, turnStates.get(pair))
       // Sequence compaction consumes this pass's whole-turn phase, not the
       // previous Working projection after native streaming has stopped.
@@ -5115,6 +5117,36 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
     )
   )
 
+  const replyTextPresent = part => part.matches('.aui-md')
+    ? /\S/.test(part.textContent || '')
+    : [...part.childNodes].some(node => node.nodeType === 3 && /\S/.test(node.textContent || ''))
+
+  const rememberReplyTextPresence = pair => {
+    for (const content of pair.querySelectorAll('[data-role="assistant"][data-slot="aui_assistant-message-root"] > [data-slot="aui_assistant-message-content"]')) {
+      if (content.closest('[data-slot="aui_turn-pair"]') !== pair) continue
+      replyTextPresence.set(content, replyTextPresent(content))
+      for (const part of content.children) if (part.matches('.aui-md')) replyTextPresence.set(part, replyTextPresent(part))
+    }
+  }
+
+  const replyTextPresenceChanged = (record, target, pair) => {
+    if (!pair) return false
+    const content = target?.closest?.('[data-slot="aui_assistant-message-content"]')
+    if (!content?.parentElement?.matches('[data-role="assistant"][data-slot="aui_assistant-message-root"]')
+      || content.closest('[data-slot="aui_turn-pair"]') !== pair) return false
+    const markdown = target.closest('.aui-md')
+    const part = markdown?.parentElement === content ? markdown : target === content ? content : null
+    if (!part) return false
+    // A nonempty changed text node already proves presence. Ordinary tokens
+    // neither reread the growing markdown body nor schedule a turn projection.
+    const present = (record.type === 'characterData' && record.target.nodeType === 3 && /\S/.test(record.target.data))
+      || (record.type === 'childList' && [...record.addedNodes].some(node => node.nodeType === 3 && /\S/.test(node.textContent || '')))
+      || replyTextPresent(part)
+    const previous = replyTextPresence.get(part) || false
+    replyTextPresence.set(part, present)
+    return present !== previous
+  }
+
   const handleMutations = records => {
     const changedPairs = new Set()
     const markChangedPair = pair => { markPair(pair); changedPairs.add(pair) }
@@ -5138,8 +5170,11 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       const nativePart = target?.closest?.('[data-tool-row], [data-tool-group], [data-slot="aui_thinking-disclosure"]')
       if (record.type === 'characterData') {
         // React updates compact captions through existing text nodes. Do not
-        // schedule projections for streamed prose, private bodies or timers.
-        if (pair && nativePart && target.closest('[class*="conversation-scaffold-text"]')
+        // schedule projections for ordinary prose tokens, private bodies or timers.
+        if (replyTextPresenceChanged(record, target, pair)) {
+          markChangedPair(pair)
+          relevant = true
+        } else if (pair && nativePart && target.closest('[class*="conversation-scaffold-text"]')
           && !target.closest('[data-codex-tool-sequence]')) {
           markChangedPair(pair)
           relevant = true
@@ -5192,6 +5227,12 @@ function installBehaviorRuntime(afterFinalCleanup = null) {
       const addedElements = [...record.addedNodes].filter(node => node instanceof Element)
       const removedElements = [...record.removedNodes].filter(node => node instanceof Element)
       const changedElements = [...addedElements, ...removedElements]
+      if (!changedElements.length && replyTextPresenceChanged(record, target, pair)) {
+        markChangedPair(pair)
+        relevant = true
+      }
+      if (!changedElements.length && target?.matches?.('[data-slot="aui_assistant-message-content"]')
+        && target.parentElement?.matches('[data-role="assistant"][data-slot="aui_assistant-message-root"]')) continue
       // Match the quiet characterData path only inside known text bodies/timers.
       // Compact captions and critical chrome still wake; unknown direct Thought
       // topology (including every Element insertion/removal) remains fail-open.
@@ -6930,6 +6971,7 @@ function codexInboxReadLimiter(limit = 4) {
     }
   }
   return signal => new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(new Error('Inbox read cancelled')); return }
     const item = { signal, resolve, reject, abort: () => {
       const index = queue.indexOf(item)
       if (index >= 0) queue.splice(index, 1)
@@ -10751,9 +10793,12 @@ function installT3SidebarActions() {
         if (!parent) continue // Hidden/collapsed native sidebar, recomputed on reveal.
         const p = parent.getBoundingClientRect(), r = field.getBoundingClientRect()
         const scale = p.width / parent.offsetWidth || 1
-        const gap = parseFloat(getComputedStyle(row).columnGap)
-        const size = button.getBoundingClientRect().height / scale
-        const coordinates = { left:(r.right - p.left) / scale + gap - parent.clientLeft + parent.scrollLeft, top:(r.top - p.top) / scale + (r.height / scale - size) / 2 - parent.clientTop + parent.scrollTop }
+        const rowStyle = getComputedStyle(row), gap = parseFloat(rowStyle.columnGap)
+        const action = button.getBoundingClientRect(), size = action.height / scale
+        // Flex reserves inline-end space in the row's direction; left remains
+        // a physical offset-parent coordinate, including its border and scroll.
+        const left = rowStyle.direction === 'rtl' ? (r.left - p.left - action.width) / scale - gap : (r.right - p.left) / scale + gap
+        const coordinates = { left:left - parent.clientLeft + parent.scrollLeft, top:(r.top - p.top) / scale + (r.height / scale - size) / 2 - parent.clientTop + parent.scrollTop }
         for (const [key, value] of Object.entries(coordinates)) {
           const next = `${Math.round(value * 100) / 100}px`
           if (button.style.getPropertyValue(`--codex-t3-new-${key}`) !== next) button.style.setProperty(`--codex-t3-new-${key}`,next)
@@ -10771,13 +10816,18 @@ function installT3SidebarActions() {
   const containsSidebar = node => node.nodeType === 1 && (node.matches(sidebarSelector) || node.querySelector(sidebarSelector))
   const mutations = new MutationObserver(records => {
     // Keep body discovery, including detached removals, without coupling layout to transcript streaming.
-    if (records.some(record => record.target.closest?.(sidebarSelector)
-      || (record.type === 'attributes' && observed.has(record.target))
-      || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].some(containsSidebar)))) schedule()
+    if (records.some(record => {
+      // Direction can change without resizing. Ignore style/class churn on
+      // transcripts and our own action: only row ancestors can affect it.
+      if (record.type === 'attributes' && ['dir','class','style'].includes(record.attributeName)) return [...bindings.values()].some(({row}) => record.target.contains(row))
+      return record.target.closest?.(sidebarSelector)
+        || (record.type === 'attributes' && observed.has(record.target))
+        || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].some(containsSidebar))
+    })) schedule()
   })
-  mutations.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['placeholder','data-tour','data-sessions-mode']})
+  mutations.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['placeholder','data-tour','data-sessions-mode','dir','class','style']})
   const rootChanges = new MutationObserver(schedule)
-  rootChanges.observe(document.documentElement,{attributes:true,attributeFilter:['data-codex-chat-look']})
+  rootChanges.observe(document.documentElement,{attributes:true,attributeFilter:['data-codex-chat-look','dir','class','style']})
   window.addEventListener('resize',schedule)
   sync()
   return () => {

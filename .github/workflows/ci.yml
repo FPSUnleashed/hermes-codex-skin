@@ -106,10 +106,11 @@ jobs:
       - name: Run regression tests
         env:
           CODEX_V9_BROWSER_AUTHORIZED: '1'
-        # Preserve all 195 files and assertions. The existing Linux subreaper
+        # Preserve all 200 files and assertions. The existing Linux subreaper
         # owns profiles/descendants and retains its admission/process guards.
         run: |
           set -euo pipefail
+          python3 test/chromium_resource_command_test.py
           python3 test/helpers/chromium-suite.py --chrome "$CHROME_BIN" --receipt "$CODEX_NATIVE_EVIDENCE_ROOT/chromium-suite.json" --timeout 2400 --max-chrome-launches 2048 -- node --test --test-reporter=tap --test-concurrency=1 test/*.test.mjs | tee "$CODEX_NATIVE_EVIDENCE_ROOT/regression.tap"
           node scripts/check-ci-results.mjs "$CODEX_NATIVE_EVIDENCE_ROOT/regression.tap" "$CODEX_NATIVE_EVIDENCE_ROOT/chromium-suite.json"
 
