@@ -94,7 +94,7 @@
     "consumerFiles": {
       "test/t3-width-fidelity.test.mjs": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
       "test/helpers/reference-paths.mjs": "767fa4828572c86232ec50da401c8dd0198dee4dc1ddbdce2ce1e4f4c418057a",
-      ".github/workflows/ci.yml": "aeca7b8810544a45bc6a10bda74db1cc57f3411ba25be5df30db02bbb852051e",
+      ".github/workflows/ci.yml": "ce2ab29156279e283c96121a47d069afb7e03645e5a2a75dc7b213dfe9ea50f9",
       "LICENSE": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
     },
     "fixtureClosure": {
