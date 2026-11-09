@@ -44,9 +44,9 @@ export async function universalFixture(run, config = {}) {
     if(!/^\/core\/[\w-]+\.js$/.test(req.url)){res.writeHead(404).end();return}
     res.setHeader('Content-Type','text/javascript');res.end(await readFile(resolve(core,req.url.slice(6))))
   })
-  await new Promise(r=>server.listen(0,'127.0.0.1',r))
   let browser
   try {
+    await new Promise(r=>server.listen(0,'127.0.0.1',r))
     browser=await chromium()
     await browser.call('Page.navigate',{url:`http://127.0.0.1:${server.address().port}/`})
     await browser.evaluate(`(async()=>{
@@ -79,10 +79,16 @@ export async function universalFixture(run, config = {}) {
     await browser.evaluate(`const actualInstall=installCodexInboxRuntime;installCodexInboxRuntime=options=>window.runtime=actualInstall(options);__pluginDefault.register({storage,register:c=>contributions.push(c),onDispose:fn=>disposals.push(fn)});for(const entry of contributions.filter(c=>c.area===PALETTE_AREA)){if(entry.data.icon)renderPaletteElement(jsx(entry.data.icon,{className:'palette-icon'}))};window.toggle=()=>contributions.find(c=>c.id==='toggle-universal-inbox');window.rows=()=>[...document.querySelectorAll('[data-codex-inbox-row]')];window.refetch=async()=>{await Promise.all(queryClient.getQueryCache().getAll().filter(q=>q.getObserversCount()>0).map(q=>q.fetch().catch(()=>{})));await flush()};window.ownerRow=(connectionId,profile)=>rows().find(el=>{const key=JSON.parse(el.dataset.codexInboxKey);return key[0]===connectionId&&key[1]===profile});flush()`)
     await run(browser)
   } finally {
-    if(browser){
-      await browser.evaluate('disposals.reverse().forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(()=>{})
-      browser.close()
+    try {
+      if(browser){
+        try {
+          await browser.evaluate('disposals.reverse().forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(()=>{})
+        } finally {
+          browser.close()
+        }
+      }
+    } finally {
+      await new Promise(r=>server.close(r))
     }
-    await new Promise(r=>server.close(r))
   }
 }

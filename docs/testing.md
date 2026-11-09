@@ -163,7 +163,7 @@ cannot bypass the qualification. Never use the current candidate as its own
 historical baseline or conflate historical T3 CSS pins. No additional font,
 image, renderer code, private logs or build output is included.
 
-The full CI command remains the unfiltered `test/*.test.mjs` glob (204 files),
+The full CI command remains the unfiltered `test/*.test.mjs` glob (206 files),
 under `test/helpers/chromium-suite.py`. Its process-budget/admission guard,
 isolated profiles, bounded launches and identity-checked owned-descendant
 cleanup are retained unchanged. Scratch is private under `RUNNER_TEMP`, never
@@ -218,6 +218,20 @@ before cleanup. This is a test-fixture repair, not a Sidebar product change.
 A `node --test` invocation can contain real browser cases. Classify a selected
 file by its browser imports/launches rather than treating every Node entrypoint
 as a browser-free check.
+
+## Exceptional fixture cleanup
+
+`test/universal-fixture-cleanup-lifecycle.test.mjs` exercises the real universal
+fixture and loopback HTTP listener, including a keep-alive socket. Browser I/O
+is injected only for lifecycle checks. Acquisition, setup, callback and cleanup
+failures must still close the listener and acquired browser independently.
+
+`test/t3-theme-cleanup-lifecycle.test.mjs` runs the genuine theme test callbacks
+with process-local browser I/O injection. It checks all three caller finalizers,
+including an unset disposer and a throwing or rejecting cleanup. Its wrapper
+test runs 50 child cases, not 51 independent scenarios. Theme assertions, browser
+operations and the existing retirement delay remain unchanged. These checks
+do not certify UI paint; `test/t3-theme-paint.test.mjs` still uses real Chromium.
 
 ## Open qualification boundaries
 

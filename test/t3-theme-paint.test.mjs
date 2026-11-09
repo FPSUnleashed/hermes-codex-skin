@@ -72,7 +72,7 @@ async function fixture() {
     const parseColor=x=>x.match(/[a-f\\d]{2}/gi).map(v=>parseInt(v,16)),setAppearance=()=>{},readableInk=()=> '#fff',ensureContrast=x=>x,harmonize=x=>x,resolveChatFontFamily=x=>x,applyTypographyKnobs=()=>{},chromeBackground=x=>x;
     ${nativeWriter}
     window.nativePaint=(theme,mode)=>applyTheme({...theme,colors:mode==='dark'?(theme.darkColors||theme.colors):theme.colors},mode,'"User Choice", serif');
-    window.enable=()=>{window.cleanup=installChatStyleRuntime()};window.disable=async()=>{cleanup();cleanup=null;await new Promise(r=>setTimeout(r,350))};
+    window.enable=()=>{window.cleanup=installChatStyleRuntime()};window.disable=async()=>{window.cleanup?.();window.cleanup=null;await new Promise(r=>setTimeout(r,350))};
     window.oraclePaint=(id,mode,palette)=>{const d=document.querySelector('iframe').contentDocument,r=d.documentElement;r.classList.toggle('dark',mode==='dark');if(id==='t3-code')delete r.dataset.themeId;else r.dataset.themeId=id;for(const[k,v]of Object.entries(palette||{}))r.style.setProperty('--app-theme-'+k.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()),v)};
     window.metrics=()=>Object.fromEntries(['sidebar','shelf','working','composer','primary','split'].map(id=>{const s=getComputedStyle(document.getElementById(id)),r=document.getElementById(id).getBoundingClientRect();return[id,Object.fromEntries(['fontSize','fontWeight','lineHeight','letterSpacing','padding','borderRadius','width','height','transform'].map(k=>[k,s[k]]))]}));
     window.sample=(id,prop,oracle=false)=>{const d=oracle?document.querySelector('iframe').contentDocument:document,e=d.getElementById(id),s=d.defaultView.getComputedStyle(e),canvas=d.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d',{willReadFrequently:true});const pixel=()=>[...ctx.getImageData(0,0,1,1).data];const fill=c=>{if(!window.CSS.supports('color',c))throw Error('Invalid color '+c);ctx.fillStyle=c;ctx.fillRect(0,0,1,1)};const layers=[];for(let n=e.parentElement;n;n=n.parentElement)layers.unshift(d.defaultView.getComputedStyle(n).backgroundColor);layers.forEach(fill);const backdrop=pixel();fill(s[prop]);const painted=pixel();ctx.clearRect(0,0,1,1);fill(s[prop]);return {css:s[prop],raw:pixel(),backdrop,painted,opacity:s.opacity,borderWidth:s.borderRightWidth}};
@@ -243,7 +243,7 @@ test('Glass sidebar uses the reference sidebar tint without repainting chat or c
     }
     receipts.glassSidebar = cases
     assert.deepEqual(failures, [])
-  } finally { await b.evaluate('disable()'); b.close() }
+  } finally { try { await b.evaluate('disable()') } finally { b.close() } }
 })
 
 test('composer outline matches the actual T3 ComposerSurface rather than the generic border, with and without typing focus', async () => {
@@ -271,7 +271,7 @@ test('composer outline matches the actual T3 ComposerSurface rather than the gen
     receipts.composerSource=sha(composerSource)
     receipts.composerOutlines=cases
     assert.deepEqual(failures,[])
-  } finally { await b.evaluate('disable()'); b.close() }
+  } finally { try { await b.evaluate('disable()') } finally { b.close() } }
 })
 
 test('T3 composers match real Shell/Host/Main and native backing plus derived status contrast at DPR 1 and 2', async () => {
@@ -318,7 +318,7 @@ test('T3 composers match real Shell/Host/Main and native backing plus derived st
     }
     receipts.t3Composer={composerSource:sha(composerSource),nativeComposerSource:sha(nativeComposerSource),nativeDockSource:sha(nativeDockSource),scope:'uniform canvas, source-default opacity; not full dynamic material',cases:rows}
     assert.equal(rows.length,96);assert.deepEqual(failures,[])
-  }finally{await b.evaluate('disable()');b.close()}
+  }finally{try{await b.evaluate('disable()')}finally{b.close()}}
 })
 
 test.after(async()=>{for(const fn of disposers.reverse())fn();if(process.env.T3_PAINT_RECEIPT)await writeFile(process.env.T3_PAINT_RECEIPT,JSON.stringify(receipts,null,2)+'\n')})
