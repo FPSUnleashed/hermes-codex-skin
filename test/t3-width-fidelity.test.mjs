@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto'
 import {pathToFileURL,fileURLToPath} from 'node:url'
 import test from 'node:test'
 import {chromium} from './helpers/chromium.mjs'
+import {measureHistoricalWidth} from './helpers/width-history.mjs'
 
 const core=referenceRoot('HERMES_DESKTOP_SOURCE_ROOT')
 const require=createRequire(`${core}/package.json`), ts=require('typescript')
@@ -57,7 +58,7 @@ const receipts=[]
 test('source-built T3 comfortable actual transcript/prose/composer lanes match across viewport, scale, split panes and lifecycle', {timeout:120000},async t=>{
  const browser=await chromium()
  try{
-  const html=`<!doctype html><html><head><style>${nativeCSS}</style><style>${CSS+BROWSER_PALETTE_CSS+UPDATE_CSS+T3_SUBAGENT_CSS}</style><style>body{margin:0}.native-panes{display:grid;grid-template-columns:repeat(var(--pane-count,1),minmax(0,1fr))}.native-pane{position:relative;height:250px;min-width:0}iframe{position:absolute;top:700px;left:0;width:100%;height:650px;border:0}</style></head><body><main class="native-panes">${pane}${pane}</main><iframe></iframe></body></html>`
+  const html=`<!doctype html><html><head><style>${nativeCSS}</style><style id="width-plugin-css">${CSS}</style><style>${BROWSER_PALETTE_CSS+UPDATE_CSS+T3_SUBAGENT_CSS}</style><style>body{margin:0}.native-panes{display:grid;grid-template-columns:repeat(var(--pane-count,1),minmax(0,1fr))}.native-pane{position:relative;height:250px;min-width:0}iframe{position:absolute;top:700px;left:0;width:100%;height:650px;border:0}</style></head><body><main class="native-panes">${pane}${pane}</main><iframe></iframe></body></html>`
   await browser.call('Emulation.setDeviceMetricsOverride',{width:1200,height:700,deviceScaleFactor:2,mobile:false})
   await browser.call('Page.setDocumentContent',{frameId:(await browser.call('Page.getFrameTree')).frameTree.frame.id,html})
   await browser.evaluate(`document.querySelector('iframe').srcdoc=${JSON.stringify(referenceHTML)};new Promise(r=>document.querySelector('iframe').onload=r)`)
@@ -103,11 +104,9 @@ test('source-built T3 comfortable actual transcript/prose/composer lanes match a
   for(const mode of ['codex-wide','codex-wider','hermes']){
    await browser.evaluate(`saved.set('composer-width',${JSON.stringify(mode)});syncWidth();setLayout(16,2,'serif');settle()`)
    const before=await browser.evaluate(metrics)
-   await browser.evaluate(`(()=>{const oldStyle=document.createElement('style');oldStyle.id='old-width';oldStyle.textContent=${JSON.stringify(old.CSS)};document.head.append(oldStyle);return settle()})()`)
-   const previous=await browser.evaluate(metrics)
+   const previous=await measureHistoricalWidth(browser,old.CSS,metrics)
    shippingPopout=previous.natives[0].popoutEditor
    assert.deepEqual(before.natives,previous.natives,`${mode} preserves optional geometry`)
-   await browser.evaluate(`document.getElementById('old-width').remove();settle()`)
   }
   for(const saved of [undefined,'codex','codex-wide','codex-wider','hermes']){
    await browser.evaluate(`${saved===undefined?"window.saved.delete('composer-width')":`window.saved.set('composer-width',${JSON.stringify(saved)})`};disable();setLayout(16,1,'serif');settle()`)

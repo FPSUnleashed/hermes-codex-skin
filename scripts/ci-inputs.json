@@ -2,7 +2,7 @@
   "schema": 1,
   "node": "v26.13.0",
   "npm": "11.20.0",
-  "regressionFiles": 206,
+  "regressionFiles": 208,
   "plugin": {
     "files": {
       "package.json": "4f4069f7ce283336c1c7fe0116c84f467f2f67192d997922b07c723cb778f686",
@@ -88,23 +88,23 @@
       "licenses/vscode_codicons-0.0.45-LICENSE-CODE": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b",
       "licenses/xterm_xterm-6.0.0-LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
       "native-row.css": "ce4eaebe23cc99c7ba7ca4d69c7221793a0eec3005564105dbaf4b9de69ad104",
-      "provenance.json": "e7ee5ffc27d7e3e8db66fa00676011c74be359c82648442e8180b8d4bf8c161d",
+      "provenance.json": "7d1a17221131240444491dbccf4a96b0765f7f7c98ec692a91eca62eb0b6f65e",
       "renderer-class-projection.js": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf"
     },
     "consumerFiles": {
-      "test/t3-width-fidelity.test.mjs": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
+      "test/t3-width-fidelity.test.mjs": "8772ffe1003e2674db53589c604d2d648ea2ea0bc668bf97478f2098e54ade30",
       "test/helpers/reference-paths.mjs": "767fa4828572c86232ec50da401c8dd0198dee4dc1ddbdce2ce1e4f4c418057a",
-      ".github/workflows/ci.yml": "3ccdf0a07f8b7c6c795004494db2303d41abe29ee292cf90a1338c0489c4d688",
+      ".github/workflows/ci.yml": "8be60d8f0f801f2a589ae3a78efac3efb21b7f50d11424d0429f8fcabb9bf9ea",
       "LICENSE": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
     },
     "fixtureClosure": {
       "files": 17,
-      "sha256": "de69b3d0a80758785dc3cfe088d109d9c956837fa4d14e3351b12e794701a802"
+      "sha256": "f601e6b73afcd99959fe49d0df1e1f644c14037f57a4ec460cd848edddb3dc04"
     },
     "consumerClosures": {
       "test": {
-        "files": 251,
-        "sha256": "f489688cf7d4c5baac9679d7034ca732ffc8b8f9ca9a78dcb93cdc7228f71530",
+        "files": 254,
+        "sha256": "efe8f0f5718735e8dc837ae8a5795f98eadf94f001122e24b3ecad9cccb28ce5",
         "excluded": [
           "test/fixtures/ci-historical"
         ]
@@ -119,7 +119,7 @@
       },
       "src": {
         "files": 17,
-        "sha256": "443a5164a6c7622e26d92cef71156e219906f5ee0ae0ec4a61a43767ccc3fd55",
+        "sha256": "542b31d48be195908d5fb9ce090bcc73e5625838ce7b687a0b4ef67031896361",
         "excluded": []
       }
     }

@@ -153,7 +153,7 @@ redistribute the whole renderer:
 
 The real verifier rejects absent/altered fixtures, provenance or notices and
 requires these exact vendored role paths. The six-literal projection is bound
-to its original renderer digest, six public-source records and the unchanged
+to its original renderer digest, six public-source records and the requalified
 width consumer hash. The entire existing test, script and source closures plus
 the workflow/helper hashes are authenticated to reject direct or indirect
 consumer drift, including added consumers. Requalify before changing any such
@@ -163,7 +163,7 @@ cannot bypass the qualification. Never use the current candidate as its own
 historical baseline or conflate historical T3 CSS pins. No additional font,
 image, renderer code, private logs or build output is included.
 
-The full CI command remains the unfiltered `test/*.test.mjs` glob (206 files),
+The full CI command remains the unfiltered `test/*.test.mjs` glob (208 files),
 under `test/helpers/chromium-suite.py`. Its process-budget/admission guard,
 isolated profiles, bounded launches and identity-checked owned-descendant
 cleanup are retained unchanged. Scratch is private under `RUNNER_TEMP`, never
@@ -232,6 +232,32 @@ including an unset disposer and a throwing or rejecting cleanup. Its wrapper
 test runs 50 child cases, not 51 independent scenarios. Theme assertions, browser
 operations and the existing retirement delay remain unchanged. These checks
 do not certify UI paint; `test/t3-theme-paint.test.mjs` still uses real Chromium.
+
+## Focus ownership during native run regrouping
+
+Retiring tool-sequence records restore their native `tabindex` values before
+new records capture them. Retained prefixes release split-off controls in
+native run order. `test/tool-sequence-focus-handoff.test.mjs` executes the real
+native React grouping and disclosure components under JSDOM, covering split
+and merge in both directions, repeated reconciliation, exact absent and
+explicit attributes, expansion, teardown and unchanged-pass mutation counts.
+It checks DOM focus, not browser Tab traversal or live Electron acceptance.
+
+## Independent historical width measurements
+
+`test/helpers/width-history.mjs` temporarily replaces the candidate width
+stylesheet with the independent historical stylesheet and restores its exact
+bytes in `finally`. Appending history would leave candidate-only rules active
+and could make both measurements equally wrong. Native, layout and auxiliary
+stylesheets keep their order. `test/width-history.test.mjs` injects a
+candidate-only constraint, proves that the old appended cascade masks it,
+then verifies independent measurement and restoration after success and error.
+
+The width fidelity test retains its 504 T3 comparisons and lifecycle,
+preference and disable/restoration assertions. Its native class extraction and
+six-literal projection are unchanged; only the historical measurement setup
+and its consumer fingerprint are requalified. Historical assets, source
+records, licenses and capture-chain limitations remain unchanged.
 
 ## Open qualification boundaries
 

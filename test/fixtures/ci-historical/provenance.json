@@ -71,7 +71,7 @@
     "sha256": "1560fb6c846273ba581a7a02238e9d4db8b96265bde05cbe6d48275d52b799bf",
     "bytes": 1084,
     "derived_from_renderer_sha256": "9fcdc165869b8646827eacba32787136d41cecedaa95fecdf7ef8d8dde83c097",
-    "consumer_sha256": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
+    "consumer_sha256": "8772ffe1003e2674db53589c604d2d648ea2ea0bc668bf97478f2098e54ade30",
     "source_records": [
       {
         "relative": "apps/desktop/src/components/assistant-ui/thread/list.tsx",

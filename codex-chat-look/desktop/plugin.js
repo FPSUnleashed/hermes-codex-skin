@@ -11353,11 +11353,13 @@ function createToolSequenceRuntime(currentScope, currentIncarnation) {
         }
       }
       record.bound = true
-      apply(record)
       records.set(first, record)
     }
     const retained = new Set([...records.values()].map(record => record.header))
     for (const record of previous.values()) if (!retained.has(record.header)) restoreFocus(record)
+    // Release retiring owners before a new run snapshots native tabindex.
+    // Apply in run order so retained prefixes also release a split-off tail.
+    for (const record of records.values()) apply(record)
     const retainedUnits = new Set([...records.values()].flatMap(record => record.units))
     for (const node of owned(pair, `[${itemAttribute}]`)) if (!retainedUnits.has(node)) attr(node, itemAttribute, null)
     for (const node of owned(pair, '[data-codex-activity-native-current]')) {
