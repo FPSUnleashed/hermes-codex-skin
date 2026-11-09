@@ -1,6 +1,6 @@
 // Observe a real native-row open through the supported decoration slot.
 // A hidden marker supplies the durable row identity without copying native actions.
-async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, expectedRootId, followLineage = false } = {}) {
+async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, expectedRootId, followLineage = false, requireOwner = false } = {}) {
   const scope = thread?.scope, id = thread?.id
   if (!id || !scope || !stillCurrent()) throw new Error('Inbox open owner changed.')
   const bridge = globalThis.window?.hermesDesktop
@@ -27,16 +27,18 @@ async function readCodexInboxOpenedSession(thread, { stillCurrent = () => true, 
   })
   if (!stillCurrent()) throw new Error('Inbox open owner changed.')
   if (!row || row.id !== resolvedId || typeof row.profile !== 'string') throw new Error('Inbox received incomplete opened-chat metadata.')
-  let targetProfile = scope.profile
+  let targetProfile = scope.targetProfile || scope.profile
   if (row.profile !== targetProfile && typeof host.profileRoutes === 'function') {
     const routes = await host.profileRoutes()
     const matches = routes.filter(route => sameInboxScope(route, scope))
     if (matches.length === 1 && matches[0].targetProfile) targetProfile = matches[0].targetProfile
   }
-  if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId) {
+  if (!stillCurrent() || row.profile !== targetProfile || row.connection_id && row.connection_id !== scope.connectionId || requireOwner && row.connection_id !== scope.connectionId) {
     throw new Error('Inbox opened-chat owner could not be verified.')
   }
-  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}), profile: scope.profile, connection_id: scope.connectionId }
+  return { ...row, ...(lineage ? { _lineage_root_id: lineage.path[0], _lineage_ids: lineage.path } : {}),
+    _codexInboxBackendOwner: { connectionId: row.connection_id || scope.connectionId, profile: row.profile },
+    profile: scope.profile, connection_id: scope.connectionId }
 }
 
 function isCodexInboxSessionNotFound(error) {

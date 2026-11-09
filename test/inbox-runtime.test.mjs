@@ -6,7 +6,7 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { chromium } from './helpers/chromium.mjs';
+import { chromium, waitForRendered } from './helpers/chromium.mjs';
 
 const execFile = promisify(execFileCallback);
 const source = (await Promise.all(['inbox-row-ui.js', 'inbox-runtime.js'].map(file =>
@@ -81,7 +81,7 @@ function fixture() {
     for(const status of ['starting','waiting','working','streaming','running','needs-input','queued']){update(runtime,{liveSessions:[{session_id:'a',status}]});await flush();check('busy_'+status,!settleButton('a').disabled)}
     runtime.activity({type:'message.complete',...scope,session_id:'a',payload:{status:'complete'}});update(runtime,{liveSessions:[{session_id:'a',session_key:'foreign-runtime',profile:'other',status:'working'}],busyBySession:{'foreign-runtime':true}});await flush();check('foreign_alias_cannot_block',!settleButton('a').disabled);
     update(runtime,{loading:true,sessions:[]});await flush();check('quiet_loading_not_false_zero',document.querySelector('[data-codex-inbox-owned="island"]').getAttribute('aria-busy')==='true'&&!document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('Loading Inbox')&&!document.querySelector('[data-codex-inbox-header]').textContent.includes('(0)'));
-    update(runtime,{error:new Error('failed'),sessions:[]});await flush();check('error_not_false_zero',document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('could not be loaded')&&!document.querySelector('[data-codex-inbox-header]').textContent.includes('(0)'));
+    update(runtime,{error:new Error('failed'),sessions:[]});await flush();check('read_error_stays_internal_without_false_zero',!document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('could not be loaded')&&!document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('Retry Inbox')&&!document.querySelector('[data-codex-inbox-header]').textContent.includes('(0)'));
     let loads=0;const many=Array.from({length:205},(_,i)=>({id:'page-'+i,title:'Row '+i,started_at:created,message_count:1}));
     update(runtime,{sessions:many,hasMore:true,loadMore:()=>loads++});await flush();check('all_admitted_rows_preserved',document.querySelectorAll('[data-codex-inbox-row]').length===many.length);
     document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();await flush();
@@ -142,7 +142,7 @@ function snoozeFixture() {
   document.getElementById('native-open').onclick=()=>nativeClicks++;
   const created=(now+1000)/1000;
   const rows=[{id:'a',source:'desktop',title:'A',started_at:created,message_count:2,pinned:true},{id:'b',source:'desktop',title:'B',started_at:created,message_count:3},{id:'c',source:'desktop',title:'C',started_at:created,message_count:1}];
-  const row=id=>document.querySelector('[data-codex-inbox-row="'+id+'"]'),trigger=id=>row(id)?.querySelector('[data-codex-inbox-snooze]');
+  const row=id=>[...document.querySelectorAll('[data-codex-inbox-row="'+id+'"]')].find(el=>!el.closest('[data-codex-inbox-snoozed-rows]')),trigger=id=>row(id)?.querySelector('[data-codex-inbox-snooze]');
   const popup=()=>document.querySelector('[data-codex-inbox-snooze-popup]');
   const update=(runtime,extra={})=>{const next={scope,sessions:rows,liveSessions:[],liveStatusKnown:true,...extra};const first=next.sessions.filter(r=>!runtime.admission.isEligible(next.scope,r));if(first.length)runtime.update({...next,loading:false,error:null,liveStatusKnown:true,liveSessions:first.map(r=>({session_id:r.id,status:'working'}))});runtime.update(next)};
   let runtime=installCodexInboxRuntime({storage,host,window:scheduler});
@@ -152,7 +152,7 @@ function snoozeFixture() {
     check('clock_control_keyboard_label',trigger('a')?.getAttribute('aria-label')==='Snooze A');
     trigger('a').focus();trigger('a').click();await flush();
     check('popup_accessible_and_unclipped',popup()?.getAttribute('role')==='menu'&&popup().parentElement===document.body&&getComputedStyle(popup()).position==='fixed'&&popup().contains(document.activeElement));
-    check('exact_five_presets_no_custom_or_footer',JSON.stringify([...popup().children].map(el=>el.textContent))===JSON.stringify(['15 min','30 min','1 hour','3 hours','1 day'])&&popup().querySelectorAll('[role="menuitem"]').length===5&&!popup().querySelector('input,select,form,[role="status"]'));
+    check('exact_four_presets_no_custom_or_footer',JSON.stringify([...popup().children].map(el=>el.firstElementChild.textContent))===JSON.stringify(['In 1 hour','In 3 hours','Tomorrow','Next week'])&&popup().querySelectorAll('[role="menuitem"]').length===4&&!popup().querySelector('input,select,form,[role="status"]'));
     const controls=[...popup().querySelectorAll('button')];controls[controls.length-1].focus();controls[controls.length-1].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));check('popup_arrow_wraps',document.activeElement===controls[0]);
     controls[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));check('popup_arrow_navigation',document.activeElement===controls[1]);
     const oldTrigger=trigger('a');
@@ -166,32 +166,32 @@ function snoozeFixture() {
     update(runtime,{sessions:[{...rows[0],title:'Renamed'},rows[1],rows[2]],liveSessions:[{session_id:'b',status:'working'}]});await flush();
     check('row_and_keyboard_identity_stable',row('a')===stableA&&trigger('a')===stableTrigger&&document.activeElement===stableTrigger);
     update(runtime);await flush();
-    for(const [label,duration]of [['1 hour',3600000],['3 hours',10800000],['1 day',86400000]]){trigger('b').click();[...popup().querySelectorAll('button')].find(el=>el.textContent===label).click();await flush();check('preset_'+label,runtime.model.snoozedUntil(scope,'b')===now+duration&&opens.length===0&&drafts.length===0);runtime.cancelSnooze(rows[1]);await flush()}
-    trigger('b').click();const second=popup().querySelectorAll('button')[1];second.focus();second.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await flush();check('30_min_keyboard_commits_immediately',runtime.model.snoozedUntil(scope,'b')===now+1800000&&!popup());runtime.cancelSnooze(rows[1]);await flush();
+    for(const {label,until}of codexInboxSnoozeOptions(now)){trigger('b').click();[...popup().querySelectorAll('button')].find(el=>el.firstElementChild.textContent===label).click();await flush();check('preset_'+label,runtime.model.snoozedUntil(scope,'b')===until&&opens.length===0&&drafts.length===0);runtime.cancelSnooze(rows[1]);await flush()}
+    trigger('b').click();const second=popup().querySelectorAll('button')[1];second.focus();second.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await flush();check('three_hour_keyboard_commits_immediately',runtime.model.snoozedUntil(scope,'b')===now+10800000&&!popup());runtime.cancelSnooze(rows[1]);await flush();
     update(runtime,{liveSessions:[{session_id:'b',status:'working'}]});await flush();check('snooze_and_settle_enabled_while_busy',!trigger('b').disabled&&!row('b').querySelector('[data-codex-inbox-settle]').disabled);trigger('b').click();popup().querySelector('button').click();await flush();check('busy_thread_can_be_snoozed_without_stopping',runtime.model.isSnoozed(scope,'b')&&!row('b'));runtime.cancelSnooze(rows[1]);update(runtime);await flush();
     for(const owner of [other,third,{connectionId:'',profile:'default'}]){host.state.focusedSessionOwner.set(owner);runtime.snooze(rows[0],now+60000);await flush();check('focused_other_owner_'+owner.connectionId+'_'+owner.profile,opens.length===0&&drafts.length===0&&!row('a'));runtime.cancelSnooze(rows[0]);await flush()}
     host.state.focusedSessionOwner.set(scope);runtime.snooze(rows[0],now+60000);await flush();check('focused_matching_owner_navigates',opens.length===1&&opens[0].id==='b');runtime.cancelSnooze(rows[0]);host.state.focusedSessionOwner.set(null);host.state.focusedStoredSessionId.set('a');host.state.activeSessionId.set('a');opens.length=0;await flush();
-    runtime.model.settle(scope,rows[2]);runtime.model.snooze(scope,rows[1],now+3600000);await flush();
-    trigger('a').click();[...popup().querySelectorAll('button')].find(el=>el.textContent==='15 min').click();await flush();
-    check('preset_saves_absolute_deadline',runtime.model.snoozedUntil(scope,'a')===now+900000&&!row('a'));
+    runtime.model.settle(scope,rows[2]);runtime.model.snooze(scope,rows[1],now+7200000);await flush();
+    trigger('a').click();[...popup().querySelectorAll('button')].find(el=>el.firstElementChild.textContent==='In 1 hour').click();await flush();
+    check('preset_saves_absolute_deadline',runtime.model.snoozedUntil(scope,'a')===now+3600000&&!row('a'));
     check('current_snooze_skips_settled_and_snoozed_to_new_chat',opens.length===0&&drafts.length===1&&drafts[0].connectionId===scope.connectionId);
-    check('nearest_deadline_single_timer',timers.size===1&&[...timers.values()][0].delay===900000);
+    check('nearest_deadline_single_timer',timers.size===1&&[...timers.values()][0].delay===3600000);
     const badge=document.getElementById('native-a').querySelector('[data-codex-inbox-owned="badge"]');
-    check('native_snoozed_badge_deadline',badge?.textContent.includes('Snoozed')&&badge.title.includes(new Date(now+900000).toLocaleString())&&badge.getAttribute('aria-label')==='Wake now');
+    check('native_snoozed_badge_deadline',badge?.textContent.includes('Snoozed')&&badge.title.includes(new Date(now+3600000).toLocaleString())&&badge.getAttribute('aria-label')==='Wake now');
     document.getElementById('native-open').click();check('native_read_does_not_cancel',nativeClicks===1&&runtime.model.isSnoozed(scope,'a'));
     const until=runtime.model.snoozedUntil(scope,'a');
     update(runtime,{sessions:[{...rows[0],message_count:9},rows[1],rows[2]],liveSessions:[{session_id:'a',status:'working'}]});runtime.reactivate({scope,type:'input',session_id:'a'});await flush();
     check('busy_and_input_keep_user_deadline',!row('a')&&runtime.model.snoozedUntil(scope,'a')===until);
     let expiryNotices=0;const off=runtime.model.subscribe(()=>expiryNotices++);const nav=opens.length+drafts.length;
-    await advance(900000);check('timer_expiry_returns_busy_without_navigation',!!row('a')&&!row('a').querySelector('[data-codex-inbox-settle]').disabled&&opens.length+drafts.length===nav);
+    await advance(3600000);check('timer_expiry_returns_busy_without_navigation',!!row('a')&&!row('a').querySelector('[data-codex-inbox-settle]').disabled&&opens.length+drafts.length===nav);
     check('expiry_notifies_model_badge_subscribers',expiryNotices===1&&!document.getElementById('native-a').querySelector('[data-codex-inbox-owned="badge"]'));off();
-    check('next_deadline_rearmed',timers.size===1&&[...timers.values()][0].delay===2700000);
+    check('next_deadline_rearmed',timers.size===1&&[...timers.values()][0].delay===3600000);
     runtime.activity({type:'message.complete',...scope,session_id:'a',payload:{status:'complete'}});update(runtime);await flush();runtime.model.cancelSnooze(scope,'b');runtime.model.unsettle(scope,'c');await flush();
     host.state.focusedStoredSessionId.set('a');host.state.activeSessionId.set('a');
     check('runtime_api_rejects_stale_scope',runtime.snooze(rows[0],now+60000,other)===false);check('runtime_snooze_api',runtime.snooze(rows[0],now+60000));await flush();check('runtime_cancel_rejects_stale_scope',runtime.cancelSnooze(rows[0],other)===false&&runtime.model.isSnoozed(scope,'a'));check('current_snooze_opens_next',opens.length===1&&opens[0].id==='b');
     check('runtime_cancel_api',runtime.cancelSnooze(rows[0]));await flush();check('cancel_does_not_navigate',!!row('a')&&opens.length===1);
     trigger('a').click();const tab=new KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});popup().dispatchEvent(tab);await flush();check('tab_dismisses_without_trapping',!popup()&&!tab.defaultPrevented&&!runtime.model.isSnoozed(scope,'a'));
-    trigger('a').click();popup().querySelectorAll('button')[1].click();await flush();check('30_min_click_commits_immediately',runtime.model.snoozedUntil(scope,'a')===now+1800000&&!popup()&&opens.length===1);
+    trigger('a').click();popup().querySelectorAll('button')[1].click();await flush();check('three_hour_click_commits_immediately',runtime.model.snoozedUntil(scope,'a')===now+10800000&&!popup()&&opens.length===1);
     const navBefore=opens.length+drafts.length;document.getElementById('native-a').querySelector('[data-codex-inbox-owned="badge"]').click();await flush();
     check('badge_wake_now_no_navigation',!!row('a')&&opens.length+drafts.length===navBefore&&nativeClicks===1);
     const set=storage.set;storage.set=()=>{throw Error('quota')};trigger('a').click();popup().querySelector('button').click();await flush();
@@ -257,7 +257,7 @@ function correctionsFixture() {
   async function flush(){for(let i=0;i<12;i++){await Promise.resolve();await Promise.resolve();if(!frames.size)return;const todo=[...frames.values()];frames.clear();totalFrames+=todo.length;todo.forEach(fn=>fn())}throw Error('RAF loop')}
   const root=document.querySelector('[data-sessions-mode]'),old={id:'old',source:'desktop',title:'Historical chat',started_at:(now-60000)/1000,message_count:50,is_active:true},fresh={id:'new',source:'desktop',title:'Current work',started_at:(now+1000)/1000,message_count:2};
   let runtime=installCodexInboxRuntime({storage,host,window:scheduler});let rows=[old];const update=(extra={})=>runtime.update({scope,sessions:rows.map(r=>({source:'desktop',...r})),liveSessions:[],liveStatusKnown:true,...extra});
-  const row=id=>document.querySelector('[data-codex-inbox-row="'+id+'"]'),header=()=>document.querySelector('[data-codex-inbox-header]'),popup=()=>document.querySelector('[data-codex-inbox-snooze-popup]');
+  const row=id=>[...document.querySelectorAll('[data-codex-inbox-row="'+id+'"]')].find(el=>!el.closest('[data-codex-inbox-snoozed-rows]')),header=()=>document.querySelector('[data-codex-inbox-header]'),popup=()=>document.querySelector('[data-codex-inbox-snooze-popup]');
   const nativeMarkup='<div data-slot="sidebar-group"><div class="group/section flex shrink-0 items-center justify-between gap-1 pb-1 pt-1.5"><button id="native-header" type="button" class="group/section-label flex w-fit min-w-0 items-center gap-1 bg-transparent text-left leading-none"><span class="flex min-w-0 items-center gap-2 pl-2 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-(--theme-primary)"><span aria-hidden="true" class="dither inline-block size-2 shrink-0 rounded-[1px]"></span><span class="min-w-0 truncate leading-none">Pinned</span></span><i aria-hidden="true" style="font-size:.75rem" class="codicon codicon-chevron-right shrink-0 duration-150 rotate-90 text-(--ui-text-tertiary) opacity-0 transition group-hover/section-label:opacity-100"></i></button><button id="native-add">+</button></div><div data-slot="sidebar-group-content" id="native-content">Pinned rows</div></div>';
   window.correctionsDone=(async()=>{
     update();await flush();check('initial_history_empty',!row('old'));check('header_label_no_count',header().textContent==='Inbox');
@@ -279,13 +279,15 @@ function correctionsFixture() {
     const legacySettle={id:'legacy-settled',source:'desktop',title:'Legacy settled',started_at:(now-60000)/1000,message_count:4},legacySnooze={id:'legacy-snoozed',source:'desktop',title:'Legacy snoozed',started_at:(now-60000)/1000,message_count:4},legacyExpiry={id:'legacy-expiry',source:'desktop',title:'Legacy expiry',started_at:(now-60000)/1000,message_count:4};rows.push(legacySettle,legacySnooze,legacyExpiry);runtime.model.settle(scope,legacySettle);runtime.model.snooze(scope,legacySnooze,now+60000);runtime.model.snooze(scope,legacyExpiry,now+1000);update();await flush();now+=2000;runtime.model.expireSnoozes();await flush();check('legacy_expiry_never_admits_history',!row('legacy-expiry')&&!runtime.admission.isEligible(scope,legacyExpiry));check('ambiguous_legacy_unsettle_does_not_admit',runtime.model.unsettle(scope,legacySettle)===false);check('ambiguous_legacy_wake_does_not_admit',runtime.model.cancelSnooze(scope,legacySnooze)===false);await flush();check('ambiguous_legacy_attention_preserved',!row('legacy-settled')&&!row('legacy-snoozed')&&!row('legacy-expiry')&&runtime.model.isSettled(scope,legacySettle)&&runtime.model.isSnoozed(scope,legacySnooze));
     const failed={id:'failed-work',source:'desktop',title:'Working during storage failure',started_at:(now-60000)/1000,message_count:2};rows.push(failed);const savedSet=storage.set;storage.set=(key,value)=>{if(key!=='inbox-admission-v2')savedSet(key,value)};update({liveSessions:[{session_id:'failed-work',status:'working'}]});await flush();check('silent_admission_failure_excludes_and_reports',!row('failed-work')&&document.querySelector('[data-codex-inbox-owned="island"]').textContent.includes('admission could not be saved'));storage.set=savedSet;update();await flush();check('failed_work_recovers_after_completion',!!row('failed-work')&&runtime.admission.error===null);
     const never={connectionId:'never-on',profile:'default'};runtime.setMode(false);update({scope:never});await flush();check('off_scope_has_no_activation_cutoff',runtime.admission.cutoff(never)===null);update();runtime.setMode(true);await flush();
-    // The row helper fades controls over 100ms; inspect settled browser paint.
-    document.getElementById('outside').focus();await new Promise(resolve=>setTimeout(resolve,140));check('clock_hidden_without_row_hover_or_focus',getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity==='0');row('new').querySelector('[data-codex-inbox-open]').focus();await new Promise(resolve=>setTimeout(resolve,140));check('clock_exposed_by_keyboard_row_focus',getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity==='1');
-    row('new').querySelector('[data-codex-inbox-snooze]').click();await flush();check('menu_exact_five_no_custom',popup().getAttribute('role')==='menu'&&JSON.stringify([...popup().children].map(el=>[el.getAttribute('role'),el.textContent]))===JSON.stringify(['15 min','30 min','1 hour','3 hours','1 day'].map(text=>['menuitem',text]))&&!popup().querySelector('input,select,form,[role="status"]'));
-    const items=[...popup().querySelectorAll('button')];items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true,cancelable:true}));check('menu_end_last',document.activeElement===items[4]);items[4].dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true}));check('menu_home_first',document.activeElement===items[0]);items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));check('menu_arrow_second',document.activeElement===items[1]);
+    // Serialize the same bounded frame wait used by the CDP-side assertions.
+    ${waitForRendered.toString()}
+    const waitPaint=opacity=>waitForRendered({evaluate:expression=>eval(expression)},"getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity==='"+opacity+"'",'Clock did not reach exact opacity '+opacity);
+    document.getElementById('outside').focus();await waitPaint('0');check('clock_hidden_without_row_hover_or_focus',getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity==='0');row('new').querySelector('[data-codex-inbox-open]').focus();await waitPaint('1');check('clock_exposed_by_keyboard_row_focus',getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity==='1');
+    row('new').querySelector('[data-codex-inbox-snooze]').click();await flush();check('menu_exact_four_no_custom',popup().getAttribute('role')==='menu'&&JSON.stringify([...popup().children].map(el=>[el.getAttribute('role'),el.firstElementChild.textContent]))===JSON.stringify(['In 1 hour','In 3 hours','Tomorrow','Next week'].map(text=>['menuitem',text]))&&!popup().querySelector('input,select,form,[role="status"]'));
+    const items=[...popup().querySelectorAll('button')];items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true,cancelable:true}));check('menu_end_last',document.activeElement===items[3]);items[3].dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true}));check('menu_home_first',document.activeElement===items[0]);items[0].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));check('menu_arrow_second',document.activeElement===items[1]);
     let escapes=0;const observeEscape=event=>{if(event.key==='Escape'&&!event.defaultPrevented)escapes++};document.addEventListener('keydown',observeEscape);popup().dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));check('escape_preserves_native_event',!popup()&&escapes===1);document.removeEventListener('keydown',observeEscape);
     row('new').querySelector('[data-codex-inbox-snooze]').click();let outsideClicks=0;document.getElementById('outside').onpointerdown=event=>{if(!event.defaultPrevented)outsideClicks++};document.getElementById('outside').dispatchEvent(new MouseEvent('pointerdown',{bubbles:true,cancelable:true}));check('outside_preserves_native_event',!popup()&&outsideClicks===1);
-    row('new').querySelector('[data-codex-inbox-snooze]').click();[...popup().children].find(el=>el.textContent==='30 min')?.click();await flush();check('30_min_immediate_commit_close',runtime.model.snoozedUntil(scope,'new')===now+1800000&&!popup());runtime.cancelSnooze(fresh);await flush();if(popup())popup().dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    row('new').querySelector('[data-codex-inbox-snooze]').click();[...popup().children].find(el=>el.firstElementChild.textContent==='In 3 hours')?.click();await flush();check('three_hour_immediate_commit_close',runtime.model.snoozedUntil(scope,'new')===now+10800000&&!popup());runtime.cancelSnooze(fresh);await flush();if(popup())popup().dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
     const themes=[['light','#fcfcfc','#141414','#d8d8d8','#e1e9f0'],['dark','#242a30','#e5e5e5','#53616a','#43545e'],['Solarized','#002b36','#93a1a1','#586e75','#073642'],['Glass','rgba(244,247,250,.78)','#182334','rgba(74,89,101,.4)','rgba(160,185,202,.45)']];
     for(const [name,bg,fg,border,active]of themes){for(const [key,value]of Object.entries({'--ui-bg-elevated':bg,'--ui-text-primary':fg,'--ui-stroke-secondary':border,'--ui-control-active-background':active}))document.documentElement.style.setProperty(key,value);row('new').querySelector('[data-codex-inbox-snooze]').click();const paint=getComputedStyle(popup()),ref=getComputedStyle(document.getElementById('reference')),item=getComputedStyle(document.activeElement),rowRef=getComputedStyle(document.getElementById('reference-row'));check('native_paint_'+name,paint.backgroundColor===ref.backgroundColor&&paint.color===ref.color&&paint.borderTopColor===ref.borderTopColor&&item.backgroundColor===rowRef.backgroundColor&&paint.fontSize==='12px'&&paint.borderRadius==='8px'&&paint.padding==='4px'&&item.padding==='4px 8px');if(failures.includes('native_paint_'+name))throw Error(name+' paint mismatch '+JSON.stringify({paint:[paint.backgroundColor,paint.color,paint.borderTopColor,paint.fontSize,paint.borderRadius,paint.padding],reference:[ref.backgroundColor,ref.color,ref.borderTopColor],item:[item.backgroundColor,item.padding,document.activeElement.outerHTML],rowRef:rowRef.backgroundColor,focus:document.hasFocus()}));popup().dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));}
     row('new').querySelector('[data-codex-inbox-snooze]').click();document.title=btoa(JSON.stringify({results,failures,totalFrames}));
@@ -321,23 +323,28 @@ test('real Chrome input: heading/menu keyboard ownership, hover-only clock and n
     await key('Enter', 'Enter', 13);
     assert.equal(await browser.evaluate("document.getElementById('native-content').hidden"), !nativeBefore, 'native keyboard action remains native');
     await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 780, y: 540 });
-    await browser.evaluate("document.getElementById('outside').focus();new Promise(resolve=>setTimeout(resolve,140))");
+    const waitPaint = opacity => waitForRendered(browser, `getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity===${JSON.stringify(opacity)}`, `Clock did not reach exact opacity ${opacity}`);
+    await browser.evaluate("document.getElementById('outside').focus()");
+    await waitPaint('0');
     assert.equal(await browser.evaluate("getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity"), '0');
     const box = await browser.evaluate("(()=>{const r=row('new').getBoundingClientRect();return {x:r.left+20,y:r.top+r.height/2}})()");
     await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', ...box });
-    await browser.evaluate('new Promise(resolve=>setTimeout(resolve,140))');
+    await waitPaint('1');
     assert.equal(await browser.evaluate("getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity"), '1', 'real pointer hover exposes the clock');
     await browser.call('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 780, y: 540 });
-    await browser.evaluate("row('new').querySelector('[data-codex-inbox-snooze]').focus();new Promise(resolve=>setTimeout(resolve,140))");
+    await browser.evaluate("row('new').querySelector('[data-codex-inbox-open]').focus()");
+    await key('Tab', 'Tab', 9);
+    assert.equal(await browser.evaluate("document.hasFocus()&&document.activeElement===row('new').querySelector('[data-codex-inbox-snooze]')&&document.activeElement.matches(':focus-visible')"), true, 'trusted Tab reaches the visible clock');
+    await waitPaint('1');
     assert.equal(await browser.evaluate("getComputedStyle(row('new').querySelector('[data-codex-inbox-snooze]')).opacity"), '1', 'keyboard focus exposes the clock');
     await key('Enter', 'Enter', 13);
-    assert.equal(await browser.evaluate("document.activeElement.textContent"), '15 min');
-    await key('End', 'End', 35); assert.equal(await browser.evaluate('document.activeElement.textContent'), '1 day');
-    await key('Home', 'Home', 36); assert.equal(await browser.evaluate('document.activeElement.textContent'), '15 min');
-    await key('ArrowDown', 'ArrowDown', 40); assert.equal(await browser.evaluate('document.activeElement.textContent'), '30 min');
+    assert.equal(await browser.evaluate("document.activeElement.firstElementChild.textContent"), 'In 1 hour');
+    await key('End', 'End', 35); assert.equal(await browser.evaluate('document.activeElement.firstElementChild.textContent'), 'Next week');
+    await key('Home', 'Home', 36); assert.equal(await browser.evaluate('document.activeElement.firstElementChild.textContent'), 'In 1 hour');
+    await key('ArrowDown', 'ArrowDown', 40); assert.equal(await browser.evaluate('document.activeElement.firstElementChild.textContent'), 'In 3 hours');
     const before = await browser.evaluate('Date.now()');
     await key('Enter', 'Enter', 13);
-    assert.equal(await browser.evaluate("runtime.model.snoozedUntil(scope,'new')"), before + 1800000);
+    assert.equal(await browser.evaluate("runtime.model.snoozedUntil(scope,'new')"), before + 10800000);
     assert.equal(await browser.evaluate('!!popup()'), false);
     await browser.evaluate("runtime.cancelSnooze(fresh);flush()");
     await browser.evaluate("row('new').querySelector('[data-codex-inbox-snooze]').focus()");
@@ -356,7 +363,7 @@ test('real Chrome input: heading/menu keyboard ownership, hover-only clock and n
   } finally { browser.close(); }
 });
 
-test('real Chrome DOM: corrections exclude history, clone native heading and paint a five-item native menu', async () => {
+test('real Chrome DOM: corrections exclude history, clone native heading and paint a four-item native menu', async () => {
   const browser = await chromium();
   try {
     await browser.call('Emulation.setFocusEmulationEnabled', { enabled: true });

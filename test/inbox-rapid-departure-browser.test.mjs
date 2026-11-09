@@ -24,8 +24,9 @@ test('shipping Inbox paints a departed new thread without a return visit', async
     } catch { response.writeHead(404).end() }
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
-  const browser = await chromium()
+  let browser
   try {
+    browser = await chromium()
     await browser.call('Page.navigate', { url: `http://127.0.0.1:${server.address().port}/` })
     await browser.evaluate(`(async () => {
       window.process={env:{NODE_ENV:'production'}};
@@ -93,8 +94,13 @@ test('shipping Inbox paints a departed new thread without a return visit', async
       assert.deepEqual(await browser.evaluate('errors'), [])
     }
   } finally {
-    await browser.evaluate('disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(() => {})
-    browser.close()
-    await new Promise(resolve => server.close(resolve))
+    try {
+      if (browser) {
+        await browser.evaluate('disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(() => {})
+        browser.close()
+      }
+    } finally {
+      await new Promise(resolve => server.close(resolve))
+    }
   }
 })

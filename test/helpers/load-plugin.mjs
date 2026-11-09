@@ -26,6 +26,8 @@ export async function loadPluginInternals(names = [], overrides = {}) {
     useRef: () => ({ current: null }),
     useQuery: () => ({}),
     AbortController,
+    setTimeout,
+    clearTimeout,
     THEMES_AREA: 'themes',
     TITLEBAR_AREAS: { center: 'titleBar.center', left: 'titleBar.left', right: 'titleBar.right' },
     PALETTE_AREA: 'palette',

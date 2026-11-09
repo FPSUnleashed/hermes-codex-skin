@@ -8,7 +8,7 @@ import { loadPluginInternals } from './helpers/load-plugin.mjs'
 
 // Compile and import the complete native module, not a copied constructor.
 // No requests are sent. Electron invoke serialization is modeled, not launched.
-const root = process.env.CODEX_INBOX_QUERY_CORE_ROOT
+const root = process.env.HERMES_DESKTOP_SOURCE_ROOT || process.env.CODEX_INBOX_QUERY_CORE_ROOT
 const native = root ? await (async () => {
   const require = createRequire(pathToFileURL(resolve(root, 'package.json')))
   const ts = require('typescript')
@@ -18,7 +18,7 @@ const native = root ? await (async () => {
   })
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 })() : null
-const options = { skip: native ? false : 'Set CODEX_INBOX_QUERY_CORE_ROOT to a native Hermes source/package root' }
+const options = { skip: native ? false : 'Set HERMES_DESKTOP_SOURCE_ROOT to a native Hermes source/package root' }
 const scope = { connectionId: 'source-A', profile: 'default' }
 const foreign = { connectionId: 'source-A', profile: 'other' }
 const atom = value => ({ get: () => value, subscribe: () => () => {} })

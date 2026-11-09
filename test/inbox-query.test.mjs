@@ -114,8 +114,11 @@ test('rejects incomplete metadata and a result delivered after an owner switch',
   const broken = await fixture(async () => ({ sessions: [] }))
   await assert.rejects(broken.readCodexInboxPage(scope, 1), /incomplete/)
   let finish
-  const shifted = await fixture(() => new Promise(resolve => { finish = resolve }))
+  let metadataStarted
+  const started = new Promise(resolve => { metadataStarted = resolve })
+  const shifted = await fixture(() => new Promise(resolve => { finish = resolve; metadataStarted() }))
   const pending = shifted.readCodexInboxPage(scope, 1)
+  await started
   shifted.host.state.profile = atom('other')
   finish({ total: 1, sessions: [{ id: 'same' }] })
   await assert.rejects(pending, /scope changed/)

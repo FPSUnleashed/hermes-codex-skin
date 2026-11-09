@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { chromium } from './helpers/chromium.mjs';
+import { chromium, waitForRendered } from './helpers/chromium.mjs';
 
 const source = (await Promise.all(['inbox-row-ui.js', 'inbox-runtime.js'].map(file =>
   readFile(new URL('../src/' + file, import.meta.url), 'utf8')))).join('\n');
@@ -62,6 +62,9 @@ for (const theme of ['light', 'dark', 'solarized', 'solarized-dark']) test(`Sett
     {loading:false,error:'metadata failed'}
   ]) {
     await browser.evaluate(`update({loading:false,error:null,liveStatusKnown:true,liveSessions:[],...${JSON.stringify(extra)}});flush()`);
+    // Focus starts a CSS transition; timer expiry need not present its last frame.
+    await browser.evaluate(`document.querySelector('[data-codex-inbox-working-toggle][aria-expanded="false"]:not([hidden])')?.click();flush().then(()=>row('one').querySelector('[data-codex-inbox-open]').focus())`);
+    await waitForRendered(browser, `!check('one').disabled&&getComputedStyle(check('one')).opacity==='1'`, 'focused Settle opacity did not settle');
     assert.equal(await browser.evaluate('!check("one").disabled&&getComputedStyle(check("one")).opacity==="1"'), true, JSON.stringify(extra));
     await browser.evaluate('check("one").click();flush()');
     assert.equal(await browser.evaluate('!row("one")&&runtime.model.isManualSettled(scope,rows[0])&&!!undo("one")'), true);

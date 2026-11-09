@@ -5,9 +5,9 @@ import test from 'node:test'
 const moduleUrl = text => 'data:text/javascript;base64,' + Buffer.from(text).toString('base64')
 
 test('runtime ESM import registers the current plugin without titlebar autohide', async () => {
-  const source = await readFile(new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
+  const source = await readFile(process.env.CODEX_ANALYTICS_TEST_BUNDLE || new URL('../codex-chat-look/plugin.js', import.meta.url), 'utf8')
   const shims = {
-    '@hermes/plugin-sdk': moduleUrl("export const queryClient={};export const useQuery=()=>({}),useValue=atom=>atom?.get?.();export const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'titleBar.center',left:'titleBar.left',right:'titleBar.right'};"),
+    '@hermes/plugin-sdk': moduleUrl("export const queryClient={};export const profileColor=()=>null,profileColorSoft=()=>null;export const useQuery=()=>({}),useValue=atom=>atom?.get?.();export const host={state:{activeSessionId:{get:()=>null},profile:{get:()=> 'default'}}},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'titleBar.center',left:'titleBar.left',right:'titleBar.right'};"),
     react: moduleUrl('export const useEffect=()=>{},useRef=()=>({current:null}),useState=value=>[typeof value==="function"?value():value,()=>{}];'),
     'react/jsx-runtime': moduleUrl('export const jsx=()=>null;')
   }
@@ -24,6 +24,9 @@ test('runtime ESM import registers the current plugin without titlebar autohide'
     register: entry => registrations.push(entry)
   })
   assert.ok(registrations.some(entry => entry.id === 'update-runtime'))
+  const analytics = registrations.find(entry => entry.id === 'share-usage-statistics')
+  assert.ok(analytics, 'the actual ESM register must expose the explicit opt-in control')
+  assert.equal(analytics.data.detail(), 'Off')
   assert.ok(registrations.every(entry => !entry.area.startsWith('titleBar.')))
   assert.ok(!registrations.some(entry => entry.id === 'toggle-titlebar-autohide'))
 })

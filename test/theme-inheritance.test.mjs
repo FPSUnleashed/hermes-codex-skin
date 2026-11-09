@@ -13,10 +13,8 @@ test('the optional Codex palette remains bundled in light and dark', () => {
   assert.ok(CODEX_THEME.darkColors.background)
 })
 
-test('the skin fixes typography independently from the selected Hermes theme', () => {
-  assert.match(CSS, /--dt-font-sans:\s*[^;]+!important;/)
-  assert.match(CSS, /--font-sans:\s*[^;]+!important;/)
-  assert.ok(CSS.includes(`font-family: ${SYSTEM_FONT} !important`))
+test('the optional Codex palette retains its existing native fallback font', () => {
+  assert.equal(CODEX_THEME.typography.fontSans, SYSTEM_FONT)
 })
 
 test('layout CSS consumes theme variables instead of embedding a palette', () => {
@@ -52,17 +50,17 @@ test('theme changes stay live because every plugin color resolves through CSS va
   assert.deepEqual([...themeOverrides], ['codex-chat'])
 })
 
-test('composer task status keeps the active theme with reduced contrast', () => {
+test('composer task status derives its theme blend before adjusting lightness', () => {
   assert.equal([...CSS.matchAll(/--codex-color-status-panel\s*:/g)].length, 1)
   assert.match(
     CSS,
-    /--codex-color-status-panel:\s*color-mix\([\s\S]{0,120}var\(--ui-bg-tertiary, var\(--codex-color-card\)\) 32\.5%,[\s\S]{0,80}var\(--codex-color-chat\)/
+    /--codex-status-base:\s*color-mix\(\s*in srgb,[\s\S]{0,120}var\(--codex-composer-fill\) 50%,[\s\S]{0,80}var\(--codex-color-chat\)/
   )
   assert.doesNotMatch(CSS, /data-hermes-theme=['"]codex-chat['"][^{]*\{[^}]*--codex-color-status-panel/)
 })
 
 test('composer keeps a uniform real border and a downward shadow without rings', () => {
-  const start = CSS.indexOf("[data-slot='composer-surface'] {")
+  const start = CSS.indexOf("html[data-codex-chat-look='true'] [data-slot='composer-surface'] {")
   assert.notEqual(start, -1)
   const block = CSS.slice(start, CSS.indexOf('\n}', start) + 2)
   assert.match(block, /border: 0\.5px solid var\(--codex-color-border-subtle\) !important/)

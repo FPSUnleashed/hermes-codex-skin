@@ -16,16 +16,61 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: plugin
+        shell: bash
+    env:
+      HERMES_DESKTOP_SOURCE_ROOT: ${{ github.workspace }}/native/hermes
+      HERMES_THEME_SOURCE_ROOT: ${{ github.workspace }}/native/hermes
+      SIDEBAR_NATIVE_ROOT: ${{ github.workspace }}/native/hermes
+      COMPLETE_MESSAGES_NATIVE_ROOT: ${{ github.workspace }}/native/hermes
+      SIDEBAR_TABLER_ENTRY: ${{ github.workspace }}/native/hermes/node_modules/@tabler/icons-react/dist/esm/tabler-icons-react.mjs
+      T3_THEME_SOURCE_ROOT: ${{ github.workspace }}/native/t3
+      T3_REFERENCE_SOURCE_ROOT: ${{ github.workspace }}/native/t3
+      # Qualified test-only inputs with full notices; not a renderer distribution.
+      # The legacy renderer env role supplies only six verbatim class strings.
+      HERMES_INSTALLED_ROW_CSS: ${{ github.workspace }}/plugin/test/fixtures/ci-historical/native-row.css
+      HERMES_INSTALLED_RENDERER_JS: ${{ github.workspace }}/plugin/test/fixtures/ci-historical/renderer-class-projection.js
+      BACKGROUND_BASELINE_BUNDLE: ${{ github.workspace }}/plugin/test/fixtures/ci-historical/baseline/codex-chat-look/plugin.js
+      CODEX_WIDTH_PRE_REPAIR_ROOT: ${{ github.workspace }}/plugin/test/fixtures/ci-historical/baseline
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: plugin
+          persist-credentials: false
+
+      - name: Check out public native source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NousResearch/hermes-agent
+          ref: e5ea5fd9ccdf2913c0b21b24eb3d22b321d2e2a6
+          path: native/hermes
+          persist-credentials: false
+
+      - name: Check out public T3 reference source
+        # This upstream tree has an unmapped gitlink. A direct public fetch
+        # avoids the checkout action's recursive credential-cleanup failure.
+        run: |
+          set -euo pipefail
+          git init "$T3_THEME_SOURCE_ROOT"
+          git -C "$T3_THEME_SOURCE_ROOT" remote add origin https://github.com/pingdotgg/t3code.git
+          git -C "$T3_THEME_SOURCE_ROOT" fetch --depth=1 origin 6d450a4284852af137b2f3407fddd89eb76e7644
+          git -C "$T3_THEME_SOURCE_ROOT" checkout --detach FETCH_HEAD
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 26.13.0
+
+      - name: Authenticate source and historical input bytes
+        # Fail closed on fixture, provenance, consumer or source drift.
+        run: |
+          test "$(npm --version)" = 11.20.0
+          node scripts/verify-ci-inputs.mjs --checkouts
 
       - name: Check plugin syntax
         run: node --check codex-chat-look/plugin.js
@@ -33,9 +78,41 @@ jobs:
       - name: Install pinned test dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      - name: Install separate locked native dependency closure
+        working-directory: native/hermes
+        run: npm ci --ignore-scripts --no-audit --no-fund --workspace apps/desktop --include-workspace-root
+
+      - name: Authenticate installed package identities and unchanged locks
+        # CODEX_INBOX_QUERY_CORE_ROOT stays unset: historical 5.101.2 is local
+        # to the plugin; native query-core remains 5.104.1 from its own lock.
+        run: node scripts/verify-ci-inputs.mjs --checkouts --installed
+
+      - name: Prepare owned Linux browser prerequisites
+        run: |
+          set -euo pipefail
+          command -v python3
+          # The hosted Ubuntu image supplies official Google Chrome. Fail closed
+          # if it changes rather than selecting an unverified setup action.
+          test -x /usr/bin/google-chrome
+          /usr/bin/google-chrome --version
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y fonts-dejavu-core
+          test -r /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          root=$(mktemp -d "$RUNNER_TEMP/codex-ci.XXXXXXXX")
+          chmod 700 "$root"
+          mkdir -m 700 "$root/scratch" "$root/evidence"
+          printf '%s\n' "TMPDIR=$root/scratch" "CODEX_NATIVE_SCRATCH_ROOT=$root/scratch" "CODEX_NATIVE_EVIDENCE_ROOT=$root/evidence" "CHROME_BIN=/usr/bin/google-chrome" >> "$GITHUB_ENV"
+
       - name: Run regression tests
-        # Browser-backed files each launch Chrome; avoid startup contention.
-        run: node --test --test-concurrency=1 test/*.test.mjs
+        env:
+          CODEX_V9_BROWSER_AUTHORIZED: '1'
+        # Preserve all 208 files and assertions. The existing Linux subreaper
+        # owns profiles/descendants and retains its admission/process guards.
+        run: |
+          set -euo pipefail
+          python3 test/chromium_resource_command_test.py
+          python3 test/helpers/chromium-suite.py --chrome "$CHROME_BIN" --receipt "$CODEX_NATIVE_EVIDENCE_ROOT/chromium-suite.json" --timeout 2400 --max-chrome-launches 2048 -- node --test --test-reporter=tap --test-concurrency=1 test/*.test.mjs | tee "$CODEX_NATIVE_EVIDENCE_ROOT/regression.tap"
+          node scripts/check-ci-results.mjs "$CODEX_NATIVE_EVIDENCE_ROOT/regression.tap" "$CODEX_NATIVE_EVIDENCE_ROOT/chromium-suite.json"
 
       - name: Verify published checksum
         run: sha256sum -c CHECKSUMS.sha256

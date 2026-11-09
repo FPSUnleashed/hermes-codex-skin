@@ -1,0 +1,136 @@
+--- a/src/inbox-row-ui.js
++++ b/src/inbox-row-ui.js
+@@ -126,43 +126,60 @@
+   // callers opting in get a Settle check rather than the generic options menu.
+   let settleAction = false;
+   let cancelSnoozeAction = false;
++  let snoozeDisabled = false;
+   let menuTitle = null;
++  let menuLabel = null;
++  const property = (node, name, value) => { if (node[name] !== value) node[name] = value; };
++  const attribute = (node, name, value) => {
++    if (value === null) { if (node.hasAttribute(name)) node.removeAttribute(name); }
++    else if (node.getAttribute(name) !== value) node.setAttribute(name, value);
++  };
++  // Normalize only the consumed CSS properties, not the metadata object. The
++  // detached declaration handles hex/rgb serialization without live writes and
++  // still lets an identical update repair actual inline-style drift.
++  const normalizedStyle = doc.createElement('span').style;
++  const appearanceStyle = (name, value) => {
++    normalizedStyle[name] = value;
++    property(profileGlyph.style, name, normalizedStyle[name]);
++  };
+   const workStates = new Set(['needs-input', 'working', 'completed', 'reading', 'unknown', 'idle']);
+   const update = (state = {}) => {
+     if ('foreignProfile' in state) {
+       const appearance = state.profileAppearance;
+-      profileSlot.hidden = !state.foreignProfile || !appearance;
++      property(profileSlot, 'hidden', !state.foreignProfile || !appearance);
+       if (!profileSlot.hidden) {
+-        profileSlot.title = appearance.label;
+-        profileGlyph.style.color = appearance.name === 'default' ? 'var(--ui-text-quaternary)' : appearance.color || '';
+-        profileGlyph.style.background = appearance.name === 'default' ? 'transparent' : appearance.background || 'color-mix(in srgb,var(--ui-text-quaternary) 22%,transparent)';
++        property(profileSlot, 'title', String(appearance.label));
++        appearanceStyle('color', appearance.name === 'default' ? 'var(--ui-text-quaternary)' : appearance.color || '');
++        appearanceStyle('background', appearance.name === 'default' ? 'transparent' : appearance.background || 'color-mix(in srgb,var(--ui-text-quaternary) 22%,transparent)');
+         if (appearance.name === 'default') {
+           if (!profileGlyph.querySelector('.codicon-home')) { const home = make('i', 'codicon codicon-home'); home.setAttribute('aria-hidden', 'true'); profileGlyph.replaceChildren(home); }
+         } else if (profileGlyph.textContent !== appearance.letter) profileGlyph.textContent = appearance.letter;
+       }
+       if (state.foreignProfile && !profileSlot.isConnected) actions.append(profileSlot);
+     }
+-    if ('title' in state) { text.textContent = String(state.title ?? ''); go.title = text.textContent; }
++    if ('title' in state) { property(text, 'textContent', String(state.title ?? '')); property(go, 'title', text.textContent); }
+     if ('selected' in state) {
+-      row.classList.toggle('bg-(--ui-row-active-background)', Boolean(state.selected));
+-      row.setAttribute('data-active', String(Boolean(state.selected)));
++      const selected = Boolean(state.selected);
++      if (row.classList.contains('bg-(--ui-row-active-background)') !== selected) row.classList.toggle('bg-(--ui-row-active-background)', selected);
++      attribute(row, 'data-active', String(selected));
+       // The shipped skin paints aria-current; keep it on the shell, not the
+       // transparent body, so selection does not create a second inset band.
+-      if (state.selected) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current');
+-    }
+-    if ('disabled' in state) { go.disabled = Boolean(state.disabled); clock.disabled = Boolean(state.disabled); }
++      attribute(row, 'aria-current', selected ? 'true' : null);
++    }
++    if ('disabled' in state) property(go, 'disabled', Boolean(state.disabled));
++    if ('snoozeDisabled' in state) snoozeDisabled = Boolean(state.snoozeDisabled);
+     if ('menuDisabled' in state || 'disabled' in state) {
+-      if ('menuDisabled' in state) menu.dataset.menuDisabled = String(Boolean(state.menuDisabled));
+-      menu.disabled = go.disabled || menu.dataset.menuDisabled === 'true';
++      if ('menuDisabled' in state) attribute(menu, 'data-menu-disabled', String(Boolean(state.menuDisabled)));
++      property(menu, 'disabled', go.disabled || menu.dataset.menuDisabled === 'true');
+     }
+     if ('workState' in state) {
+       // Rendering consumes an explicit state; it never guesses completion from
+       // inactivity, selection or a missing runtime slice.
+-      row.setAttribute('data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
++      attribute(row, 'data-work-state', workStates.has(state.workState) ? state.workState : 'unknown');
+       if (state.workState === 'needs-input') {
+-        workDot.setAttribute('role', 'status'); workDot.setAttribute('aria-label', 'Needs input'); workDot.title = 'Waiting for your answer';
++        attribute(workDot, 'role', 'status'); attribute(workDot, 'aria-label', 'Needs input'); property(workDot, 'title', 'Waiting for your answer');
+       } else {
+-        workDot.removeAttribute('role'); workDot.removeAttribute('aria-label'); workDot.removeAttribute('title');
++        attribute(workDot, 'role', null); attribute(workDot, 'aria-label', null); attribute(workDot, 'title', null);
+       }
+     }
+     if ('settleAction' in state || 'cancelSnoozeAction' in state) {
+@@ -173,25 +190,26 @@
+       // keyed updates cannot detach controls or disturb their keyboard focus.
+       const firstAction = settleAction || cancelSnoozeAction ? clock : menu;
+       if (actions.firstElementChild !== firstAction) actions.insertBefore(firstAction, actions.firstChild);
+-      menu.toggleAttribute('data-codex-inbox-settle', settleAction && !cancelSnoozeAction);
+-      menu.toggleAttribute('data-codex-inbox-cancel-snooze', cancelSnoozeAction);
++      attribute(menu, 'data-codex-inbox-settle', settleAction && !cancelSnoozeAction ? '' : null);
++      attribute(menu, 'data-codex-inbox-cancel-snooze', cancelSnoozeAction ? '' : null);
+       // Keep the clock's slot, but only restore is actionable during Snooze.
+-      clock.inert = cancelSnoozeAction;
+-      clock.tabIndex = cancelSnoozeAction ? -1 : 0;
+-      if (cancelSnoozeAction) clock.setAttribute('aria-hidden', 'true'); else clock.removeAttribute('aria-hidden');
+-      menu.firstChild.firstChild.setAttribute('d', cancelSnoozeAction ? 'M8 13V3M3.5 7.5 8 3l4.5 4.5' : settleAction ? 'M3.5 8.5l3 3 6-7' : 'M3 8h.01M8 8h.01M13 8h.01');
+-      menu.firstChild.setAttribute('stroke-width', settleAction || cancelSnoozeAction ? '1.25' : '2.5');
++      property(clock, 'inert', cancelSnoozeAction);
++      property(clock, 'tabIndex', cancelSnoozeAction ? -1 : 0);
++      attribute(clock, 'aria-hidden', cancelSnoozeAction ? 'true' : null);
++      attribute(menu.firstChild.firstChild, 'd', cancelSnoozeAction ? 'M8 13V3M3.5 7.5 8 3l4.5 4.5' : settleAction ? 'M3.5 8.5l3 3 6-7' : 'M3 8h.01M8 8h.01M13 8h.01');
++      attribute(menu.firstChild, 'stroke-width', settleAction || cancelSnoozeAction ? '1.25' : '2.5');
+       if (settleAction || cancelSnoozeAction) {
+-        menu.removeAttribute('aria-haspopup'); menu.removeAttribute('aria-expanded');
++        attribute(menu, 'aria-haspopup', null); attribute(menu, 'aria-expanded', null);
+       } else {
+-        menu.setAttribute('aria-haspopup', 'menu'); menu.setAttribute('aria-expanded', 'false');
++        attribute(menu, 'aria-haspopup', 'menu'); attribute(menu, 'aria-expanded', 'false');
+       }
+     }
+-    clock.disabled = go.disabled || cancelSnoozeAction;
++    property(clock, 'disabled', go.disabled || cancelSnoozeAction || snoozeDisabled);
+     if ('menuTitle' in state) menuTitle = state.menuTitle == null ? null : String(state.menuTitle);
+-    if ('menuTitle' in state || 'settleAction' in state || 'cancelSnoozeAction' in state) {
++    if ('menuLabel' in state) menuLabel = state.menuLabel == null ? null : String(state.menuLabel);
++    if ('menuTitle' in state || 'menuLabel' in state || 'settleAction' in state || 'cancelSnoozeAction' in state) {
+       const name = menuTitle ?? (cancelSnoozeAction ? 'Cancel snooze' : settleAction ? 'Settle' : 'Inbox row options');
+-      menu.title = name; menu.setAttribute('aria-label', name);
++      property(menu, 'title', name); attribute(menu, 'aria-label', menuLabel ?? name);
+     }
+   };
+   update({ title: '', selected: false, disabled: false, menuDisabled: false, workState: 'idle' });
+--- a/src/inbox-runtime.js
++++ b/src/inbox-runtime.js
+@@ -1219,12 +1219,14 @@
+           title, selected: withSession(session, () => active(session)), settleAction: true, cancelSnoozeAction: snoozedKeys.has(key), workState: workStates.get(key),
+           profileAppearance: session._codexInboxAppearance,
+           foreignProfile: !!ownerSnapshots && (binding.scope.connectionId !== host.state?.connectionId?.get?.() || binding.scope.profile !== host.state?.profile?.get?.()),
++          snoozeDisabled: !!session._codexInboxPresentationOnly || snoozedKeys.has(key) || !!withSession(session, () => input.loading || input.error || input.routeAvailable === false),
+           menuDisabled: !!session._codexInboxPresentationOnly || !!ownerSnapshots && !!withSession(session, () => input.routeAvailable === false || !snoozedKeys.has(key) && (input.loading || input.error || input.liveStatusKnown !== true || safety(session) === 'unknown')),
++          menuLabel: `${snoozedKeys.has(key) ? 'Cancel snooze for' : 'Settle'} ${title}`,
+           menuTitle: snoozedKeys.has(key) ? 'Cancel snooze. Return to Inbox or Working. Work continues.' : 'Remove from Inbox only. Work continues.'
+         });
+-        setAttr(action, 'aria-label', `${snoozedKeys.has(key) ? 'Cancel snooze for' : 'Settle'} ${title}`); setAttr(clock, 'aria-label', `Snooze ${title}`);
++        setAttr(clock, 'aria-label', `Snooze ${title}`);
+         // Opening stays enabled as before; Snooze does not depend on work status.
+-        clock.disabled = !!session._codexInboxPresentationOnly || snoozedKeys.has(key) || !!withSession(session, () => input.loading || input.error || input.routeAvailable === false); clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
++        if (clock.title !== 'Hide from Inbox for a chosen duration. Work continues.') clock.title = 'Hide from Inbox for a chosen duration. Work continues.';
+         if (snoozedKeys.has(key)) {
+           if (snoozedCursor === undefined) snoozedCursor = snoozedRows.firstChild;
+           place(row, snoozedRows, snoozedCursor); snoozedCursor = row.nextSibling;

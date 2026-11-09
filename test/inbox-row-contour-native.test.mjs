@@ -46,7 +46,18 @@ for (const [mode, radius] of [['light', 2], ['dark', 2], ['light', 0], ['dark', 
           await writeFile(`${process.env.CODEX_INBOX_ROW_EVIDENCE}/contour-${mode}-${time}.png`, Buffer.from(data, 'base64'))
         }
       }
-      const settleStates = await browser.evaluate(`Object.fromEntries(Object.entries(rows).map(([state,ui])=>{const s=getComputedStyle(ui.menu),r=ui.menu.getBoundingClientRect();return [state,{disabled:ui.menu.disabled,opacity:s.opacity,visibility:s.visibility,slot:[r.width,r.height]}]}))`)
+      // Actions are hover-only. Sample each state under real pointer hover,
+      // rather than expecting every non-hovered enabled action to be visible.
+      const settleStates = {}
+      for (const state of ['working','completed','idle','reading','unknown']) {
+        const point = await browser.evaluate(`(()=>{const r=rows[${JSON.stringify(state)}].go.getBoundingClientRect();return {x:r.x+10,y:r.y+13}})()`)
+        await browser.call('Input.dispatchMouseEvent', { type:'mouseMoved', ...point })
+        await browser.evaluate(`new Promise((resolve,reject)=>{
+          let frame;const timer=setTimeout(()=>{cancelAnimationFrame(frame);reject(Error('hover action did not reach its endpoint'))},1500);
+          const poll=()=>{if(getComputedStyle(rows[${JSON.stringify(state)}].clock).opacity==='1'){clearTimeout(timer);resolve()}else frame=requestAnimationFrame(poll)};poll();
+        })`)
+        settleStates[state] = await browser.evaluate(`(()=>{const ui=rows[${JSON.stringify(state)}],s=getComputedStyle(ui.menu),r=ui.menu.getBoundingClientRect();return {disabled:ui.menu.disabled,opacity:s.opacity,visibility:s.visibility,slot:[r.width,r.height]}})()`)
+      }
       for (const [state, paint] of Object.entries(settleStates)) {
         assert.deepEqual(paint.slot, [24,24])
         assert.equal(paint.visibility, ['working','reading','unknown'].includes(state) ? 'hidden' : 'visible')

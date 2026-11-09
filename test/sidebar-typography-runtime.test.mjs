@@ -53,6 +53,9 @@ test('sidebar typography matches the installed Codex hierarchy', async t => {
     <meta charset="utf-8">
     <title>pending</title>
     <style>
+      :root { --dt-font-sans: 'Native Preference', sans-serif; }
+      body { font-family: var(--dt-font-sans); }
+      button { font: inherit; }
       * { box-sizing: border-box; }
       .native-nav { font-size: 13px; font-weight: 500; line-height: normal; }
       .native-primary { font-size: 13px; font-weight: 400; line-height: 13px; }
@@ -117,7 +120,7 @@ test('sidebar typography matches the installed Codex hierarchy', async t => {
       { maxBuffer: 2 * 1024 * 1024 }
     )
     const result = decodeSnapshot(stdout)
-    const systemFont = '-apple-system, system-ui, "Segoe UI", sans-serif'
+    const systemFont = '"Native Preference", sans-serif'
 
     assert.deepEqual(result.nav, {
       fontFamily: systemFont,

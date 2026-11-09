@@ -1,19 +1,34 @@
 import assert from 'node:assert/strict'
-import {readFile} from 'node:fs/promises'
 import test from 'node:test'
-import {chromium} from './helpers/chromium.mjs'
-test('Clean transcript crosses native response groups while preserving final, media and running turns',async()=>{
- const browser=await chromium()
- try{
-  const {frameTree}=await browser.call('Page.getFrameTree')
-  const message=(id,content,extra='')=>`<div id="${id}" data-role="assistant" data-slot="aui_assistant-message-root" ${extra}><div data-slot="aui_assistant-message-content">${content}</div></div>`
-  const html=`<html data-codex-chat-look="true" data-codex-clean-transcript="on"><head></head><body><div data-slot="aui_turn-pair" id="settled"><div data-role="user">Question</div><div data-slot="aui_response-group">${message('interim','Commentary')}${message('tools','<div data-slot="tool-block">Ran command</div><div data-slot="aui_thinking-disclosure">Thought</div>')}${message('media','<div data-slot="aui_generated-image">Generated image</div>')}${message('final','Final answer<div data-slot="aui_msg-actions"></div>')}</div></div><div data-slot="aui_turn-pair" id="running"><div data-slot="aui_response-group">${message('live','Working','data-streaming="true"')}${message('previous','Previous<div data-slot="aui_msg-actions"></div>')}</div></div></body></html>`
-  await browser.call('Page.setDocumentContent',{frameId:frameTree.frame.id,html})
-  const source=(await readFile(new URL('../codex-chat-look/plugin.js',import.meta.url),'utf8')).replace(/^import .*$/gm,'').replace(/export default\s*\{/,'globalThis.testPlugin = {')
-  const r=await browser.evaluate(`(()=>{const host={},PALETTE_AREA='palette',THEMES_AREA='themes',TITLEBAR_AREAS={center:'center'},jsx=()=>null,useEffect=()=>{};${source}\nconst style=document.createElement('style');style.textContent=CSS;document.head.append(style);for(const p of document.querySelectorAll('[data-slot="aui_turn-pair"]'))reconcileCleanTranscript(p);const visible=id=>getComputedStyle(document.getElementById(id)).display!=='none';const state={settled:document.getElementById('settled').dataset.codexCleanSettled,interim:visible('interim'),final:visible('final'),media:visible('media'),tool:getComputedStyle(document.querySelector('[data-slot="tool-block"]')).display,live:visible('live'),running:document.getElementById('running').hasAttribute('data-codex-clean-settled')};document.documentElement.dataset.codexCleanTranscript='off';clearCleanTranscriptDecorations();return {...state,restored:visible('interim')}})()`)
-  assert.equal(r.settled,'true')
-  assert.equal(r.interim,false)
-  assert.equal(r.final,true);assert.equal(r.media,true)
-  assert.equal(r.tool,'none');assert.equal(r.live,true);assert.equal(r.running,false);assert.equal(r.restored,true)
- }finally{browser.close()}
+import { actions, message, transcriptFixture } from './helpers/transcript-activity-fixture.mjs'
+
+test('replacement activity crosses native response groups, reversibly preserving final, media and running turns', async () => {
+  const html = `<div data-slot="aui_turn-pair" id="settled"><div data-role="user" id="user">Question</div><div data-slot="aui_response-group">${message('interim', '<div class="aui-md" id="commentary">Commentary</div>')}${message('tools', '<div data-slot="tool-block" id="tool"><button id="native-tool">Ran command</button><pre id="result">Native result</pre></div><div data-slot="aui_thinking-disclosure" id="thought">Thought</div>')}${message('media', '<div data-slot="aui_generated-image" id="image">Generated image</div>')}${message('final', '<div class="aui-md" id="answer">Final answer</div>', actions)}</div></div><div data-slot="aui_turn-pair" id="running"><div data-slot="aui_response-group">${message('live', '<div class="aui-md">Working</div><div data-slot="tool-block" id="live-tool">Running command</div>', '', 'data-streaming="true"')}${message('previous', '<div class="aui-md">Previous</div>', actions)}</div></div>`
+  const r = await transcriptFixture(html, `
+    const ids=['commentary','tool','result','thought','image','answer','final-actions','user','live','live-tool'];
+    element('final').querySelector('[data-slot="aui_msg-actions"]').id='final-actions';
+    const nodes=Object.fromEntries(ids.map(id=>[id,{node:element(id),parent:element(id).parentNode,text:element(id).textContent}]));
+    const original=element('settled').innerHTML;let clicks=0;element('native-tool').onclick=()=>clicks++;
+    reconcile();
+    const collapsed={phase:element('settled').dataset.codexActivityPhase,label:header('settled').textContent,expanded:header('settled').getAttribute('aria-expanded'),commentary:visible('commentary'),tool:visible('tool'),result:visible('result'),thought:visible('thought'),final:visible('answer'),media:visible('image'),actions:visible('final-actions'),live:visible('live'),liveTool:visible('live-tool'),runningPhase:element('running').dataset.codexActivityPhase,runningDisabled:header('running').disabled};
+    // Earlier replies remain inspectable while the latest reply is active.
+    header('running').click();
+    const runningExpanded=header('running').getAttribute('aria-expanded')==='true'&&visible('previous')&&visible('live-tool');
+    header('running').click();
+    const runningRefolded=header('running').getAttribute('aria-expanded')==='false'&&visible('previous')&&visible('live-tool');
+    header('settled').click();element('native-tool').click();
+    const expanded={commentary:visible('commentary'),tool:visible('tool'),result:visible('result'),thought:visible('thought'),aria:header('settled').getAttribute('aria-expanded'),clicks};
+    header('settled').click();reconcile();
+    const refolded=!visible('tool')&&!visible('commentary');
+    const preserved=Object.entries(nodes).every(([id,saved])=>element(id)===saved.node&&saved.node.parentNode===saved.parent&&saved.node.isConnected&&saved.node.textContent===saved.text);
+    document.documentElement.dataset.codexCleanTranscript='off';reconcile();
+    const retiredOffDoesNotDriveProjection=!visible('tool')&&visible('answer');
+    document.documentElement.dataset.codexChatLook='false';
+    const disabled=ids.every(visible);
+    clearTurnActivityDecorations();
+    return {collapsed,runningExpanded,runningRefolded,expanded,refolded,preserved,retiredOffDoesNotDriveProjection,disabled,restored:element('settled').innerHTML===original,cleaned:!header('settled')&&ids.every(id=>marked(id)===null)};
+  `)
+  assert.deepEqual(r.collapsed, { phase:'completed', label:'Worked', expanded:'false', commentary:false, tool:false, result:false, thought:false, final:true, media:true, actions:true, live:true, liveTool:true, runningPhase:'working', runningDisabled:false })
+  assert.deepEqual(r.expanded, { commentary:true, tool:true, result:true, thought:true, aria:'true', clicks:1 })
+  for (const field of ['runningExpanded','runningRefolded','refolded','preserved','retiredOffDoesNotDriveProjection','disabled','restored','cleaned']) assert.equal(r[field], true, field)
 })

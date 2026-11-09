@@ -51,7 +51,7 @@ for (const mode of ['dark', 'light', 'external', 'glass']) {
         const by=id=>document.getElementById(id), style=id=>getComputedStyle(by(id));
         const rgba=color=>{let c=document.createElement('canvas');c.width=c.height=1;let x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,1,1);return [...x.getImageData(0,0,1,1).data]};
         const geometry=id=>{let e=by(id),r=e.getBoundingClientRect(),s=style(id);return [r.x,r.y,r.width,r.height,s.fontSize,s.fontWeight,s.lineHeight,s.borderRadius]};
-        return {section:rgba(style('section').color),name:rgba(style('name').color),selectedName:rgba(style('selected-name').color),icon:rgba(style('nav-icon').color),nav:rgba(style('nav').color),selected:rgba(style('selected').backgroundColor),idle:rgba(style('idle').backgroundColor),status:style('status').backgroundColor,meta:style('meta').color,other:style('other').color,bg:rgba('${bg}'),geometry:['section','name','nav','selected','idle'].map(geometry)};
+        return {section:rgba(style('section').color),name:rgba(style('name').color),selectedName:rgba(style('selected-name').color),icon:rgba(style('nav-icon').color),nav:rgba(style('nav').color),selected:rgba(style('selected').backgroundColor),idle:rgba(style('idle').backgroundColor),status:style('status').backgroundColor,meta:style('meta').color,other:style('other').color,bg:rgba('${bg}'),fonts:['section','name','nav','selected','idle'].map(id=>style(id).fontFamily),geometry:['section','name','nav','selected','idle'].map(geometry)};
       };
       </script></body></html>`
       await browser.call('Page.setDocumentContent', { frameId: (await browser.call('Page.getFrameTree')).frameTree.frame.id, html })
@@ -73,7 +73,18 @@ for (const mode of ['dark', 'light', 'external', 'glass']) {
       assert.ok(contrast(after.section, after.bg) >= 4.5, 'section labels remain readable')
       assert.ok(contrast(after.name, after.bg) >= 4.5, 'conversation names remain readable')
       assert.deepEqual(after.icon, after.section, 'utility icons share the quieter hierarchy')
-      assert.deepEqual(after.geometry, before.geometry, 'contrast changes do not change layout or typography')
+      // Skin's approved geometry is not the unskinned host typography.
+      assert.deepEqual(after.geometry, [
+        [22,146,55.203125,16,'14px','500','21px','0px'],
+        [22,214,168.5,20,'14px','400','20px','0px'],
+        [12,18,286,34,'14px','400','21px','0px'],
+        [12,173,286,34,'14px','400','normal','10px'],
+        [12,207,286,34,'14px','400','normal','10px']
+      ], 'approved skin geometry and typography stay stable')
+      assert.deepEqual(after.fonts,before.fonts,'font-family remains inherited from the host')
+      await browser.evaluate(`document.body.style.fontFamily='Georgia, serif'`)
+      assert.deepEqual((await browser.evaluate('snapshot()')).fonts,Array(5).fill('Georgia, serif'),'native font changes propagate')
+      await browser.evaluate(`document.body.style.fontFamily='system-ui, sans-serif'`)
       for (const key of ['status','meta','other']) assert.equal(after[key], before[key], `${key} remains native`)
       const point = await browser.evaluate(`(()=>{let r=document.getElementById('selected').getBoundingClientRect();return {x:r.x+4,y:r.y+4}})()`)
       await browser.call('Input.dispatchMouseEvent', { type:'mouseMoved', ...point })

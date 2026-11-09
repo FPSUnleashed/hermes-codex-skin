@@ -1,11 +1,32 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+// Use rendered state, not wall time; fail even if Chromium stops producing frames.
+export async function waitForRendered(browser, predicate, message, timeout = 1500) {
+  return browser.evaluate(`new Promise((resolve,reject)=>{
+    let frame;
+    const cleanup=()=>{clearTimeout(timer);cancelAnimationFrame(frame)};
+    const timer=setTimeout(()=>{cleanup();reject(Error(${JSON.stringify(message)}))},${timeout});
+    const poll=()=>{
+      try {if(${predicate}){cleanup();resolve();return}}
+      catch(error){cleanup();reject(error);return}
+      frame=requestAnimationFrame(poll);
+    };
+    poll();
+  })`)
+}
 
 export async function chromium() {
   const executable = [process.env.CHROME_BIN, '/usr/bin/google-chrome-stable', '/usr/bin/google-chrome', '/usr/bin/chromium'].find(p => p && existsSync(p))
   assert.ok(executable, 'Chrome is required for browser behavior tests')
-  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--remote-debugging-pipe'], { stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] })
+  // Tests own their scratch profile; never attach to the user's default one.
+  // Scratch retention cleans it after Chrome descendants finish writing.
+  const profile = mkdtempSync(join(tmpdir(), 'codex-browser-'))
+  const child = spawn(executable, ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-extensions', '--no-first-run', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', `--user-data-dir=${profile}`, '--remote-debugging-pipe'], { stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] })
+
   let serial = 0, buffer = ''
   const pending = new Map()
   const fail = error => {
@@ -41,6 +62,8 @@ export async function chromium() {
       return result.result.value
     }
     await call('Page.enable')
+    await send('Target.activateTarget', { targetId })
+    await call('Page.bringToFront')
     return { call, evaluate, close: () => { fail(new Error('Browser test ended')); child.kill('SIGKILL') } }
   } catch (error) { fail(error); child.kill('SIGKILL'); throw error }
 }

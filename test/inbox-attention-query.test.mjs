@@ -10,7 +10,7 @@ async function fixture({ retainedError, failAt = 'lineage', corrupt = false } = 
   const calls = [], records = new Map()
   const storage = { get: key => records.get(key), set: (key, value) => records.set(key, structuredClone(value)) }
   const context = vm.createContext({
-    ID: 'codex-chat-look', URLSearchParams, console,
+    ID: 'codex-chat-look', URLSearchParams, console, setTimeout,
     host: { state: { connectionId: { get: () => scope.connectionId }, profile: { get: () => scope.profile } }, request: async () => ({ sessions: [] }) },
     window: { hermesDesktop: {
       api: async options => {

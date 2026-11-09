@@ -21,7 +21,7 @@ const UPDATE_CSS = `
 .codex-update-button[data-phase=done] .codex-update-check{stroke-dasharray:24;stroke-dashoffset:24;animation:codex-update-draw 300ms 100ms ease forwards}
 .codex-update-button[data-phase=vanishing]{animation:codex-update-exit 280ms cubic-bezier(.4,0,.65,1) both;pointer-events:none}
 .codex-update-button[data-phase=error]{background:var(--ui-text-primary,#222)}
-.codex-update-panel{box-sizing:border-box;position:fixed;z-index:10000;overflow:auto;overscroll-behavior:contain;width:320px;max-height:320px;padding:0 18px;border:1px solid var(--ui-stroke-secondary,#e5e5e5);border-radius:14px;background:var(--codex-color-card,var(--ui-editor-surface-background,#fff));color:var(--ui-text-primary,#171717);box-shadow:0 12px 36px #00000014,0 2px 6px #00000008;font:12px/1.65 -apple-system,system-ui,sans-serif;scrollbar-width:thin;scrollbar-color:var(--ui-stroke-secondary,#ccc) transparent}
+.codex-update-panel{box-sizing:border-box;position:fixed;z-index:10000;overflow:auto;overscroll-behavior:contain;width:320px;max-height:320px;padding:0 18px;border:1px solid var(--ui-stroke-secondary,#e5e5e5);border-radius:14px;background:var(--codex-color-card,var(--ui-editor-surface-background,#fff));color:var(--ui-text-primary,#171717);box-shadow:0 12px 36px #00000014,0 2px 6px #00000008;font:12px/1.65 var(--dt-font-sans);scrollbar-width:thin;scrollbar-color:var(--ui-stroke-secondary,#ccc) transparent}
 .codex-update-panel[hidden]{display:none!important}
 .codex-update-hover-bridge{position:fixed;z-index:10000;background:transparent}
 .codex-update-hover-bridge[hidden]{display:none!important}

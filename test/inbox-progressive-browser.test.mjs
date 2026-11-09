@@ -19,8 +19,9 @@ test('shipping cold Inbox paints Working while another native child request is s
     catch { response.writeHead(404).end() }
   })
   await new Promise(done => server.listen(0, '127.0.0.1', done))
-  const browser = await chromium()
+  let browser
   try {
+    browser = await chromium()
     await browser.call('Page.navigate', { url: `http://127.0.0.1:${server.address().port}/` })
     await browser.evaluate(`(async()=>{
       window.process={env:{NODE_ENV:'production'}};
@@ -62,7 +63,13 @@ test('shipping cold Inbox paints Working while another native child request is s
     assert.notEqual(await browser.evaluate("document.querySelector('[data-codex-inbox-row=fast]')?.dataset.workState"), 'working', 'late progress cannot restore disconnected work')
     assert.deepEqual(await browser.evaluate('errors'), [])
   } finally {
-    await browser.evaluate('releaseSlow?.();disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(()=>{})
-    browser.close();await new Promise(done=>server.close(done))
+    try {
+      if (browser) {
+        await browser.evaluate('releaseSlow?.();disposals.forEach(fn=>fn());queryClient.unmount();queryClient.clear()').catch(()=>{})
+        browser.close()
+      }
+    } finally {
+      await new Promise(done=>server.close(done))
+    }
   }
 })

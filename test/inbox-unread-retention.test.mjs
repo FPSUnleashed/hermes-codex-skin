@@ -8,6 +8,7 @@ const bundle = (await readFile(new URL('../codex-chat-look/plugin.js', import.me
 
 async function fixture() {
   const browser = await chromium()
+  try {
   await browser.call('Emulation.setFocusEmulationEnabled', { enabled: true })
   await browser.call('Page.setDocumentContent', { frameId: (await browser.call('Page.getFrameTree')).frameTree.frame.id,
     html: '<!doctype html><style>:root{--ui-success:#16884b}aside{width:280px;height:400px}</style><aside data-sessions-mode="sessions"></aside>' })
@@ -34,6 +35,7 @@ async function fixture() {
     update();
   })()`)
   return browser
+  } catch (error) { browser.close(); throw error }
 }
 
 async function sample(browser) { await browser.evaluate('flush()'); return browser.evaluate('sample()') }
