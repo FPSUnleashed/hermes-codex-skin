@@ -231,6 +231,8 @@ function createToolSequenceRuntime(currentScope, currentIncarnation) {
   const apply = record => {
     attr(record.button, 'aria-expanded', String(record.open))
     attr(record.header, 'data-codex-activity-live', record.current ? '' : null)
+    // A remembered caption has no mounted native row to supply overlay height.
+    attr(record.header, 'data-codex-activity-overlay', record.current?.row ? '' : null)
     for (const node of record.units) {
       attr(node, itemAttribute, record.open ? null : record.current ? 'live-collapsed' : 'collapsed')
     }

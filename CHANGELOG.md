@@ -42,6 +42,8 @@ All notable changes to this project are documented here.
 - Close test browsers when fixture setup fails before ownership reaches the test body. Keep the standalone paint probe aligned with the approved Tasks/Queue contrast rule and resolve its resource-test Node executable from PATH.
 - Avoid rewriting unchanged Inbox header and Working/Snoozed shelf values during metadata updates, reducing redundant layout work while retaining synchronous scroll restoration, focus and row identity.
 - Restore absent style attributes exactly after the Sidebar direction/zoom fixture mutates CSSOM, keeping strict native DOM-restoration assertions and product behavior unchanged.
+- Keep a witnessed activity caption in normal flow when its native ticker unmounts, without overlapping the next reply.
+- Reveal protected media, embedded controls and approval requests inside folded activity immediately, including before the next reconciliation pass.
 
 ### Documentation
 

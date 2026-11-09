@@ -106,7 +106,7 @@ jobs:
       - name: Run regression tests
         env:
           CODEX_V9_BROWSER_AUTHORIZED: '1'
-        # Preserve all 202 files and assertions. The existing Linux subreaper
+        # Preserve all 204 files and assertions. The existing Linux subreaper
         # owns profiles/descendants and retains its admission/process guards.
         run: |
           set -euo pipefail

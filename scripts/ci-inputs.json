@@ -2,7 +2,7 @@
   "schema": 1,
   "node": "v26.13.0",
   "npm": "11.20.0",
-  "regressionFiles": 202,
+  "regressionFiles": 204,
   "plugin": {
     "files": {
       "package.json": "4f4069f7ce283336c1c7fe0116c84f467f2f67192d997922b07c723cb778f686",
@@ -94,7 +94,7 @@
     "consumerFiles": {
       "test/t3-width-fidelity.test.mjs": "ad70501d5dfa8f3c1d31df658071954a862699e381c6dbd160a82716cfbee629",
       "test/helpers/reference-paths.mjs": "767fa4828572c86232ec50da401c8dd0198dee4dc1ddbdce2ce1e4f4c418057a",
-      ".github/workflows/ci.yml": "ce2ab29156279e283c96121a47d069afb7e03645e5a2a75dc7b213dfe9ea50f9",
+      ".github/workflows/ci.yml": "3e26f6e9dbef9bec005032ae98c767cbcd7cd83ac650116def8fca384543407c",
       "LICENSE": "ae3dc3bddd8da8fec204f25f97820492942c3e6d609433f1c2fbe475f7af9304"
     },
     "fixtureClosure": {
@@ -103,8 +103,8 @@
     },
     "consumerClosures": {
       "test": {
-        "files": 246,
-        "sha256": "872ade3b5ee4dbb72bc32744218b2a1aa287c704bbf9182920077b31d0860d94",
+        "files": 249,
+        "sha256": "fa9e9d40162a9573ecc1bd5dd6ab89df2fb93d2df4053ca50d5ff360000c0e71",
         "excluded": [
           "test/fixtures/ci-historical"
         ]
@@ -119,7 +119,7 @@
       },
       "src": {
         "files": 17,
-        "sha256": "9a1650d01df6969feafd09507b8f97bfc661f8aea75424b1873201b1a8f4e4da",
+        "sha256": "443a5164a6c7622e26d92cef71156e219906f5ee0ae0ec4a61a43767ccc3fd55",
         "excluded": []
       }
     }
