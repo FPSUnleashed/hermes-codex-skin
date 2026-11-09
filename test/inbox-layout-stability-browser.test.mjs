@@ -7,6 +7,9 @@ import { universalFixture } from './helpers/universal-fixture.mjs'
 test('Inbox preserves native scroll and focus without redundant stable shell mutations', () => universalFixture(async browser => {
   const receipt = await browser.evaluate(`(async()=>{
     for(const fn of disposals.splice(0).reverse())fn();queryClient.clear();
+    // Claim the skin style owner after teardown so its deferred retirement
+    // cannot remove scoped layout styles during either isolated Inbox case.
+    disposals.push(installChatStyleRuntime());
     const nativeScroll=Object.getOwnPropertyDescriptor(Element.prototype,'scrollTop');
     const nativeMove=Element.prototype.moveBefore;
     const cases=[];

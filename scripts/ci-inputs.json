@@ -104,7 +104,7 @@
     "consumerClosures": {
       "test": {
         "files": 249,
-        "sha256": "fa9e9d40162a9573ecc1bd5dd6ab89df2fb93d2df4053ca50d5ff360000c0e71",
+        "sha256": "bb4bf74cfca084cec8fc5d91bc44595824e3498fa24421a12c3868b9faa3a314",
         "excluded": [
           "test/fixtures/ci-historical"
         ]
